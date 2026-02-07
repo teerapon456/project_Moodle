@@ -96,7 +96,7 @@ services:
 
   # phpMyAdmin (Auto-login)
   phpmyadmin:
-    image: phpmyadmin/phpmyadmin
+    image: phpmyadmin:latest
     container_name: myhr-phpmyadmin
     environment:
       - PMA_HOSTS=db,moodle_db

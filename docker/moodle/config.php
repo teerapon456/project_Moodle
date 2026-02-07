@@ -36,16 +36,11 @@ $CFG->admin = 'admin';
 $CFG->directorypermissions = 0777;
 
 //=========================================================================
-// Session Handling - Redis (Enable after installation)
-// Uncomment below to use Redis for sessions (shared with Portal)
+// Session Handling - File (Default)
+// Database sessions cause redirect loops if not properly initialized
 //=========================================================================
-// $CFG->session_handler_class = '\core\session\redis';
-// $CFG->session_redis_host = getenv('REDIS_HOST') ?: 'redis';
-// $CFG->session_redis_port = 6379;
-// $CFG->session_redis_database = 1;
-// $CFG->session_redis_prefix = 'mdl_';
-// $CFG->session_redis_acquire_lock_timeout = 120;
-// $CFG->session_redis_lock_expire = 7200;
+// $CFG->session_handler_class = '\core\session\database';
+$CFG->sessioncookiepath = '/moodle';
 
 //=========================================================================
 // Performance & Cache

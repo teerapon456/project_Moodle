@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { moodleDb } from '@/lib/db';
+import { moodleDb, portalDb } from '@/lib/db';
 
 export async function GET(request: Request) {
   try {
@@ -39,6 +39,36 @@ export async function GET(request: Request) {
       );
     }
 
+    // Query Portal database for actual user role
+    let userRole = 'learner';
+    let isSiteAdmin = false;
+    try {
+      const [portalUsers] = await portalDb.execute<any[]>(
+        `SELECT u.role_id, r.name as role_name 
+         FROM users u 
+         LEFT JOIN roles r ON u.role_id = r.id 
+         WHERE u.username = ?`,
+        [tokenData.username]
+      );
+      if (portalUsers.length > 0) {
+        const roleName = portalUsers[0].role_name?.toLowerCase() || '';
+        // Map Portal roles to Moodle App roles
+        if (roleName.includes('admin') || roleName.includes('superadmin')) {
+          userRole = 'admin';
+          isSiteAdmin = true;
+        } else if (roleName.includes('manager') || roleName.includes('hr')) {
+          userRole = 'manager';
+        } else if (roleName.includes('instructor') || roleName.includes('teacher')) {
+          userRole = 'instructor';
+        } else {
+          userRole = 'learner';
+        }
+      }
+    } catch (e) {
+      console.error('Failed to query Portal for role:', e);
+      // Fallback: all users are learners
+    }
+
     const user = {
       id: tokenData.userid,
       username: tokenData.username,
@@ -49,8 +79,8 @@ export async function GET(request: Request) {
       userpictureurl: '', // simplify for now
       siteid: 1,
       sitename: 'MyHR Learning',
-      is_site_admin: tokenData.username === 'test_frontend' || tokenData.username === 'admin',
-      role: (tokenData.username === 'test_frontend' || tokenData.username === 'admin') ? 'admin' : 'student',
+      is_site_admin: isSiteAdmin,
+      role: userRole,
     };
 
     return NextResponse.json(user);
@@ -63,3 +93,4 @@ export async function GET(request: Request) {
     );
   }
 }
+

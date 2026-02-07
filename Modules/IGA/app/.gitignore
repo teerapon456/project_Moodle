@@ -1,0 +1,12 @@
+# Environment secrets
+.env
+.htaccess
+
+# Logs
+logs/*.log
+logs/*.log.*
+
+# OS/Editor junk
+.DS_Store
+Thumbs.db
+*.swp

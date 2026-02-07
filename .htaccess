@@ -1,0 +1,7 @@
+# Enable URL rewriting
+RewriteEngine On
+
+# Handle API requests - route through routes.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^api/(.*)$ routes.php [QSA,L]

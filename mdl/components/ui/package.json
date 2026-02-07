@@ -1,0 +1,24 @@
+{
+  "name": "@ui/components-ts",
+  "version": "1.0.0",
+  "description": "Modern UI Components Library (TypeScript)",
+  "main": "index.ts",
+  "types": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "react": "^18.0.0",
+    "class-variance-authority": "^0.7.0",
+    "tailwindcss": "^3.0.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "tailwindcss": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "typescript": "^5.0.0"
+  }
+}

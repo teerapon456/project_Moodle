@@ -1,0 +1,223 @@
+/* Yearly Activity Module - Using Tailwind CSS */
+/* Mobile-first responsive improvements */
+
+/* Custom scrollbar for tables */
+.overflow-x-auto::-webkit-scrollbar {
+    height: 6px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+    background: #c5c5c5;
+    border-radius: 3px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+    background: #a0a0a0;
+}
+
+/* Hide scrollbar but allow scroll (for nav) */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 640px) {
+
+    /* Reduce font sizes on mobile */
+    .text-3xl {
+        font-size: 1.5rem !important;
+        line-height: 2rem !important;
+    }
+
+    .text-2xl {
+        font-size: 1.25rem !important;
+        line-height: 1.75rem !important;
+    }
+
+    /* Reduce padding on mobile */
+    .mobile-p-4 {
+        padding: 1rem !important;
+    }
+
+    /* Touch-friendly minimum sizes */
+    .touch-target {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Stack header elements */
+    .mobile-stack {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.75rem !important;
+    }
+
+    /* Full width buttons on mobile */
+    .mobile-full-width {
+        width: 100% !important;
+    }
+
+    /* Smaller icons in cards */
+    .mobile-icon-sm {
+        width: 3rem !important;
+        height: 3rem !important;
+        font-size: 1.25rem !important;
+    }
+}
+
+/* Scroll hint indicator for tables */
+.scroll-hint {
+    position: relative;
+}
+
+.scroll-hint::after {
+    content: '← Scroll →';
+    display: block;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #9ca3af;
+    padding: 0.5rem;
+}
+
+@media (min-width: 768px) {
+    .scroll-hint::after {
+        display: none;
+    }
+}
+
+/* Animation for loading spinner */
+@keyframes spin-slow {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-spin-slow {
+    animation: spin-slow 2s linear infinite;
+}
+
+/* Mobile card improvements */
+@media (max-width: 640px) {
+
+    /* Activity cards - stack content vertically */
+    .activity-card {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .activity-card .date-box {
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+
+    .activity-card .date-box>div:first-child {
+        font-size: 0.875rem !important;
+    }
+}
+
+/* Chart legend position fix for mobile */
+@media (max-width: 640px) {
+    .chart-container canvas {
+        max-height: 200px !important;
+    }
+}
+
+/* Navigation scroll snap */
+.nav-scroll {
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+}
+
+.nav-scroll>a {
+    scroll-snap-align: start;
+}
+
+/* Mobile-friendly modal/wizard */
+@media (max-width: 640px) {
+    .wizard-step {
+        padding: 1rem !important;
+    }
+
+    .wizard-step input,
+    .wizard-step select,
+    .wizard-step textarea {
+        font-size: 16px !important;
+        /* Prevent iOS zoom on focus */
+    }
+}
+
+/* Timeline view mobile hint */
+.timeline-scroll-container {
+    position: relative;
+}
+
+.timeline-scroll-container::before {
+    content: 'ปัด → เพื่อดูเพิ่มเติม';
+    display: block;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #6b7280;
+    padding: 0.5rem;
+    background: #f3f4f6;
+    border-radius: 0.5rem 0.5rem 0 0;
+}
+
+@media (min-width: 1024px) {
+    .timeline-scroll-container::before {
+        display: none;
+    }
+}
+
+/* RASCI Matrix mobile improvements */
+@media (max-width: 768px) {
+
+    .rasci-table th,
+    .rasci-table td {
+        padding: 0.5rem 0.25rem !important;
+        font-size: 0.75rem !important;
+    }
+
+    .rasci-table .user-avatar {
+        width: 1.5rem !important;
+        height: 1.5rem !important;
+        font-size: 0.5rem !important;
+    }
+}
+
+/* Floating action button for mobile */
+.fab-mobile {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 50;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+@media (min-width: 768px) {
+    .fab-mobile {
+        display: none;
+    }
+}

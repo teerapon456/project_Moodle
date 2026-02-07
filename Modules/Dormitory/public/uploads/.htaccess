@@ -1,0 +1,48 @@
+# Prevent execution of scripts in uploads directory
+<Files "*.php">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+<Files "*.php*">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+<Files "*.phtml">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# Prevent execution of other script files
+<Files "*.pl">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+<Files "*.py">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+<Files "*.cgi">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+<Files "*.sh">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# Disable PHP engine
+php_flag engine off
+
+# Prevent directory listing
+Options -Indexes
+
+# Only allow specific file types
+<FilesMatch "^(?!(.*\.(jpg|jpeg|png|gif|pdf|doc|docx|xls|xlsx|txt)$).*$)">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>

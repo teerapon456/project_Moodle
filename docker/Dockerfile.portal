@@ -1,0 +1,32 @@
+FROM php:8.2-apache
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libjpeg62-turbo-dev \
+    libfreetype6-dev \
+    libzip-dev \
+    libonig-dev \
+    libxml2-dev \
+    libicu-dev \
+    unzip \
+    git \
+    autoconf \
+    build-essential
+
+# Install PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) gd mysqli pdo pdo_mysql zip opcache soap intl
+
+# Install Redis (Manual build from GitHub because PECL is down)
+RUN git clone https://github.com/phpredis/phpredis.git /usr/src/php/ext/redis \
+    && docker-php-ext-install redis
+
+# Enable Apache mod_rewrite
+RUN a2enmod rewrite ssl
+
+# Copy custom php.ini
+COPY ./docker/php/custom.ini /usr/local/etc/php/conf.d/custom.ini
+
+# Copy Apache VirtualHost configuration
+COPY ./docker/apache/000-default.conf /etc/apache2/sites-available/000-default.conf

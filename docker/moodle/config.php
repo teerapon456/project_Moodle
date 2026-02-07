@@ -1,0 +1,68 @@
+<?php
+
+/**
+ * Moodle Configuration File
+ * Auto-generated for Docker environment
+ */
+
+unset($CFG);
+global $CFG;
+$CFG = new stdClass();
+
+//=========================================================================
+// Database Settings
+//=========================================================================
+$CFG->dbtype    = 'mysqli';
+$CFG->dblibrary = 'native';
+$CFG->dbhost    = getenv('MOODLE_DB_HOST') ?: 'moodle_db';
+$CFG->dbname    = getenv('MOODLE_DB_NAME') ?: 'moodle';
+$CFG->dbuser    = getenv('MOODLE_DB_USER') ?: 'moodle_user';
+$CFG->dbpass    = getenv('MOODLE_DB_PASS') ?: 'Moodle_S3cur3_P@ss_2026!';
+$CFG->prefix    = 'mdl_';
+$CFG->dboptions = array(
+    'dbpersist' => 0,
+    'dbport' => 3306,
+    'dbsocket' => '',
+    'dbcollation' => 'utf8mb4_unicode_ci',
+);
+
+//=========================================================================
+// Web Address Settings (from environment variable)
+//=========================================================================
+$CFG->wwwroot = getenv('MOODLE_WWWROOT') ?: 'https://172.17.100.55:8080/moodle';
+
+$CFG->dataroot = '/var/www/moodledata';
+$CFG->admin = 'admin';
+$CFG->directorypermissions = 0777;
+
+//=========================================================================
+// Session Handling - Redis (Enable after installation)
+// Uncomment below to use Redis for sessions (shared with Portal)
+//=========================================================================
+// $CFG->session_handler_class = '\core\session\redis';
+// $CFG->session_redis_host = getenv('REDIS_HOST') ?: 'redis';
+// $CFG->session_redis_port = 6379;
+// $CFG->session_redis_database = 1;
+// $CFG->session_redis_prefix = 'mdl_';
+// $CFG->session_redis_acquire_lock_timeout = 120;
+// $CFG->session_redis_lock_expire = 7200;
+
+//=========================================================================
+// Performance & Cache
+//=========================================================================
+$CFG->cachedir = '/var/www/moodledata/cache';
+$CFG->localcachedir = '/var/www/moodledata/localcache';
+$CFG->tempdir = '/var/www/moodledata/temp';
+
+$CFG->debug = 0;
+$CFG->debugdeveloper = false;
+
+//=========================================================================
+// Reverse Proxy Settings
+//=========================================================================
+$CFG->sslproxy = true;
+
+//=========================================================================
+// DO NOT EDIT BELOW THIS LINE
+//=========================================================================
+require_once(__DIR__ . '/lib/setup.php');

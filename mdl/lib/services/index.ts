@@ -1,0 +1,33 @@
+// Export all Moodle API services
+
+export { authService } from './auth.service';
+export { userService, UserService } from './user.service';
+export { courseService, CourseService } from './course.service';
+export { enrollmentService, EnrollmentService } from './enrollment.service';
+export { assignmentService, AssignmentService } from './assignment.service';
+export { quizService, QuizService } from './quiz.service';
+export { forumService, ForumService } from './forum.service';
+export { messageService, MessageService } from './message.service';
+export { calendarService, CalendarService } from './calendar.service';
+export { gradeService, GradeService } from './grade.service';
+export { badgeService, BadgeService } from './badge.service';
+export { completionService, CompletionService } from './completion.service';
+export { fileService, FileService } from './file.service';
+export { siteService, SiteService } from './site.service';
+export { groupService, GroupService } from './group.service';
+export { cohortService, CohortService } from './cohort.service';
+export { roleService, RoleService } from './role.service';
+export { workshopService, WorkshopService } from './workshop.service';
+export { wikiService, WikiService } from './wiki.service';
+export { scormService, ScormService } from './scorm.service';
+export { lessonService, LessonService } from './lesson.service';
+export { h5pService, H5PService } from './h5p.service';
+export { chatService, ChatService } from './chat.service';
+export { glossaryService, GlossaryService } from './glossary.service';
+export { surveyService, SurveyService } from './survey.service';
+export { bookService, BookService } from './book.service';
+export { resourceService, ResourceService } from './resource.service';
+export { databaseService, DatabaseService } from './database.service';
+export { ltiService, LtiService } from './lti.service';
+export { bigBlueButtonService, BigBlueButtonService } from './bigbluebutton.service';
+export { imscpService, ImscpService } from './imscp.service';

@@ -3,14 +3,14 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Install dependencies first (for better caching)
-COPY package.json package-lock.json* ./
+COPY mdl/package.json mdl/package-lock.json* ./
 RUN npm install
 
 # Install curl for healthcheck
 RUN apk add --no-cache curl
 
 # Copy source code
-COPY . .
+COPY mdl/ .
 
 # Expose Next.js port
 EXPOSE 3000

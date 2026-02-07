@@ -19,8 +19,8 @@ $basePath = UrlHelper::getBasePath();
 // Check authentication
 if (!isset($_SESSION['user'])) {
     session_write_close(); // Release lock before redirect
-    $assetBase = UrlHelper::getAssetBase();
-    header('Location: ' . $assetBase . 'index.php');
+    // Redirect to local login page
+    header('Location: login.php');
     exit;
 }
 

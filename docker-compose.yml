@@ -111,8 +111,8 @@ services:
   # Moodle Frontend (Next.js)
   frontend:
     build:
-      context: ./mdl
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/Dockerfile.frontend
       args:
         MOODLE_INTERNAL_URL: ${MOODLE_INTERNAL_URL}
         MOODLE_PUBLIC_URL: ${MOODLE_PUBLIC_URL}
@@ -135,6 +135,40 @@ services:
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
+    networks:
+      - myhr-net
+
+  # Car Booking Module
+  carbooking:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.carbooking
+    container_name: myhr-carbooking
+    restart: always
+    environment:
+      - REDIS_HOST=redis
+    volumes:
+      - ./.env:/var/www/html/.env
+      - ./Modules/CarBooking:/var/www/html/Modules/CarBooking
+      - ./core:/var/www/html/core
+      - ./vendor:/var/www/html/vendor
+    networks:
+      - myhr-net
+
+  # Dormitory Module
+  dormitory:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dormitory
+    container_name: myhr-dormitory
+    restart: always
+    environment:
+      - REDIS_HOST=redis
+    volumes:
+      - ./.env:/var/www/html/.env
+      - ./Modules/Dormitory:/var/www/html/Modules/Dormitory
+      - ./core:/var/www/html/core
+      - ./vendor:/var/www/html/vendor
     networks:
       - myhr-net
 

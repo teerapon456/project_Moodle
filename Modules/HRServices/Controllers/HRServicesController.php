@@ -1,17 +1,17 @@
 <?php
 
 require_once __DIR__ . '/../../../core/Database/Database.php';
+require_once __DIR__ . '/../Models/HRServicesModel.php';
 
 class ModuleController
 {
-    private $conn;
+    private $model;
     private $currentRoleId;
     private $currentRoleActive;
 
     public function __construct()
     {
-        $db = new Database();
-        $this->conn = $db->getConnection();
+        $this->model = new HRServicesModel();
         $this->currentRoleId = $_SESSION['user']['role_id'] ?? null;
         $this->currentRoleActive = $_SESSION['user']['role_active'] ?? 1;
     }
@@ -33,15 +33,7 @@ class ModuleController
 
     private function canManageAnyModule()
     {
-        if (!$this->conn || !$this->currentRoleId) {
-            return false;
-        }
-
-        $sql = "SELECT 1 FROM core_module_permissions WHERE role_id = :role_id AND can_manage = 1 LIMIT 1";
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bindValue(':role_id', $this->currentRoleId, PDO::PARAM_INT);
-        $stmt->execute();
-        return (bool)$stmt->fetchColumn();
+        return $this->model->canManageAnyModule($this->currentRoleId);
     }
 
     private function ensureRoleActive()
@@ -52,14 +44,8 @@ class ModuleController
         if ($this->currentRoleActive === 1) {
             return true;
         }
-        if (!$this->conn || !$this->currentRoleId) {
-            return false;
-        }
-        $sql = "SELECT is_active FROM roles WHERE id = :id LIMIT 1";
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bindValue(':id', $this->currentRoleId, PDO::PARAM_INT);
-        $stmt->execute();
-        $active = (int)$stmt->fetchColumn();
+
+        $active = $this->model->getRoleActiveStatus($this->currentRoleId);
         $this->currentRoleActive = $active;
         if (isset($_SESSION['user'])) {
             $_SESSION['user']['role_active'] = $active;
@@ -101,38 +87,13 @@ class ModuleController
 
     private function listModules()
     {
-        if (!$this->conn) {
-            http_response_code(500);
-            echo json_encode(['message' => 'Database connection failed']);
-            return;
-        }
-
         $statusFilter = $_GET['status'] ?? null;
-        $params = [];
-        $where = '';
-        if ($statusFilter && in_array($statusFilter, ['ready', 'soon', 'maintenance'])) {
-            $where = 'WHERE status = :status';
-            $params[':status'] = $statusFilter;
-        }
-
-        $sql = "SELECT id, module_id, name, name_translations, category, icon, icon_color, status, path FROM hr_services $where ORDER BY category ASC, id ASC";
-        $stmt = $this->conn->prepare($sql);
-        foreach ($params as $key => $val) {
-            $stmt->bindValue($key, $val);
-        }
-        $stmt->execute();
-        $modules = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
+        $modules = $this->model->listServices($statusFilter);
         echo json_encode($modules);
     }
 
     private function saveService()
     {
-        if (!$this->conn) {
-            http_response_code(500);
-            echo json_encode(['message' => 'Database connection failed']);
-            return;
-        }
         if (!$this->requireAuth() || !$this->canManageAnyModule()) {
             http_response_code(403);
             echo json_encode(['message' => 'ไม่มีสิทธิจัดการบริการ']);
@@ -155,14 +116,9 @@ class ModuleController
         ];
 
         if ($id > 0) {
-            // Fetch existing data
-            $stmt = $this->conn->prepare("SELECT * FROM hr_services WHERE id = :id");
-            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-            $stmt->execute();
-            $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+            $existing = $this->model->getById($id);
 
             if ($existing) {
-                // Merge existing data into defaults, preferring existing for fields not in $data later
                 $current = array_merge($current, $existing);
             } else {
                 http_response_code(404);
@@ -171,14 +127,16 @@ class ModuleController
             }
         }
 
+        require_once __DIR__ . '/../../../core/Security/InputSanitizer.php';
+
         // Resolve params: Use $data value if set, otherwise fallback to $current (existing or default)
         $moduleId = array_key_exists('module_id', $data) ? (int)$data['module_id'] : $current['module_id'];
-        $name = array_key_exists('name', $data) ? trim($data['name']) : $current['name'];
-        $category = array_key_exists('category', $data) ? trim($data['category']) : $current['category'];
-        $icon = array_key_exists('icon', $data) ? trim($data['icon']) : $current['icon'];
-        $iconColor = array_key_exists('icon_color', $data) ? trim($data['icon_color']) : $current['icon_color'];
-        $status = array_key_exists('status', $data) ? $data['status'] : $current['status'];
-        $path = array_key_exists('path', $data) ? trim($data['path']) : $current['path'];
+        $name = array_key_exists('name', $data) ? InputSanitizer::sanitize($data['name']) : $current['name'];
+        $category = array_key_exists('category', $data) ? InputSanitizer::sanitize($data['category']) : $current['category'];
+        $icon = array_key_exists('icon', $data) ? InputSanitizer::sanitize($data['icon']) : $current['icon'];
+        $iconColor = array_key_exists('icon_color', $data) ? InputSanitizer::sanitize($data['icon_color']) : $current['icon_color'];
+        $status = array_key_exists('status', $data) ? InputSanitizer::sanitize($data['status']) : $current['status'];
+        $path = array_key_exists('path', $data) ? InputSanitizer::sanitize($data['path']) : $current['path'];
 
         // Handle name_translations
         if (array_key_exists('name_translations', $data)) {
@@ -226,8 +184,7 @@ class ModuleController
             }
         }
 
-        // Validation (Only if creating new or if name/category are being wiped out to empty)
-        // Note: If updating only status, name and category might strictly be logically required but we pulled them from DB so they shouldn't be empty unless they were empty before.
+        // Validation
         if ($name === '' || $category === '') {
             http_response_code(400);
             echo json_encode(['message' => 'กรุณากรอกชื่อและหมวด']);
@@ -237,30 +194,31 @@ class ModuleController
             $status = 'ready';
         }
 
+        $serviceData = [
+            'module_id' => $moduleId,
+            'name' => $name,
+            'name_translations' => $nameTranslations,
+            'category' => $category,
+            'icon' => $icon,
+            'icon_color' => $iconColor,
+            'status' => $status,
+            'path' => $path
+        ];
+
         if ($id > 0) {
-            $sql = "UPDATE hr_services SET module_id = :module_id, name = :name, name_translations = :name_translations, category = :category, icon = :icon, icon_color = :icon_color, status = :status, path = :path WHERE id = :id";
-        } else {
             // For Insert, if nameTranslations was null, create default
             if (empty($nameTranslations)) {
-                $nameTranslations = json_encode(['en' => $name, 'th' => $name], JSON_UNESCAPED_UNICODE);
+                $serviceData['name_translations'] = json_encode(['en' => $name, 'th' => $name], JSON_UNESCAPED_UNICODE);
             }
-            $sql = "INSERT INTO hr_services (module_id, name, name_translations, category, icon, icon_color, status, path) VALUES (:module_id, :name, :name_translations, :category, :icon, :icon_color, :status, :path)";
+            $success = $this->model->update($id, $serviceData);
+        } else {
+            if (empty($nameTranslations)) {
+                $serviceData['name_translations'] = json_encode(['en' => $name, 'th' => $name], JSON_UNESCAPED_UNICODE);
+            }
+            $success = $this->model->create($serviceData);
         }
 
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bindValue(':module_id', $moduleId ?: null, PDO::PARAM_INT);
-        $stmt->bindValue(':name', $name);
-        $stmt->bindValue(':name_translations', $nameTranslations);
-        $stmt->bindValue(':category', $category);
-        $stmt->bindValue(':icon', $icon);
-        $stmt->bindValue(':icon_color', $iconColor);
-        $stmt->bindValue(':status', $status);
-        $stmt->bindValue(':path', $path);
-        if ($id > 0) {
-            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-        }
-
-        if ($stmt->execute()) {
+        if ($success) {
             echo json_encode(['message' => 'บันทึกสำเร็จ']);
         } else {
             http_response_code(500);
@@ -270,11 +228,6 @@ class ModuleController
 
     private function deleteService()
     {
-        if (!$this->conn) {
-            http_response_code(500);
-            echo json_encode(['message' => 'Database connection failed']);
-            return;
-        }
         if (!$this->requireAuth() || !$this->canManageAnyModule()) {
             http_response_code(403);
             echo json_encode(['message' => 'ไม่มีสิทธิลบบริการ']);
@@ -289,10 +242,7 @@ class ModuleController
             return;
         }
 
-        $stmt = $this->conn->prepare("DELETE FROM hr_services WHERE id = :id");
-        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-
-        if ($stmt->execute()) {
+        if ($this->model->delete($id)) {
             echo json_encode(['message' => 'ลบสำเร็จ']);
         } else {
             http_response_code(500);

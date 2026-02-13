@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../../core/Services/EmailService.php';
 require_once __DIR__ . '/../../../core/Services/NotificationService.php';
 require_once __DIR__ . '/../../../core/Config/Env.php';
 require_once __DIR__ . '/../../../core/Security/InputSanitizer.php';
+require_once __DIR__ . '/../Models/CarBookingModel.php';
 
 /**
  * BookingController
@@ -15,12 +16,14 @@ require_once __DIR__ . '/../../../core/Security/InputSanitizer.php';
 class BookingController extends CBBaseController
 {
     private $conn;
+    private $bookingModel;
     // private $user; // Handled by CBBaseController
 
     public function __construct($user = null)
     {
         parent::__construct($user); // Call parent constructor
         $this->conn = $this->pdo; // Use pdo from parent
+        $this->bookingModel = new CarBookingModel($this->pdo);
     }
 
     /**
@@ -30,120 +33,7 @@ class BookingController extends CBBaseController
      * @param string $query Search term (name, email)
      * @return array List of employees
      */
-    public function searchEmployee($query)
-    {
-        // Handle array input from BaseController::processRequest
-        if (is_array($query)) {
-            $query = $query['query'] ?? '';
-        }
-        if (strlen($query) < 2) {
-            return ['success' => true, 'employees' => []];
-        }
 
-        $results = [];
-
-        // 1. ค้นหาจาก DB
-        try {
-            $stmt = $this->conn->prepare("
-                SELECT id, username as code, fullname as name, email, department
-                FROM users 
-                WHERE (username LIKE ? OR fullname LIKE ? OR email LIKE ?) 
-                LIMIT 10
-            ");
-            $term = "%$query%";
-            $stmt->execute([$term, $term, $term]);
-            $dbResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            foreach ($dbResults as $emp) {
-                $results[] = [
-                    'id' => $emp['id'],
-                    'code' => $emp['code'],
-                    'name' => $emp['name'],
-                    'email' => $emp['email'],
-                    'department' => $emp['department'],
-                    'source' => 'database'
-                ];
-            }
-        } catch (Exception $e) {
-            // ignore DB errors
-        }
-
-        // 2. ค้นหาจาก Microsoft Graph
-        // ใช้ App Token (Client Credentials) เพื่อให้ค้นหาได้เสมอ ไม่ต้องพึ่ง user login
-        $accessToken = $_SESSION['access_token'] ?? null;
-
-        // ถ้าไม่มี user token ให้ใช้ app token แทน
-        if (!$accessToken) {
-            require_once __DIR__ . '/../../../core/Config/MicrosoftOAuthConfig.php';
-
-            // Clear any expired cached token first
-            if (isset($_SESSION['ms_app_token'])) {
-                unset($_SESSION['ms_app_token']);
-                unset($_SESSION['ms_app_token_expires']);
-                // [DISABLED FOR PRODUCTION] error_log("MS Search: Cleared cached token to force refresh");
-            }
-
-            $accessToken = MicrosoftOAuthConfig::getAppAccessToken();
-        }
-
-        if ($accessToken) {
-            try {
-                $searchQuery = urlencode("\"displayName:$query\" OR \"mail:$query\"");
-                $graphUrl = "https://graph.microsoft.com/v1.0/users?\$search=$searchQuery&\$select=id,displayName,mail,department&\$top=10";
-
-
-
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, $graphUrl);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                    'Authorization: Bearer ' . $accessToken,
-                    'Content-Type: application/json',
-                    'ConsistencyLevel: eventual'
-                ]);
-
-                $response = curl_exec($ch);
-                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                // $curlError = curl_error($ch); // Removed as per user's implicit instruction (not in diff but in context)
-                curl_close($ch);
-
-                if ($httpCode === 200) {
-                    $data = json_decode($response, true);
-
-                    if (!empty($data['value'])) {
-                        foreach ($data['value'] as $msUser) {
-                            $email = $msUser['mail'] ?? '';
-                            // Avoid duplicates
-                            $exists = false;
-                            foreach ($results as $r) {
-                                if (!empty($r['email']) && strtolower($r['email']) === strtolower($email)) {
-                                    $exists = true;
-                                    break;
-                                }
-                            }
-                            if (!$exists && $email) {
-                                $results[] = [
-                                    'id' => null,
-                                    'code' => $msUser['id'] ?? '',
-                                    'name' => $msUser['displayName'] ?? '',
-                                    'email' => $email,
-                                    'department' => $msUser['department'] ?? '',
-                                    'source' => 'microsoft'
-                                ];
-                            }
-                        }
-                    }
-                } else {
-                    error_log("MS Search Failed: HTTP $httpCode - " . substr($response, 0, 500));
-                }
-            } catch (Exception $e) {
-                error_log("MS Search Exception: " . $e->getMessage());
-            }
-        } else {
-            error_log("MS Search: No access token available");
-        }
-
-        return ['success' => true, 'employees' => array_slice($results, 0, 15)];
-    }
 
     /**
      * Helper: Get user ID from email
@@ -233,23 +123,8 @@ class BookingController extends CBBaseController
         }
 
         $token = bin2hex(random_bytes(16));
-        $stmt = $this->conn->prepare("
-            INSERT INTO cb_bookings (
-                user_id, driver_user_id, driver_name, driver_email,
-                approver_email, approver_user_id,
-                start_time, end_time, destination, purpose,
-                passengers, passengers_detail, passenger_user_ids,
-                status, approval_token, token_expires_at, created_at
-            )
-            VALUES (
-                :uid, :driver_uid, :driver_name, :driver_email,
-                :approver_email, :approver_user_id,
-                :start_time, :end_time, :destination, :purpose,
-                :passengers, :passengers_detail, :passenger_user_ids,
-                'pending_supervisor', :token, DATE_ADD(NOW(), INTERVAL 7 DAY), NOW()
-            )
-        ");
-        $stmt->execute([
+
+        $bookingData = [
             ':uid' => $this->user['id'],
             ':driver_uid' => $driverUserId,
             ':driver_name' => $driverName,
@@ -264,25 +139,21 @@ class BookingController extends CBBaseController
             ':passengers_detail' => $passengersDetail,
             ':passenger_user_ids' => $passengerUserIds ? json_encode($passengerUserIds) : null,
             ':token' => $token
-        ]);
-        $id = (int)$this->conn->lastInsertId();
+        ];
+
+        $id = $this->bookingModel->createBooking($bookingData);
+        $id = (int)$id;
 
         // If user has no default supervisor email yet, save the chosen approver as default (only once)
         if (!empty($data['approver_email'])) {
-            $chk = $this->conn->prepare("SELECT default_supervisor_email FROM users WHERE id = :uid LIMIT 1");
-            $chk->execute([':uid' => $this->user['id']]);
-            $currentDefault = $chk->fetchColumn();
+            $currentDefault = $this->bookingModel->getDefaultSupervisorEmail($this->user['id']);
             if (empty($currentDefault)) {
-                $upd = $this->conn->prepare("UPDATE users SET default_supervisor_email = :email WHERE id = :uid");
-                $upd->execute([
-                    ':email' => trim($data['approver_email']),
-                    ':uid' => $this->user['id']
-                ]);
+                $this->bookingModel->updateDefaultSupervisorEmail($this->user['id'], trim($data['approver_email']));
             }
         }
 
         // send email to approver with CC to driver + passengers
-        $booking = $this->getById($id);
+        $booking = $this->bookingModel->getById($id);
         if ($booking) {
             // Build CC list: driver + passengers
             $ccEmails = [];
@@ -335,34 +206,12 @@ class BookingController extends CBBaseController
     public function listMine()
     {
         if (!$this->user || empty($this->user['id'])) return [];
-        $stmt = $this->conn->prepare("
-            SELECT cb.*, 
-                   c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
-                   fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
-            FROM cb_bookings cb
-            LEFT JOIN cb_cars c ON cb.assigned_car_id = c.id
-            LEFT JOIN cb_fleet_cards fc ON cb.fleet_card_id = fc.id
-            WHERE cb.user_id = :uid
-            ORDER BY cb.created_at DESC
-        ");
-        $stmt->bindValue(':uid', $this->user['id'], PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $this->bookingModel->listMine($this->user['id']);
     }
 
     public function listAll()
     {
-        $stmt = $this->conn->query("
-            SELECT cb.*, u.username, u.fullname,
-                   c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
-                   fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
-            FROM cb_bookings cb 
-            JOIN users u ON cb.user_id = u.id 
-            LEFT JOIN cb_cars c ON cb.assigned_car_id = c.id
-            LEFT JOIN cb_fleet_cards fc ON cb.fleet_card_id = fc.id
-            ORDER BY cb.created_at DESC
-        ");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $this->bookingModel->listAll();
     }
 
     /**
@@ -374,18 +223,22 @@ class BookingController extends CBBaseController
     public function listPendingSupervisor()
     {
         $this->requirePermission('manage');
-        $stmt = $this->conn->query("
-            SELECT cb.*, u.username, u.fullname,
-                   c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
-                   fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
-            FROM cb_bookings cb 
-            JOIN users u ON cb.user_id = u.id 
-            LEFT JOIN cb_cars c ON cb.assigned_car_id = c.id
-            LEFT JOIN cb_fleet_cards fc ON cb.fleet_card_id = fc.id
-            WHERE cb.status = 'pending_supervisor' 
-            ORDER BY cb.created_at DESC
-        ");
-        $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $bookings = $this->bookingModel->listPendingSupervisor();
+        return $this->_populateDetails($bookings);
+    }
+
+    /**
+     * List bookings pending MY approval (for regular users who are approvers)
+     * Does not require manage permission - only requires authentication
+     */
+    public function listMyPendingApprovals()
+    {
+        $this->requireAuth();
+        $email = $this->user['email'] ?? '';
+        if (empty($email)) {
+            return [];
+        }
+        $bookings = $this->bookingModel->listPendingByApproverEmail($email);
         return $this->_populateDetails($bookings);
     }
 
@@ -395,18 +248,7 @@ class BookingController extends CBBaseController
     public function listPendingManager()
     {
         $this->requirePermission('manage');
-        $stmt = $this->conn->query("
-            SELECT cb.*, u.username, u.fullname,
-                   c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
-                   fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
-            FROM cb_bookings cb 
-            JOIN users u ON cb.user_id = u.id 
-            LEFT JOIN cb_cars c ON cb.assigned_car_id = c.id
-            LEFT JOIN cb_fleet_cards fc ON cb.fleet_card_id = fc.id
-            WHERE cb.status = 'pending_manager' 
-            ORDER BY cb.created_at DESC
-        ");
-        $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $bookings = $this->bookingModel->listPendingManager();
         return $this->_populateDetails($bookings);
     }
 
@@ -416,18 +258,7 @@ class BookingController extends CBBaseController
     public function listApproved()
     {
         $this->requirePermission('manage');
-        $stmt = $this->conn->query("
-            SELECT cb.*, u.username, u.fullname,
-                   c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
-                   fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
-            FROM cb_bookings cb 
-            JOIN users u ON cb.user_id = u.id 
-            LEFT JOIN cb_cars c ON cb.assigned_car_id = c.id
-            LEFT JOIN cb_fleet_cards fc ON cb.fleet_card_id = fc.id
-            WHERE cb.status = 'approved' 
-            ORDER BY cb.created_at DESC
-        ");
-        $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $bookings = $this->bookingModel->listApproved();
         return $this->_populateDetails($bookings);
     }
 
@@ -456,17 +287,7 @@ class BookingController extends CBBaseController
     public function listSupervisorRejected()
     {
         $this->requirePermission('manage');
-        // Rejected by supervisor (before supervisor approval)
-        // supervisor_approved_at IS NULL means supervisor never approved
-        $stmt = $this->conn->query("
-            SELECT cb.*, u.username, u.fullname 
-            FROM cb_bookings cb 
-            JOIN users u ON cb.user_id = u.id 
-            WHERE cb.status = 'rejected' 
-            AND cb.supervisor_approved_at IS NULL 
-            ORDER BY cb.created_at DESC
-        ");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $this->bookingModel->listSupervisorRejected();
     }
 
     /**
@@ -475,31 +296,17 @@ class BookingController extends CBBaseController
     public function listManagerRejected()
     {
         $this->requirePermission('manage');
-        // Rejected by manager (after supervisor approval)
-        // supervisor_approved_at IS NOT NULL means supervisor approved, then manager rejected
-        $stmt = $this->conn->query("
-            SELECT cb.*, u.username, u.fullname 
-            FROM cb_bookings cb 
-            JOIN users u ON cb.user_id = u.id 
-            WHERE cb.status = 'rejected' 
-            AND cb.supervisor_approved_at IS NOT NULL 
-            ORDER BY cb.created_at DESC
-        ");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $this->bookingModel->listManagerRejected();
     }
 
 
     public function approveByToken($token)
     {
-        $booking = $this->getByToken($token);
+        $booking = $this->bookingModel->getByToken($token);
         if (!$booking) return $this->jsonError('ไม่พบคำขอหรือลิงก์หมดอายุ');
         if ($booking['status'] !== 'pending_supervisor') return $this->jsonError('คำขอถูกดำเนินการแล้ว');
 
-        $stmt = $this->conn->prepare("UPDATE cb_bookings SET status='pending_manager', supervisor_approved_at=NOW(), supervisor_approved_by=:approver, supervisor_approved_user_id=:approver_uid WHERE id=:id");
-        $stmt->bindValue(':id', $booking['id'], PDO::PARAM_INT);
-        $stmt->bindValue(':approver', $booking['approver_email'], PDO::PARAM_STR);
-        $stmt->bindValue(':approver_uid', $booking['approver_user_id'] ?: null, PDO::PARAM_INT);
-        $stmt->execute();
+        $this->bookingModel->approveByToken($booking['id'], $booking['approver_email'], $booking['approver_user_id']);
 
         // Log audit
         $this->logAudit('supervisor_approve_token', 'booking', $booking['id'], ['status' => 'pending_supervisor'], ['status' => 'pending_manager']);
@@ -509,13 +316,11 @@ class BookingController extends CBBaseController
 
     public function getDetailsByToken($token)
     {
-        $booking = $this->getByToken($token);
+        $booking = $this->bookingModel->getByToken($token);
         if (!$booking) return $this->jsonError('ไม่พบคำขอหรือลิงก์หมดอายุ');
 
         // Prepare display data
-        $stmt = $this->conn->prepare("SELECT fullname FROM users WHERE id = :uid");
-        $stmt->execute([':uid' => $booking['user_id']]);
-        $userName = $stmt->fetchColumn();
+        $userName = $this->bookingModel->getRequesterName($booking['user_id']);
 
         $isProcessed = ($booking['status'] !== 'pending_supervisor');
         $statusMsg = 'รออนุมัติ';
@@ -566,16 +371,11 @@ class BookingController extends CBBaseController
 
     public function rejectByToken($token, $reason = '')
     {
-        $booking = $this->getByToken($token);
+        $booking = $this->bookingModel->getByToken($token);
         if (!$booking) return $this->jsonError('ไม่พบคำขอหรือลิงก์หมดอายุ');
         if ($booking['status'] !== 'pending_supervisor') return $this->jsonError('คำขอถูกดำเนินการแล้ว');
 
-        $stmt = $this->conn->prepare("UPDATE cb_bookings SET status='rejected', rejected_at=NOW(), rejection_reason=:reason, rejected_by=:rejected_by WHERE id=:id");
-        $stmt->execute([
-            ':reason' => $reason,
-            ':id' => $booking['id'],
-            ':rejected_by' => $booking['approver_email']
-        ]);
+        $this->bookingModel->rejectByToken($booking['id'], $reason, $booking['approver_email']);
 
         // Log audit
         $this->logAudit('supervisor_reject_token', 'booking', $booking['id'], ['status' => 'pending_supervisor'], [
@@ -590,14 +390,7 @@ class BookingController extends CBBaseController
     {
         $this->requirePermission('manage');
 
-        $stmt = $this->conn->prepare("
-            UPDATE cb_bookings SET assigned_car_id=:cid, assignment_note=:note WHERE id=:id
-        ");
-        $stmt->execute([
-            ':cid' => $carId ?: null,
-            ':note' => $note,
-            ':id' => $id
-        ]);
+        $this->bookingModel->assignCar($id, $carId, $note);
 
         // Log audit
         $this->logAudit('assign_car', 'booking', $id, null, ['assigned_car_id' => $carId, 'note' => $note]);
@@ -616,7 +409,7 @@ class BookingController extends CBBaseController
             return $this->jsonError('ไม่พบ booking_id');
         }
 
-        $booking = $this->getById($bookingId);
+        $booking = $this->bookingModel->getById($bookingId);
         if (!$booking) {
             return $this->jsonError('ไม่พบคำขอ');
         }
@@ -626,29 +419,19 @@ class BookingController extends CBBaseController
             // Check if user is the assigned approver
             $isApprover = ($booking['approver_email'] === ($this->user['email'] ?? ''));
 
-            // Check manage permission manually
+            // Check manage permission via model
             $roleId = $this->user['role_id'] ?? 0;
             $canManage = ($roleId == 1);
             if (!$canManage) {
-                $chk = $this->pdo->prepare("SELECT can_manage FROM core_module_permissions WHERE module_id=2 AND role_id=?");
-                $chk->execute([$roleId]);
-                $canManage = (bool)$chk->fetchColumn();
+                $canManage = $this->bookingModel->checkManagePermission($roleId);
             }
 
             if (!$isApprover && !$canManage) {
                 return $this->jsonError('คุณไม่ใช่หัวหน้าที่ระบุไว้และไม่มีสิทธิ์จัดการระบบ');
             }
-            $stmt = $this->conn->prepare("
-                UPDATE cb_bookings 
-                SET status='pending_manager', 
-                    supervisor_approved_at=NOW(), 
-                    supervisor_approved_by=:approver
-                WHERE id=:id
-            ");
-            $stmt->execute([
-                ':approver' => $this->user['email'] ?? $this->user['username'],
-                ':id' => $bookingId
-            ]);
+
+            $approverEmail = $this->user['email'] ?? $this->user['username'];
+            $this->bookingModel->supervisorApprove($bookingId, $approverEmail);
 
             // Log audit
             $this->logAudit('supervisor_approve', 'booking', $bookingId, ['status' => 'pending_supervisor'], ['status' => 'pending_manager']);
@@ -669,32 +452,15 @@ class BookingController extends CBBaseController
         // Manager approval (pending_manager -> approved)
         if ($booking['status'] === 'pending_manager') {
             $this->requirePermission('manage');
-            $this->requirePermission('manage');
 
             $carId = $data['car_id'] ?? null;
             $fleetCardId = $data['fleet_card_id'] ?? null;
             $fleetAmount = $data['fleet_amount'] ?? null;
-            $stmt = $this->conn->prepare("
-                UPDATE cb_bookings 
-                SET status='approved', 
-                    manager_approved_at=NOW(), 
-                    manager_approved_by=:approver,
-                    manager_approved_user_id=:approver_id,
-                    assigned_car_id=:car_id,
-                    fleet_card_id=:fleet_id,
-                    fleet_amount=:fleet_amnt,
-                    type=:type
-                WHERE id=:id
-            ");
-            $stmt->execute([
-                ':approver' => $this->user['email'] ?? $this->user['username'],
-                ':approver_id' => $this->user['id'] ?? null,
-                ':id' => $bookingId,
-                ':car_id' => $carId,
-                ':fleet_id' => $fleetCardId,
-                ':fleet_amnt' => $fleetAmount,
-                ':type' => ($carId ? 'car' : 'fleet')
-            ]);
+
+            $approverEmail = $this->user['email'] ?? $this->user['username'];
+            $approverId = $this->user['id'] ?? null;
+
+            $this->bookingModel->managerApprove($bookingId, $approverEmail, $approverId, $carId, $fleetCardId, $fleetAmount);
 
             // Log audit
             $this->logAudit('manager_approve', 'booking', $bookingId, ['status' => 'pending_manager'], [
@@ -735,7 +501,7 @@ class BookingController extends CBBaseController
             return $this->jsonError('กรุณาระบุเหตุผล');
         }
 
-        $booking = $this->getById($bookingId);
+        $booking = $this->bookingModel->getById($bookingId);
         if (!$booking) {
             return $this->jsonError('ไม่พบคำขอ');
         }
@@ -750,9 +516,7 @@ class BookingController extends CBBaseController
             if ($roleId == 1) {
                 $canManage = true;
             } else {
-                $chk = $this->pdo->prepare("SELECT can_manage FROM core_module_permissions WHERE module_id=2 AND role_id=?");
-                $chk->execute([$roleId]);
-                $canManage = (bool)$chk->fetchColumn();
+                $canManage = $this->bookingModel->checkManagePermission($roleId);
             }
 
             if (!$isApprover && !$canManage) {
@@ -769,20 +533,8 @@ class BookingController extends CBBaseController
             $newStatus = 'rejected_manager';
         }
 
-        $stmt = $this->conn->prepare("
-            UPDATE cb_bookings 
-            SET status=:new_status, 
-                rejection_reason=:reason,
-                rejected_by=:rejected_by,
-                rejected_at=NOW()
-            WHERE id=:id
-        ");
-        $stmt->execute([
-            ':new_status' => $newStatus,
-            ':reason' => $reason,
-            ':rejected_by' => $this->user['email'] ?? $this->user['username'],
-            ':id' => $bookingId
-        ]);
+        $rejectedBy = $this->user['email'] ?? $this->user['username'];
+        $this->bookingModel->rejectBooking($bookingId, $newStatus, $reason, $rejectedBy);
 
         // Log audit
         $this->logAudit('reject_booking', 'booking', $bookingId, ['status' => $booking['status']], [
@@ -871,58 +623,7 @@ class BookingController extends CBBaseController
 
 
 
-    public function cancel($id, $reason = '')
-    {
-        $this->requireAuth();
-        $this->requirePermission('edit');
 
-        // 1. Get booking to check status
-        $booking = $this->getById($id);
-        if (!$booking) {
-            return $this->jsonError('ไม่พบคำขอ');
-        }
-
-        // 2. Validate ownership (security check)
-        $isAdmin = $this->hasPermission('manage');
-        if ($booking['user_id'] != $this->user['id'] && !$isAdmin) {
-            return $this->jsonError('คุณไม่มีสิทธิ์ยกเลิกคำขอนี้');
-        }
-
-        // 3. Prevent cancellation if in_use or later steps
-        // Allow cancel only if: pending_..., approved
-        // Block if: in_use, pending_return, completed, rejected..., revoked, cancelled
-        $cancellableStatuses = ['pending_supervisor', 'pending_manager', 'approved'];
-        if (!in_array($booking['status'], $cancellableStatuses)) {
-            return $this->jsonError('ไม่สามารถยกเลิกคำขอนี้ได้ (สถานะ: ' . $booking['status'] . ')');
-        }
-
-        // 4. Update status
-        $stmt = $this->conn->prepare("UPDATE cb_bookings SET status='cancelled', rejection_reason=:reason WHERE id=:id AND user_id=:uid");
-        $stmt->execute([
-            ':reason' => $reason,
-            ':id' => $id,
-            ':uid' => $this->user['id']
-        ]);
-
-        if ($stmt->rowCount() > 0) {
-            $this->logAudit('cancel_booking', 'booking', $id, null, ['status' => 'cancelled', 'reason' => $reason]);
-
-            // Re-fetch to be safe or use existing $booking object if data didn't change much except status
-            if ($booking && !empty($booking['user_email'])) {
-                EmailService::sendCancellationEmail($booking, $booking['user_email'], $reason);
-
-                // Send notification to requester
-                $this->sendNotification(
-                    $booking['user_email'],
-                    'warning',
-                    'คำขอจองรถถูกยกเลิก',
-                    "คำขอ #{$id} ถูกยกเลิก" . ($reason ? ": {$reason}" : ""),
-                    "Modules/CarBooking/?page=request_history"
-                );
-            }
-        }
-        return ['success' => true];
-    }
 
     /**
      * ยกเลิก/เพิกถอนคำขอที่อนุมัติแล้ว (สำหรับ manager)
@@ -932,7 +633,7 @@ class BookingController extends CBBaseController
         $this->requirePermission('manage');
 
         // Check if booking exists and is approved or in_use
-        $booking = $this->getById($id);
+        $booking = $this->bookingModel->getById($id);
         if (!$booking) {
             return $this->jsonError('ไม่พบคำขอ');
         }
@@ -940,20 +641,8 @@ class BookingController extends CBBaseController
             return $this->jsonError('สามารถเพิกถอนได้เฉพาะคำขอที่อนุมัติแล้วเท่านั้น (สถานะปัจจุบัน: ' . $booking['status'] . ')');
         }
 
-        // Use 'revoked' status instead of 'cancelled'
-        $stmt = $this->conn->prepare("
-            UPDATE cb_bookings 
-            SET status='revoked', 
-                rejection_reason=:reason,
-                rejected_at=NOW(),
-                rejected_by=:rejected_by
-            WHERE id=:id
-        ");
-        $stmt->execute([
-            ':reason' => $reason,
-            ':rejected_by' => $this->user['email'] ?? $this->user['username'] ?? 'System',
-            ':id' => $id
-        ]);
+        $rejectedBy = $this->user['email'] ?? $this->user['username'] ?? 'System';
+        $this->bookingModel->revokeBooking($id, $reason, $rejectedBy);
 
         // Send notification to requester
         if (!empty($booking['user_email'])) {
@@ -983,7 +672,7 @@ class BookingController extends CBBaseController
     public function updateApproved($id, array $data)
     {
         $this->requirePermission('manage');
-        $booking = $this->getById($id);
+        $booking = $this->bookingModel->getById($id);
         if (!$booking) {
             return $this->jsonError('ไม่พบคำขอ');
         }
@@ -1037,15 +726,13 @@ class BookingController extends CBBaseController
             return $this->jsonError('ไม่มีข้อมูลที่จะแก้ไข');
         }
 
-        $sql = "UPDATE cb_bookings SET " . implode(', ', $updates) . ", updated_at = NOW() WHERE id = :id";
-        $stmt = $this->conn->prepare($sql);
-        $stmt->execute($params);
+        $this->bookingModel->updateApprovedBooking($id, $updates, $params);
 
         // Log audit
         $this->logAudit('update_booking', 'booking', $id, $booking, $data);
 
         // Send notification to user
-        $updatedBooking = $this->getById($id);
+        $updatedBooking = $this->bookingModel->getById($id);
         if ($updatedBooking && !empty($updatedBooking['user_email'])) {
             EmailService::sendBookingUpdateEmail($updatedBooking, $updatedBooking['user_email']);
 
@@ -1064,7 +751,7 @@ class BookingController extends CBBaseController
 
     public function resendEmails($bookingId)
     {
-        $booking = $this->getById($bookingId);
+        $booking = $this->bookingModel->getById($bookingId);
         if (!$booking) {
             return ['success' => false, 'message' => 'ไม่พบคำขอ'];
         }
@@ -1077,17 +764,22 @@ class BookingController extends CBBaseController
                 return ['success' => false, 'message' => 'ไม่พบอีเมลหัวหน้า'];
             }
 
+            // Ensure user_email is set
+            $userEmail = $booking['user_email'] ?? $booking['email'] ?? $booking['PersonnelEmail'] ?? '';
+            $booking['user_email'] = $userEmail; // Backfill for EmailService usage
+
             // Build CC list: driver + passengers
             $ccEmails = [];
-            if (!empty($booking['driver_email']) && $booking['driver_email'] !== $booking['user_email']) {
+            if (!empty($booking['driver_email']) && $booking['driver_email'] !== $userEmail) {
                 $ccEmails[] = $booking['driver_email'];
             }
             if (!empty($booking['passengers_detail'])) {
                 $passengers = json_decode($booking['passengers_detail'], true);
                 if (is_array($passengers)) {
                     foreach ($passengers as $p) {
-                        if (!empty($p['email']) && $p['email'] !== $booking['user_email']) {
-                            $ccEmails[] = $p['email'];
+                        $pEmail = is_array($p) ? ($p['email'] ?? '') : $p; // robust check
+                        if (!empty($pEmail) && $pEmail !== $userEmail) {
+                            $ccEmails[] = $pEmail;
                         }
                     }
                 }
@@ -1132,34 +824,7 @@ class BookingController extends CBBaseController
         return ['success' => false, 'message' => 'สถานะนี้ไม่รองรับการส่งอีเมลซ้ำ'];
     }
 
-    private function getByToken($token)
-    {
-        // Clean token if it contains garbage (e.g. :1)
-        $token = explode(':', $token)[0];
-
-        $stmt = $this->conn->prepare("SELECT * FROM cb_bookings WHERE approval_token=:t LIMIT 1");
-        $stmt->bindValue(':t', $token);
-        $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-    private function getById($id)
-    {
-        $stmt = $this->conn->prepare("
-            SELECT cb.*,
-               u.username as user_name, u.fullname as user_fullname, u.email as user_email,
-               c.brand, c.model, c.license_plate,
-               fc.card_number as fleet_card_number
-            FROM cb_bookings cb 
-            JOIN users u ON cb.user_id=u.id 
-            LEFT JOIN cb_cars c ON cb.assigned_car_id = c.id
-            LEFT JOIN cb_fleet_cards fc ON cb.fleet_card_id = fc.id
-            WHERE cb.id=:id
-        ");
-        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
+    // Removed private getByToken and getById as they are duplicates of Model methods
 
     private function notifyAfterSupervisorDecision($booking, $approved, $reason = '')
     {
@@ -1179,7 +844,7 @@ class BookingController extends CBBaseController
                     'success',
                     'หัวหน้างานอนุมัติแล้ว',
                     "คำขอ #{$bookingId} ผ่านการอนุมัติจากหัวหน้า รอผู้ดูแลรถ",
-                    "Modules/CarBooking/?page=request_history"
+                    \Core\Helpers\UrlHelper::getBaseUrl() . "/Modules/CarBooking/?page=request_history"
                 );
             }
 
@@ -1195,7 +860,7 @@ class BookingController extends CBBaseController
                         'info',
                         'มีคำขอรอการอนุมัติ',
                         "คำขอ #{$bookingId} รอการอนุมัติจากผู้ดูแล",
-                        "Modules/CarBooking/?page=pending"
+                        \Core\Helpers\UrlHelper::getBaseUrl() . "/Modules/CarBooking/?page=pending"
                     );
                 }
             }
@@ -1252,19 +917,7 @@ class BookingController extends CBBaseController
 
         try {
             // Update user's default supervisor in database
-            $stmt = $this->conn->prepare("
-                UPDATE users 
-                SET default_supervisor_email = :email,
-                    default_supervisor_name = :name,
-                    default_supervisor_id = :sid
-                WHERE id = :uid
-            ");
-            $stmt->execute([
-                ':email' => $email,
-                ':name' => $name,
-                ':sid' => $id,
-                ':uid' => $this->user['id']
-            ]);
+            $this->bookingModel->saveDefaultSupervisor($this->user['id'], $email, $name, $id);
 
             // Update session
             $_SESSION['user']['default_supervisor_email'] = $email;
@@ -1289,20 +942,13 @@ class BookingController extends CBBaseController
     public function getAvailableAssets($startTime, $endTime, $excludeBookingId = 0)
     {
         // 1. Get ALL cars
-        $stmt = $this->conn->query("SELECT id, name, brand, model, license_plate, capacity, status FROM cb_cars ORDER BY name ASC");
-        $cars = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $cars = $this->bookingModel->getAllCars();
 
         // 2. Get ALL fleet cards
-        $stmt = $this->conn->query("SELECT id, card_number, department, credit_limit, status FROM cb_fleet_cards ORDER BY card_number ASC");
-        $fleets = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $fleets = $this->bookingModel->getAllFleetCards();
 
         // 3. Get ALL active bookings (approved, in_use, pending_return)
-        $stmt = $this->conn->query("
-            SELECT id, assigned_car_id, fleet_card_id, start_time, end_time, status 
-            FROM cb_bookings 
-            WHERE status IN ('approved', 'in_use', 'pending_return')
-        ");
-        $allActiveBookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $allActiveBookings = $this->bookingModel->getActiveBookings();
 
         // Convert request times to timestamp
         $requestStart = strtotime($startTime);
@@ -1411,7 +1057,7 @@ class BookingController extends CBBaseController
 
         if (!$id) return $this->jsonError('Missing ID');
 
-        $booking = $this->getById($id);
+        $booking = $this->bookingModel->getById($id);
         if (!$booking) return $this->jsonError('Booking not found');
 
         try {
@@ -1447,7 +1093,7 @@ class BookingController extends CBBaseController
                         'error',
                         'คำขอจองรถไม่ได้รับอนุมัติ',
                         "คำขอ #{$id} ถูกปฏิเสธ" . ($reason ? ": {$reason}" : ""),
-                        "Modules/CarBooking/?page=request_history"
+                        \Core\Helpers\UrlHelper::getBaseUrl() . "/Modules/CarBooking/?page=request_history"
                     );
                 }
             }
@@ -1472,19 +1118,7 @@ class BookingController extends CBBaseController
     public function listInUse()
     {
         $this->requirePermission('manage');
-        $stmt = $this->conn->query("
-            SELECT cb.*, u.username, u.fullname, u.email as user_email,
-                   c.name AS assigned_car_name, c.brand AS assigned_car_brand, 
-                   c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
-                   fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
-            FROM cb_bookings cb 
-            JOIN users u ON cb.user_id = u.id 
-            LEFT JOIN cb_cars c ON cb.assigned_car_id = c.id
-            LEFT JOIN cb_fleet_cards fc ON cb.fleet_card_id = fc.id
-            WHERE cb.status IN ('approved', 'in_use', 'pending_return')
-            ORDER BY cb.end_time ASC
-        ");
-        $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $bookings = $this->bookingModel->listInUse();
         return $this->_populateDetails($bookings);
     }
 
@@ -1494,19 +1128,7 @@ class BookingController extends CBBaseController
     public function listPendingReturn()
     {
         $this->requirePermission('manage');
-        $stmt = $this->conn->query("
-            SELECT cb.*, u.username, u.fullname, u.email as user_email,
-                   c.name AS assigned_car_name, c.brand AS assigned_car_brand, 
-                   c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
-                   fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
-            FROM cb_bookings cb 
-            JOIN users u ON cb.user_id = u.id 
-            LEFT JOIN cb_cars c ON cb.assigned_car_id = c.id
-            LEFT JOIN cb_fleet_cards fc ON cb.fleet_card_id = fc.id
-            WHERE cb.status = 'pending_return'
-            ORDER BY cb.user_reported_return_at ASC
-        ");
-        $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $bookings = $this->bookingModel->listPendingReturn();
         return $this->_populateDetails($bookings);
     }
 
@@ -1524,7 +1146,7 @@ class BookingController extends CBBaseController
             return $this->jsonError('ไม่พบ booking_id');
         }
 
-        $booking = $this->getById($bookingId);
+        $booking = $this->bookingModel->getById($bookingId);
         if (!$booking) {
             return $this->jsonError('ไม่พบคำขอ');
         }
@@ -1539,19 +1161,7 @@ class BookingController extends CBBaseController
             return $this->jsonError('สามารถแจ้งคืนได้เฉพาะคำขอที่อนุมัติแล้วหรือกำลังใช้งานเท่านั้น');
         }
 
-        $stmt = $this->conn->prepare("
-            UPDATE cb_bookings 
-            SET status = 'pending_return',
-                user_reported_return_at = NOW(),
-                actual_return_time = :actual_time,
-                return_notes = :notes
-            WHERE id = :id
-        ");
-        $stmt->execute([
-            ':actual_time' => $actualReturnTime ?: date('Y-m-d H:i:s'),
-            ':notes' => $notes,
-            ':id' => $bookingId
-        ]);
+        $this->bookingModel->reportReturn($bookingId, $actualReturnTime ?: date('Y-m-d H:i:s'), $notes);
 
         // Log audit
         $this->logAudit('report_return', 'booking', $bookingId, ['status' => 'approved'], [
@@ -1586,7 +1196,7 @@ class BookingController extends CBBaseController
             return $this->jsonError('ไม่พบ booking_id');
         }
 
-        $booking = $this->getById($bookingId);
+        $booking = $this->bookingModel->getById($bookingId);
         if (!$booking) {
             return $this->jsonError('ไม่พบคำขอ');
         }
@@ -1595,51 +1205,86 @@ class BookingController extends CBBaseController
             return $this->jsonError('สามารถยืนยันคืนได้เฉพาะคำขอที่อนุมัติแล้ว, กำลังใช้งาน หรือรอยืนยันคืน');
         }
 
-        $stmt = $this->conn->prepare("
-            UPDATE cb_bookings 
-            SET status = 'completed',
-                returned_at = NOW(),
-                returned_confirmed_by = :confirmed_by,
-                actual_return_time = COALESCE(actual_return_time, :actual_time),
-                return_notes = CONCAT(COALESCE(return_notes, ''), :notes)
-            WHERE id = :id
-        ");
-        $stmt->execute([
-            ':confirmed_by' => $this->user['email'] ?? $this->user['username'] ?? 'IPCD',
-            ':actual_time' => $actualReturnTime ?: date('Y-m-d H:i:s'),
-            ':notes' => $notes ? "\n[IPCD] " . $notes : '',
-            ':id' => $bookingId
-        ]);
+        $confirmedBy = $this->user['email'] ?? $this->user['username'] ?? 'IPCD';
+        $this->bookingModel->confirmReturn($bookingId, $actualReturnTime ?: date('Y-m-d H:i:s'), $notes, $confirmedBy);
 
         // Log audit
         $this->logAudit('confirm_return', 'booking', $bookingId, ['status' => $booking['status']], [
             'status' => 'completed',
-            'confirmed_by' => $this->user['email'] ?? $this->user['username']
+            'confirmed_by' => $confirmedBy
         ]);
 
         // Send notification to requester
         try {
-            require_once __DIR__ . '/../../../core/Services/NotificationService.php';
+            // Get requester details from booking object directly if available
+            // User email is usually available in $booking['user_email'] from getById join
+            if (!empty($booking['user_email'])) {
+                // Get user ID by email via model or service
+                // Wait, NotificationService::create needs ID.
+                // Booking array from getById has user_id !!!
+                $requesterId = $booking['user_id'];
 
-            // Get requester user_id from booking
-            $stmtUser = $this->conn->prepare("SELECT u.id FROM users u WHERE u.email = ?");
-            $stmtUser->execute([$booking['requester_email']]);
-            $requesterId = $stmtUser->fetchColumn();
-
-            if ($requesterId) {
-                NotificationService::create(
-                    $requesterId,
-                    'success',
-                    'คืนรถเรียบร้อยแล้ว',
-                    "คำขอจอง #{$bookingId} ได้รับการยืนยันคืนรถแล้ว",
-                    [],
-                    "Modules/CarBooking/?page=request_history"
-                );
+                if ($requesterId) {
+                    NotificationService::create(
+                        $requesterId,
+                        'success',
+                        'คืนรถเรียบร้อยแล้ว',
+                        "คำขอจอง #{$bookingId} ได้รับการยืนยันคืนรถแล้ว",
+                        [],
+                        "Modules/CarBooking/?page=request_history"
+                    );
+                }
             }
         } catch (\Exception $e) {
             error_log("Notification failed in confirmReturn: " . $e->getMessage());
         }
 
         return ['success' => true, 'message' => 'ยืนยันคืนรถสำเร็จ'];
+    }
+
+    public function cancel($id, $reason = '')
+    {
+        $this->requireAuth();
+        $this->requirePermission('edit');
+
+        // 1. Get booking to check status
+        $booking = $this->bookingModel->getById($id);
+        if (!$booking) {
+            return $this->jsonError('ไม่พบคำขอ');
+        }
+
+        // 2. Validate ownership (security check)
+        $isAdmin = $this->hasPermission('manage');
+        if ($booking['user_id'] != $this->user['id'] && !$isAdmin) {
+            return $this->jsonError('คุณไม่มีสิทธิ์ยกเลิกคำขอนี้');
+        }
+
+        // 3. Prevent cancellation if in_use or later steps
+        $cancellableStatuses = ['pending_supervisor', 'pending_manager', 'approved'];
+        if (!in_array($booking['status'], $cancellableStatuses)) {
+            return $this->jsonError('ไม่สามารถยกเลิกคำขอนี้ได้ (สถานะ: ' . $booking['status'] . ')');
+        }
+
+        // 4. Update status
+        $affected = $this->bookingModel->cancelBooking($id, $reason, $this->user['id']);
+
+        if ($affected > 0) {
+            $this->logAudit('cancel_booking', 'booking', $id, null, ['status' => 'cancelled', 'reason' => $reason]);
+
+            // Re-fetch to be safe or use existing $booking object if data didn't change much except status
+            if ($booking && !empty($booking['user_email'])) {
+                EmailService::sendCancellationEmail($booking, $booking['user_email'], $reason);
+
+                // Send notification to requester
+                $this->sendNotification(
+                    $booking['user_email'],
+                    'warning',
+                    'คำขอจองรถถูกยกเลิก',
+                    "คำขอ #{$id} ถูกยกเลิก" . ($reason ? ": {$reason}" : ""),
+                    "Modules/CarBooking/?page=request_history"
+                );
+            }
+        }
+        return ['success' => true];
     }
 }

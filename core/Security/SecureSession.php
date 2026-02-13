@@ -19,9 +19,9 @@ class SecureSession
             ini_set('session.use_strict_mode', 1);
             ini_set('session.cookie_samesite', 'Strict'); // Changed from Lax to Strict for better security
 
-            // Set session timeout (30 minutes)
-            ini_set('session.gc_maxlifetime', 1800);
-            ini_set('session.cookie_lifetime', 1800);
+            // Set session timeout (8 hours)
+            ini_set('session.gc_maxlifetime', 28800);
+            ini_set('session.cookie_lifetime', 28800);
 
             session_start();
 
@@ -65,7 +65,7 @@ class SecureSession
      */
     private static function checkSessionTimeout()
     {
-        $timeout = 1800; // 30 minutes
+        $timeout = 28800; // 8 hours
 
         if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $timeout)) {
             session_destroy();
@@ -169,7 +169,7 @@ class SecureSession
 
         if (!isset($_SESSION[$rateLimitKey])) {
             $_SESSION[$rateLimitKey] = [
-                'attempts' => 0, 
+                'attempts' => 0,
                 'first_attempt' => time(),
                 'identifier' => $identifier, // Store original for fallback
                 'user_id' => $userId,
@@ -194,7 +194,7 @@ class SecureSession
         // IMPORTANT: Only increment if this is a failed login attempt
         // We need to pass a parameter to know if this is a failed attempt
         // For now, let's assume this is always called for failed attempts
-        
+
         $attempts['attempts']++;
         error_log("Rate Limit Debug - After increment: {$attempts['attempts']}/{$maxAttempts}");
 

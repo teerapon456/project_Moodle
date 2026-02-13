@@ -12,7 +12,7 @@ $userId = $_SESSION['user']['id'] ?? 0;
                 <?php
                 $actStatusColors = [
                     'pending' => 'bg-gray-100 text-gray-600',
-                    'in_progress' => 'bg-blue-100 text-blue-700',
+                    'in_progress' => 'bg-blue-100 text-red-700',
                     'completed' => 'bg-green-100 text-green-700',
                     'on_hold' => 'bg-orange-100 text-orange-700',
                     'cancelled' => 'bg-red-100 text-red-700',
@@ -37,7 +37,7 @@ $userId = $_SESSION['user']['id'] ?? 0;
         </div>
         <div class="flex gap-2">
             <?php if ($canEdit): ?>
-                <a href="?page=activity_wizard&id=<?= $activity['id'] ?>&step=1" class="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg font-medium hover:bg-indigo-100 transition">
+                <a href="?page=activity_wizard&id=<?= $activity['id'] ?>&step=1" class="px-4 py-2 bg-red-50 text-primary rounded-lg font-medium hover:bg-red-100 transition">
                     <i class="ri-edit-line mr-1"></i> Edit Plan
                 </a>
             <?php endif; ?>
@@ -57,17 +57,17 @@ $userId = $_SESSION['user']['id'] ?? 0;
                 <!-- What -->
                 <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 md:col-span-2">
                     <div class="flex items-center gap-2 mb-2">
-                        <span class="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">W</span>
+                        <span class="w-6 h-6 rounded-full bg-blue-100 text-primary flex items-center justify-center font-bold text-xs">W</span>
                         <h3 class="font-bold text-gray-700">What</h3>
                     </div>
-                    <h4 class="text-lg font-bold text-indigo-700"><?= htmlspecialchars($summary['What'] ?? '-') ?></h4>
+                    <h4 class="text-lg font-bold text-red-700"><?= htmlspecialchars($summary['What'] ?? '-') ?></h4>
                     <p class="text-gray-600 text-sm mt-1"><?= nl2br(htmlspecialchars($summary['Description'] ?? '-')) ?></p>
                 </div>
 
                 <!-- Why -->
                 <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
                     <div class="flex items-center gap-2 mb-2">
-                        <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">W</span>
+                        <span class="w-6 h-6 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center font-bold text-xs">W</span>
                         <h3 class="font-bold text-gray-700">Why</h3>
                     </div>
                     <p class="text-gray-600 text-sm"><?= nl2br(htmlspecialchars($summary['Why'] ?? '-')) ?></p>
@@ -127,7 +127,7 @@ $userId = $_SESSION['user']['id'] ?? 0;
                 <i class="ri-history-line"></i> Activity Timeline
             </h3>
 
-            <div class="relative pl-6 border-l-2 border-indigo-100 space-y-6 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin">
+            <div class="relative pl-6 border-l-2 border-red-100 space-y-6 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin">
                 <?php if (empty($summary['Logs'])): ?>
                     <div class="relative">
                         <span class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-gray-200 border-2 border-white"></span>
@@ -137,12 +137,12 @@ $userId = $_SESSION['user']['id'] ?? 0;
                 <?php else: ?>
                     <?php foreach ($summary['Logs'] as $log): ?>
                         <div class="relative">
-                            <span class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-indigo-500 border-2 border-white"></span>
+                            <span class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-red-500 border-2 border-white"></span>
                             <div>
                                 <div class="text-xs font-bold text-gray-400 uppercase"><?= date('d M Y, H:i', strtotime($log['changed_at'])) ?></div>
                                 <div class="text-sm font-bold text-gray-800 mt-0.5">
                                     <?= $log['new_status'] == $log['previous_status'] ? 'Update:' : 'Status changed to' ?>
-                                    <span class="capitalize text-indigo-600"><?= str_replace('_', ' ', $log['new_status']) ?></span>
+                                    <span class="capitalize text-primary"><?= str_replace('_', ' ', $log['new_status']) ?></span>
                                 </div>
                                 <?php if ($log['note']): ?>
                                     <div class="mt-1 p-2 bg-gray-50 rounded border border-gray-100 text-gray-600 text-xs italic">
@@ -198,7 +198,7 @@ $userId = $_SESSION['user']['id'] ?? 0;
                         <th class="px-4 py-4 font-semibold text-center">Status</th>
                         <th class="px-4 py-4 font-semibold text-center text-red-600 bg-red-50/50 border-l border-red-100">R</th>
                         <th class="px-4 py-4 font-semibold text-center text-orange-600 bg-orange-50/50 border-l border-orange-100">A</th>
-                        <th class="px-4 py-4 font-semibold text-center text-blue-600 bg-blue-50/50 border-l border-blue-100">S</th>
+                        <th class="px-4 py-4 font-semibold text-center text-primary bg-red-50/50 border-l border-red-100">S</th>
                         <th class="px-4 py-4 font-semibold text-center text-teal-600 bg-teal-50/50 border-l border-teal-100">C</th>
                         <th class="px-4 py-4 font-semibold text-center text-gray-600 bg-gray-50/50 border-l border-gray-200">I</th>
                     </tr>
@@ -227,7 +227,7 @@ $userId = $_SESSION['user']['id'] ?? 0;
                             // Status Colors
                             $statusColors = [
                                 'pending' => 'bg-gray-100 text-gray-600',
-                                'in_progress' => 'bg-blue-100 text-blue-700',
+                                'in_progress' => 'bg-blue-100 text-red-700',
                                 'completed' => 'bg-green-100 text-green-700',
                                 'on_hold' => 'bg-orange-100 text-orange-700',
                                 'cancelled' => 'bg-red-100 text-red-700',
@@ -244,7 +244,7 @@ $userId = $_SESSION['user']['id'] ?? 0;
                                         <span class="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600 border border-gray-200">
                                             Due: <?= $ms['due_date'] ?? 'TBD' ?>
                                         </span>
-                                        <span class="text-xs bg-indigo-50 px-2 py-0.5 rounded text-indigo-600 border border-indigo-100">
+                                        <span class="text-xs bg-red-50 px-2 py-0.5 rounded text-primary border border-red-100">
                                             Weight: <?= $ms['weight_percent'] ?>%
                                         </span>
                                     </div>
@@ -270,7 +270,7 @@ $userId = $_SESSION['user']['id'] ?? 0;
                                     $bgClass = match ($role) {
                                         'R' => 'bg-red-50/30 border-red-100',
                                         'A' => 'bg-orange-50/30 border-orange-100',
-                                        'S' => 'bg-blue-50/30 border-blue-100',
+                                        'S' => 'bg-red-50/30 border-red-100',
                                         'C' => 'bg-teal-50/30 border-teal-100',
                                         'I' => 'bg-gray-50/30 border-gray-200',
                                     };
@@ -354,7 +354,7 @@ $userId = $_SESSION['user']['id'] ?? 0;
             <!-- Legend (Moved to Top) -->
             <div class="flex flex-wrap gap-4 mb-6 text-xs px-2">
                 <div class="flex items-center gap-1"><span class="w-3 h-3 bg-gray-400 rounded"></span> Pending</div>
-                <div class="flex items-center gap-1"><span class="w-3 h-3 bg-blue-500 rounded"></span> In Progress</div>
+                <div class="flex items-center gap-1"><span class="w-3 h-3 bg-red-500 rounded"></span> In Progress</div>
                 <div class="flex items-center gap-1"><span class="w-3 h-3 bg-green-500 rounded"></span> Completed</div>
                 <div class="flex items-center gap-1"><span class="w-3 h-3 bg-orange-500 rounded"></span> On Hold</div>
                 <div class="flex items-center gap-1"><span class="w-3 h-3 bg-purple-500 rounded"></span> Proposed</div>
@@ -529,7 +529,7 @@ $userId = $_SESSION['user']['id'] ?? 0;
                         $getColor = function ($st) {
                             return match ($st) {
                                 'pending' => 'bg-gray-400',
-                                'in_progress' => 'bg-blue-500',
+                                'in_progress' => 'bg-red-500',
                                 'completed' => 'bg-green-500',
                                 'on_hold' => 'bg-orange-500',
                                 'proposed' => 'bg-purple-500',
@@ -616,7 +616,7 @@ $userId = $_SESSION['user']['id'] ?? 0;
                 <div class="text-left space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">New Status</label>
-                        <select id="swal-act-status" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <select id="swal-act-status" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none">
                             <option value="incoming" ${currentStatus === 'incoming' ? 'selected' : ''}>Incoming (Planned)</option>
                             <option value="in_progress" ${currentStatus === 'in_progress' ? 'selected' : ''}>In Progress</option>
                             <!-- Completed is automatic only -->
@@ -627,13 +627,13 @@ $userId = $_SESSION['user']['id'] ?? 0;
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Log Note / Reason</label>
-                        <textarea id="swal-act-note" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Explain why the status is changing..."></textarea>
+                        <textarea id="swal-act-note" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none" placeholder="Explain why the status is changing..."></textarea>
                     </div>
                 </div>
             `,
                                 showCancelButton: true,
                                 confirmButtonText: 'Update Status',
-                                confirmButtonColor: '#4f46e5',
+                                confirmButtonColor: '#2563eb',
                                 preConfirm: () => {
                                     return {
                                         status: document.getElementById('swal-act-status').value,
@@ -678,7 +678,7 @@ $userId = $_SESSION['user']['id'] ?? 0;
             <div class="text-left space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select id="swal-status" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <select id="swal-status" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none">
                         <option value="pending" ${currentStatus === 'pending' ? 'selected' : ''}>Pending</option>
                         <option value="in_progress" ${currentStatus === 'in_progress' ? 'selected' : ''}>In Progress</option>
                         <option value="completed" ${currentStatus === 'completed' ? 'selected' : ''}>Completed</option>
@@ -689,16 +689,16 @@ $userId = $_SESSION['user']['id'] ?? 0;
                 </div>
                 <div class="mb-4 text-left">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Reason / Note (Plan vs Actual)</label>
-                    <textarea id="swal-note" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" rows="2" placeholder="Why is the status changing?"></textarea>
+                    <textarea id="swal-note" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none" rows="2" placeholder="Why is the status changing?"></textarea>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Actual Start</label>
-                        <input type="datetime-local" id="swal-start-date" value="${currentActualStartDate ? currentActualStartDate.replace(' ', 'T') : ''}" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <input type="datetime-local" id="swal-start-date" value="${currentActualStartDate ? currentActualStartDate.replace(' ', 'T') : ''}" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Actual End</label>
-                        <input type="datetime-local" id="swal-end-date" value="${currentActualEndDate ? currentActualEndDate.replace(' ', 'T') : ''}" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <input type="datetime-local" id="swal-end-date" value="${currentActualEndDate ? currentActualEndDate.replace(' ', 'T') : ''}" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none">
                     </div>
                 </div>
                 <p class="text-xs text-gray-500 mt-1">Start required for In Progress. End required for Completed.</p>
@@ -706,7 +706,7 @@ $userId = $_SESSION['user']['id'] ?? 0;
         `,
                                 showCancelButton: true,
                                 confirmButtonText: 'Update',
-                                confirmButtonColor: '#4f46e5',
+                                confirmButtonColor: '#2563eb',
                                 preConfirm: () => {
                                     const status = document.getElementById('swal-status').value;
                                     const note = document.getElementById('swal-note').value;

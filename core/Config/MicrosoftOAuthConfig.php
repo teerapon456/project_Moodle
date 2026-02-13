@@ -171,9 +171,11 @@ class MicrosoftOAuthConfig
                     $_SESSION['ms_app_token_expires'] = time() + ($data['expires_in'] ?? 3600) - 60; // 1 min buffer
                     return $data['access_token'];
                 }
+            } else {
+                error_log("MicrosoftOAuthConfig::getAppAccessToken Failed. HTTP: $httpCode, Response: $response");
             }
         } catch (Exception $e) {
-            // Ignore errors
+            error_log("MicrosoftOAuthConfig::getAppAccessToken Exception: " . $e->getMessage());
         }
 
         return null;

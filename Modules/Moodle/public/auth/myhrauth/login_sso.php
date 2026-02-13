@@ -11,10 +11,10 @@ if (empty($token)) {
 }
 
 // Connect to Portal DB
-$dbHost = 'db';
-$dbName = 'myhr_portal';
-$dbUser = 'myhr_user';
-$dbPass = 'MyHR_S3cur3_P@ss_2026!';
+$dbHost = getenv('DB_HOST') ?: 'db';
+$dbName = getenv('DB_NAME') ?: 'myhr_portal';
+$dbUser = getenv('DB_USER') ?: 'myhr_user';
+$dbPass = getenv('DB_PASS') ?: 'MyHR_S3cur3_P@ss_2026!';
 
 try {
     $dsn = "mysql:host=$dbHost;dbname=$dbName;charset=utf8mb4";
@@ -44,55 +44,90 @@ try {
 
     $username = $user['username'];
 
-    // 3. Login to Moodle
-    $userObj = get_complete_user_data('username', $username);
+    // 3. Login to Moodle - Sync User Data
 
-    if ($userObj) {
-        // ถ้ามี Session เดิมค้างอยู่ ให้ Logout ก่อน เพื่อเปลี่ยน User ใหม่ตาม Token
-        if (isloggedin() && !isguestuser()) {
-            \core\session\manager::terminate_current();
-        }
+    // Fetch full user data from users table (JOIN with iga_orgunit for OrgCode)
+    $stmtDetails = $pdo->prepare("
+        SELECT u.fullname, u.email, u.Level3Name, u.password_hash, o.OrgCode
+        FROM users u
+        LEFT JOIN iga_orgunit o ON u.OrgID = o.OrgID
+        WHERE u.username = ?
+    ");
+    $stmtDetails->execute([$username]);
+    $details = $stmtDetails->fetch();
 
-        // User exists in Moodle -> Log them in
-        complete_user_login($userObj);
+    if ($details) {
+        // Prepare user data mapping
+        $fullnameParts = explode(' ', trim($details['fullname'] ?? ''), 2);
+        $firstname = $fullnameParts[0] ?? $username;
+        $lastname = $fullnameParts[1] ?? '.'; // Moodle requires lastname
+        $email = $details['email'];
+        $department = $details['Level3Name'] ?? ''; // Changed from Level3Code
+        $institution = $details['OrgCode'] ?? '';
+        $passwordHash = $details['password_hash'] ?? '';
 
-        // Mark token as used
-        $pdo->prepare("DELETE FROM sso_tokens WHERE token = ?")->execute([$token]);
+        // Check if user exists in Moodle
+        $userObj = get_complete_user_data('username', $username);
 
-        // Redirect to Home
-        redirect($CFG->wwwroot);
-    } else {
-        // User does NOT exist in Moodle.
-        // Fetch full user data for creation
-        $stmtDetails = $pdo->prepare("SELECT firstname, lastname, email FROM moodle_users WHERE username = ?");
-        $stmtDetails->execute([$username]);
-        $details = $stmtDetails->fetch();
+        if ($userObj) {
+            // User exists -> Update data
+            $updateUser = new stdClass();
+            $updateUser->id = $userObj->id;
+            $updateUser->firstname = $firstname;
+            $updateUser->lastname = $lastname;
+            $updateUser->email = $email;
+            $updateUser->department = $department;
+            $updateUser->institution = $institution;
 
-        if ($details) {
+            // Perform update
+            user_update_user($updateUser);
+
+            // Sync password (direct DB update to avoid re-hashing)
+            if (!empty($passwordHash)) {
+                $DB->set_field('user', 'password', $passwordHash, ['id' => $userObj->id]);
+            }
+        } else {
+            // User does NOT exist -> Create new user
             $newUser = new stdClass();
             $newUser->username = $username;
-            $newUser->firstname = $details['firstname'];
-            $newUser->lastname = $details['lastname'];
-            $newUser->email = $details['email'];
+            $newUser->firstname = $firstname;
+            $newUser->lastname = $lastname;
+            $newUser->email = $email;
+            $newUser->department = $department;
+            $newUser->institution = $institution;
             $newUser->auth = 'db';
             $newUser->mnethostid = $CFG->mnet_localhost_id;
             $newUser->confirmed = 1;
             $newUser->lang = $CFG->lang;
 
-            // สร้าง User ใหม่
+            // Create user
             $userId = user_create_user($newUser, false, false);
 
-            // Now log in
-            $userObj = get_complete_user_data('id', $userId);
-            complete_user_login($userObj);
-
-            // Mark token as used
-            $pdo->prepare("DELETE FROM sso_tokens WHERE token = ?")->execute([$token]);
-
-            redirect($CFG->wwwroot);
-        } else {
-            throw new Exception("Could not retrieve user details for creation.");
+            // Sync password (direct DB update to avoid re-hashing)
+            if (!empty($passwordHash)) {
+                $DB->set_field('user', 'password', $passwordHash, ['id' => $userId]);
+            }
         }
+
+        // Load user data if redirected from creation
+        if (!isset($userObj)) {
+            $userObj = get_complete_user_data('username', $username);
+        }
+
+        // --- Session Handling Logic ---
+        global $USER;
+        if (!isloggedin() || isguestuser() || $USER->username !== $username) {
+            // Log in if not logged in, if guest, or if a different user
+            complete_user_login($userObj);
+        }
+
+        // Mark token as used
+        $pdo->prepare("DELETE FROM sso_tokens WHERE token = ?")->execute([$token]);
+
+        // Fallback: Redirect to Moodle home
+        redirect($CFG->wwwroot);
+    } else {
+        throw new Exception("Could not retrieve user details from Portal DB.");
     }
 } catch (Exception $e) {
     redirect($CFG->wwwroot, 'SSO Failed: ' . $e->getMessage(), 10);

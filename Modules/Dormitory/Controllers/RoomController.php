@@ -180,7 +180,7 @@ class RoomController extends DormBaseController
         $this->requirePermission('manage');
 
 
-        $required = ['building_id', 'room_number'];
+        $required = ['building_id', 'room_number', 'room_type'];
         foreach ($required as $field) {
             if (empty($data[$field])) {
                 return $this->error("กรุณากรอก $field");
@@ -196,6 +196,25 @@ class RoomController extends DormBaseController
             return $this->error('หมายเลขห้องนี้มีอยู่แล้วในอาคาร');
         }
 
+        // Fetch Room Type Details
+        $stmt = $this->pdo->prepare("SELECT max_person, price_month FROM dorm_room_types WHERE id = ?");
+        $stmt->execute([$data['room_type']]);
+        $typeData = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$typeData) {
+            // Fallback or Error? 
+            // If room_type ID is invalid, we probably should error.
+            // But if user meant "code", this fails. Assuming ID.
+            // Or maybe legacy code support? 
+            // Let's assume ID as per recent changes.
+            return $this->error('ไม่พบประเภทห้องที่ระบุ');
+            // $capacity = 1;
+            // $rent = 0;
+        } else {
+            $capacity = $typeData['max_person'];
+            $rent = $typeData['price_month'];
+        }
+
         $stmt = $this->pdo->prepare("
             INSERT INTO dorm_rooms (building_id, room_number, floor, room_type, capacity, monthly_rent, description)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -204,9 +223,9 @@ class RoomController extends DormBaseController
             $data['building_id'],
             $data['room_number'],
             $data['floor'] ?? 1,
-            $data['room_type'] ?? 'single',
-            $data['capacity'] ?? 1,
-            $data['monthly_rent'] ?? 0,
+            $data['room_type'],
+            $capacity,
+            $rent,
             $data['description'] ?? null
         ]);
 
@@ -238,6 +257,22 @@ class RoomController extends DormBaseController
             return $this->error('ไม่พบห้องพัก', 404);
         }
 
+        $roomType = $data['room_type'] ?? $old['room_type'];
+
+        // Always fetch latest capacity/rent from room type to keep in sync
+        $stmt = $this->pdo->prepare("SELECT max_person, price_month FROM dorm_room_types WHERE id = ?");
+        $stmt->execute([$roomType]);
+        $typeData = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($typeData) {
+            $capacity = $typeData['max_person'];
+            $rent = $typeData['price_month'];
+        } else {
+            // Keep old values if type invalid (should not happen if constraints hold)
+            $capacity = $old['capacity'];
+            $rent = $old['monthly_rent'];
+        }
+
         $stmt = $this->pdo->prepare("
             UPDATE dorm_rooms 
             SET room_number = ?, floor = ?, room_type = ?, capacity = ?, 
@@ -247,9 +282,9 @@ class RoomController extends DormBaseController
         $stmt->execute([
             $data['room_number'] ?? $old['room_number'],
             $data['floor'] ?? $old['floor'],
-            $data['room_type'] ?? $old['room_type'],
-            $data['capacity'] ?? $old['capacity'],
-            $data['monthly_rent'] ?? $old['monthly_rent'],
+            $roomType,
+            $capacity,
+            $rent,
             $data['status'] ?? $old['status'],
             $data['description'] ?? $old['description'],
             $id
@@ -594,11 +629,19 @@ class RoomController extends DormBaseController
      */
     public function getMyRoom()
     {
-        $email = $_GET['email'] ?? $this->user['email'] ?? null;
+        $this->requireAuth();
+        // Security: Non-admins can only query their own room
+        $isAdmin = $this->hasPermission('manage');
+        $email = $this->user['email'] ?? null;
+
+        if ($isAdmin && isset($_GET['email'])) {
+            $email = $_GET['email'];
+        }
 
         if (!$email) {
-            return $this->error('กรุณาระบุ email');
+            return $this->error('กรุณาระบุ email หรือเข้าสู่ระบบ');
         }
+
 
         // 1. หา room_id ของ user คนนี้
         $stmt = $this->pdo->prepare("

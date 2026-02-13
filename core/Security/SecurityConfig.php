@@ -14,7 +14,7 @@ class SecurityConfig
     {
         return [
             'session' => [
-                'lifetime' => 1800, // 30 minutes
+                'lifetime' => 28800, // 8 hours
                 'regenerate_id' => true,
                 'secure_cookies' => (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ||
                     (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https'),

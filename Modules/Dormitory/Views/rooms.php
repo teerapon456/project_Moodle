@@ -76,7 +76,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
             <div class="p-6 overflow-y-auto flex-1 space-y-4">
                 <div>
                     <label class="block mb-2 text-sm font-medium text-gray-700">อาคาร *</label>
-                    <select class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" name="building_id" required>
+                    <select class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" name="building_id" required onchange="updateFloorOptions(this.value)">
                         <option value="">เลือกอาคาร</option>
                     </select>
                 </div>
@@ -84,7 +84,9 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block mb-2 text-sm font-medium text-gray-700">ชั้น *</label>
-                        <input type="number" class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" name="floor" required min="1" max="50">
+                        <select class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" name="floor" required>
+                            <option value="">เลือกอาคารก่อน</option>
+                        </select>
                     </div>
                     <div>
                         <label class="block mb-2 text-sm font-medium text-gray-700">เลขห้อง *</label>
@@ -95,30 +97,23 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block mb-2 text-sm font-medium text-gray-700">ประเภทห้อง *</label>
-                        <select class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" name="room_type" id="addRoomTypeSelect" required onchange="updateRoomDefaults(this.value)">
+                        <select class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" name="room_type" id="addRoomTypeSelect" required>
                             <option value="">กำลังโหลด...</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block mb-2 text-sm font-medium text-gray-700">ความจุ (คน) *</label>
-                        <input type="number" class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" name="capacity" id="roomCapacity" required min="1" value="1">
+                        <p class="text-xs text-info mt-1"><i class="ri-information-line"></i> ความจุและค่าห้องจะถูกกำหนดโดยอัตโนมัติตามประเภทห้องที่เลือก</p>
+                    </div>
+
+                    <div>
+                        <label class="block mb-2 text-sm font-medium text-gray-700">รายละเอียดเพิ่มเติม</label>
+                        <textarea class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary resize-y" name="description" rows="2"></textarea>
                     </div>
                 </div>
-
-                <div>
-                    <label class="block mb-2 text-sm font-medium text-gray-700">ค่าเช่า/เดือน (บาท)</label>
-                    <input type="number" class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" name="monthly_rent" id="roomRent" value="0" min="0">
+                <div class="flex justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-xl">
+                    <button type="button" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors" onclick="closeModal('addRoomModal')">ยกเลิก</button>
+                    <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg font-medium transition-colors shadow-sm">บันทึก</button>
                 </div>
-
-                <div>
-                    <label class="block mb-2 text-sm font-medium text-gray-700">รายละเอียดเพิ่มเติม</label>
-                    <textarea class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary resize-y" name="description" rows="2"></textarea>
-                </div>
-            </div>
-            <div class="flex justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-xl">
-                <button type="button" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors" onclick="closeModal('addRoomModal')">ยกเลิก</button>
-                <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg font-medium transition-colors shadow-sm">บันทึก</button>
-            </div>
         </form>
     </div>
 </div>
@@ -141,7 +136,9 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block mb-2 text-sm font-medium text-gray-700">ชั้น *</label>
-                        <input type="number" class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" name="floor" required min="1" max="50">
+                        <select class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" name="floor" required id="editRoomFloor">
+                            <!-- Populated via JS -->
+                        </select>
                     </div>
                     <div>
                         <label class="block mb-2 text-sm font-medium text-gray-700">เลขห้อง *</label>
@@ -156,10 +153,6 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                             <option value="">กำลังโหลด...</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="block mb-2 text-sm font-medium text-gray-700">ความจุ (คน) *</label>
-                        <input type="number" class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" name="capacity" required min="1">
-                    </div>
                 </div>
 
                 <div>
@@ -172,8 +165,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                 </div>
 
                 <div>
-                    <label class="block mb-2 text-sm font-medium text-gray-700">ค่าเช่า/เดือน (บาท)</label>
-                    <input type="number" class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" name="monthly_rent" id="editRoomRent" min="0">
+                    <p class="text-xs text-info mt-1"><i class="ri-information-line"></i> ความจุและค่าห้องจะถูกอัพเดทตามประเภทห้องที่เลือก</p>
                 </div>
 
                 <div>
@@ -441,12 +433,23 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
             const result = await apiCall('buildings', 'list');
             buildings = result.buildings;
 
-            const select = document.getElementById('filterBuilding');
-            buildings.forEach(b => {
-                const option = document.createElement('option');
-                option.value = b.id;
-                option.textContent = `${b.code} - ${b.name}`;
-                select.appendChild(option);
+            const filterSelect = document.getElementById('filterBuilding');
+            const addRoomSelect = document.querySelector('#addRoomForm select[name="building_id"]');
+            const editRoomSelect = document.querySelector('#editRoomForm select[name="building_id"]');
+
+            [filterSelect, addRoomSelect, editRoomSelect].forEach(select => {
+                if (!select) return;
+                const currentValue = select.value; // Preserve current value
+                select.innerHTML = select.id === 'filterBuilding' ? '<option value="">ทุกอาคาร</option>' : '<option value="">เลือกอาคาร</option>';
+                buildings.forEach(b => {
+                    const option = document.createElement('option');
+                    option.value = b.id;
+                    option.textContent = `${b.code} - ${b.name}`;
+                    select.appendChild(option);
+                });
+                if (currentValue && select.querySelector(`option[value="${currentValue}"]`)) {
+                    select.value = currentValue;
+                }
             });
         } catch (error) {
             console.error('Failed to load buildings:', error);
@@ -928,30 +931,42 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
             option.textContent = `${b.code} - ${b.name}`;
             select.appendChild(option);
         });
+        // Clear floor options
+        // Clear floor options
+        const floorSelect = document.querySelector('#addRoomForm select[name="floor"]');
+        if (floorSelect) floorSelect.innerHTML = '<option value="">เลือกอาคารก่อน</option>';
         openModal('addRoomModal');
     }
 
-    function updateRoomDefaults(type) {
-        const capacityInput = document.getElementById('roomCapacity');
-        let capacity = 1;
-        switch (type) {
-            case 'single':
-                capacity = 1;
-                break;
-            case 'double':
-                capacity = 2;
-                break;
-            case 'family':
-                capacity = 4;
-                break;
-            case 'executive':
-                capacity = 1;
-                break;
-            case 'suite':
-                capacity = 2;
-                break;
+    function updateFloorOptions(buildingId, targetSelectId = null, selectedFloor = null) {
+        let select;
+        if (targetSelectId) {
+            select = document.getElementById(targetSelectId);
+        } else {
+            select = document.querySelector('#addRoomForm select[name="floor"]');
         }
-        capacityInput.value = capacity;
+
+        if (!select) return;
+
+        select.innerHTML = '<option value="">เลือกชั้น</option>';
+
+        if (!buildingId) return;
+
+        const building = buildings.find(b => b.id == buildingId);
+        if (!building) return;
+
+        const totalFloors = building.total_floors || 1;
+
+        for (let i = 1; i <= totalFloors; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = i;
+            select.appendChild(option);
+        }
+
+        if (selectedFloor) {
+            select.value = selectedFloor;
+        }
     }
 
     async function handleAddRoom(e) {
@@ -974,13 +989,20 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
         const form = document.getElementById('editRoomForm');
 
         form.querySelector('input[name="id"]').value = room.id;
-        document.getElementById('editRoomBuildingName').value = room.building_name;
-        form.querySelector('input[name="floor"]').value = room.floor;
+
+        // Populate building dropdown for edit
+        const buildingSelect = form.querySelector('select[name="building_id"]');
+        if (buildingSelect) {
+            buildingSelect.value = room.building_id;
+        }
+
+        // Trigger floor update based on current room's building
+        updateFloorOptions(room.building_id, 'editRoomFloor', room.floor);
+
         form.querySelector('input[name="room_number"]').value = room.room_number;
         form.querySelector('select[name="room_type"]').value = room.room_type;
-        form.querySelector('input[name="capacity"]').value = room.capacity;
         form.querySelector('select[name="status"]').value = room.status;
-        form.querySelector('input[name="monthly_rent"]').value = room.monthly_rent;
+
         form.querySelector('textarea[name="description"]').value = room.description || '';
 
         closeModal('roomModal');

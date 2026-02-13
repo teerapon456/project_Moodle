@@ -5,15 +5,27 @@
  * Migrated to Tailwind CSS
  */
 
-// Manager only
-if (!checkManagerPermission($canView, $canManage, 'ระบบจองรถ')) return;
+// Allow access for managers OR L06+ approvers
+if (!$canManage && !$canApprove) {
+    echo '<div class="text-center py-12 text-gray-500"><p>คุณไม่มีสิทธิ์เข้าถึงหน้านี้</p></div>';
+    return;
+}
 
 require_once __DIR__ . '/../Controllers/BookingController.php';
 
 $controller = new BookingController($user);
-$pendingSuper = $controller->listPendingSupervisor();
-$pendingManager = $controller->listPendingManager();
-$allPending = array_merge($pendingSuper, $pendingManager);
+
+if ($canManage) {
+    // Managers see ALL pending bookings (supervisor + IPCD level)
+    $pendingSuper = $controller->listPendingSupervisor();
+    $pendingManager = $controller->listPendingManager();
+    $allPending = array_merge($pendingSuper, $pendingManager);
+} else {
+    // L06+ approvers see ONLY bookings assigned to them
+    $pendingSuper = $controller->listMyPendingApprovals();
+    $pendingManager = [];
+    $allPending = $pendingSuper;
+}
 
 usort($allPending, function ($a, $b) {
     return strtotime($b['created_at']) - strtotime($a['created_at']);
@@ -58,18 +70,20 @@ $statusLabels = [
 ];
 ?>
 
-<!-- Tabs -->
-<div class="flex flex-wrap gap-2 mb-6">
-    <button class="pending-tab inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-medium transition-colors" data-tab="all" onclick="switchTab('all')">
-        ทั้งหมด <span class="px-2 py-0.5 bg-white/20 rounded-full text-xs"><?= count($allPending) ?></span>
-    </button>
-    <button class="pending-tab inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg font-medium transition-colors" data-tab="supervisor" onclick="switchTab('supervisor')">
-        รอหัวหน้า <span class="px-2 py-0.5 bg-gray-200 rounded-full text-xs"><?= count($pendingSuper) ?></span>
-    </button>
-    <button class="pending-tab inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg font-medium transition-colors" data-tab="manager" onclick="switchTab('manager')">
-        รอสายงาน IPCD <span class="px-2 py-0.5 bg-gray-200 rounded-full text-xs"><?= count($pendingManager) ?></span>
-    </button>
-</div>
+<?php if ($canManage): ?>
+    <!-- Tabs (Manager only - filter by supervisor/manager level) -->
+    <div class="flex flex-wrap gap-2 mb-6">
+        <button class="pending-tab inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-medium transition-colors" data-tab="all" onclick="switchTab('all')">
+            ทั้งหมด <span class="px-2 py-0.5 bg-white/20 rounded-full text-xs"><?= count($allPending) ?></span>
+        </button>
+        <button class="pending-tab inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg font-medium transition-colors" data-tab="supervisor" onclick="switchTab('supervisor')">
+            รอหัวหน้า <span class="px-2 py-0.5 bg-gray-200 rounded-full text-xs"><?= count($pendingSuper) ?></span>
+        </button>
+        <button class="pending-tab inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg font-medium transition-colors" data-tab="manager" onclick="switchTab('manager')">
+            รอสายงาน IPCD <span class="px-2 py-0.5 bg-gray-200 rounded-full text-xs"><?= count($pendingManager) ?></span>
+        </button>
+    </div>
+<?php endif; ?>
 
 <!-- Pending List -->
 <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
@@ -145,41 +159,43 @@ $statusLabels = [
         </div>
         <div class="p-6 overflow-y-auto" id="approvalBookingDetail"></div>
 
-        <!-- Car Assign Section (Manager Only) -->
-        <div id="carAssignSection" class="hidden px-6 pb-6 space-y-4 border-t border-gray-100 pt-4">
-            <h5 class="font-semibold text-gray-700">การจัดการรถ/น้ำมัน</h5>
+        <?php if ($canManage): ?>
+            <!-- Car Assign Section (Manager Only) -->
+            <div id="carAssignSection" class="hidden px-6 pb-6 space-y-4 border-t border-gray-100 pt-4">
+                <h5 class="font-semibold text-gray-700">การจัดการรถ/น้ำมัน</h5>
 
-            <div class="flex gap-6">
-                <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="allocationType" value="car" checked onclick="toggleAllocationType()">
-                    <span>จัดรถบริษัท</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="allocationType" value="fleet" onclick="toggleAllocationType()">
-                    <span>ให้บัตรเติมน้ำมัน</span>
-                </label>
-            </div>
+                <div class="flex gap-6">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="allocationType" value="car" checked onclick="toggleAllocationType()">
+                        <span>จัดรถบริษัท</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="allocationType" value="fleet" onclick="toggleAllocationType()">
+                        <span>ให้บัตรเติมน้ำมัน</span>
+                    </label>
+                </div>
 
-            <div id="carSelectGroup">
-                <label class="block text-sm font-medium text-gray-700 mb-2">เลือกรถ</label>
-                <select id="assignCarId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                    <option value="">-- เลือกรถ --</option>
-                </select>
-            </div>
-
-            <div id="fleetSelectGroup" class="hidden space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">เลือกบัตร Fleet Card</label>
-                    <select id="assignFleetCardId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                        <option value="">-- เลือกบัตร --</option>
+                <div id="carSelectGroup">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">เลือกรถ</label>
+                    <select id="assignCarId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="">-- เลือกรถ --</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">วงเงิน (บาท)</label>
-                    <input type="number" id="assignFleetAmount" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="ระบุวงเงิน (ถ้ามี)">
+
+                <div id="fleetSelectGroup" class="hidden space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">เลือกบัตร Fleet Card</label>
+                        <select id="assignFleetCardId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="">-- เลือกบัตร --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">วงเงิน (บาท)</label>
+                        <input type="number" id="assignFleetAmount" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="ระบุวงเงิน (ถ้ามี)">
+                    </div>
                 </div>
             </div>
-        </div>
+        <?php endif; ?>
 
         <div class="flex justify-end gap-3 px-6 py-4 bg-gray-50">
             <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors" onclick="closeApprovalModal()">ยกเลิก</button>
@@ -277,11 +293,13 @@ $statusLabels = [
         `;
 
         const carSection = document.getElementById('carAssignSection');
-        if (booking.status === 'pending_manager') {
-            carSection.classList.remove('hidden');
-            loadAvailableAssets(booking.start_time, booking.end_time);
-        } else {
-            carSection.classList.add('hidden');
+        if (carSection) {
+            if (booking.status === 'pending_manager') {
+                carSection.classList.remove('hidden');
+                loadAvailableAssets(booking.start_time, booking.end_time);
+            } else {
+                carSection.classList.add('hidden');
+            }
         }
 
         document.getElementById('approvalModal').classList.add('active');

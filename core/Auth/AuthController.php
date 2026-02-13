@@ -553,7 +553,12 @@ class AuthController
             // Build reset link
             require_once __DIR__ . '/../Helpers/UrlHelper.php';
             $baseUrl = \Core\Helpers\UrlHelper::getBaseUrl();
-            $resetLink = $baseUrl . "/public/reset_password.php?token=" . $token;
+            // In Docker: DocumentRoot = public/, so no /public prefix needed
+            // In XAMPP: DocumentRoot = htdocs, so /public prefix is needed
+            $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
+            $isDocker = $docRoot && file_exists($docRoot . '/reset_password.php');
+            $publicPath = $isDocker ? '' : '/public';
+            $resetLink = $baseUrl . $publicPath . "/reset_password.php?token=" . $token;
 
             // Send email
             require_once __DIR__ . '/../Services/EmailService.php';

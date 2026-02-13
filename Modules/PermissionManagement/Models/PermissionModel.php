@@ -200,9 +200,9 @@ class PermissionModel
 
         $fields = [];
         $params = [':id' => $userId];
-        if ($roleId !== null && $roleId > 0) {
+        if ($roleId !== null) {
             $fields[] = 'role_id = :role_id';
-            $params[':role_id'] = $roleId;
+            $params[':role_id'] = ($roleId > 0) ? $roleId : null;
         }
         if ($userActive !== null) {
             $fields[] = 'is_active = :is_active';
@@ -244,5 +244,38 @@ class PermissionModel
             return $this->conn->lastInsertId();
         }
         return false;
+    }
+
+    public function getRoleModulePermissions($roleId)
+    {
+        if (!$this->conn) throw new Exception('Database connection failed');
+
+        $sql = "SELECT cm.id, cm.code, cm.path, cm.name, cm.is_active, 
+                       COALESCE(p.can_view, 0) as can_view, 
+                       COALESCE(p.can_edit, 0) as can_edit, 
+                       COALESCE(p.can_delete, 0) as can_delete, 
+                       COALESCE(p.can_manage, 0) as can_manage 
+                FROM core_modules cm 
+                LEFT JOIN core_module_permissions p ON p.module_id = cm.id AND p.role_id = :role_id 
+                WHERE cm.is_active = 1";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindValue(':role_id', $roleId, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getPermissionManagementModuleCode()
+    {
+        if (!$this->conn) return 'PERMISSION_MANAGEMENT';
+
+        try {
+            $sql = "SELECT code FROM core_modules WHERE path LIKE '%modules/manage.php%' OR name LIKE '%permission%' OR code LIKE 'PERMISSION%' ORDER BY id ASC LIMIT 1";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute();
+            $code = $stmt->fetchColumn();
+            return $code ?: 'PERMISSION_MANAGEMENT';
+        } catch (Exception $e) {
+            return 'PERMISSION_MANAGEMENT';
+        }
     }
 }

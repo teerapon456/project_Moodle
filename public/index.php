@@ -411,6 +411,55 @@ if ($user && !empty($user['role_id']) && !isset($_GET['error'])) {
         .password-toggle:hover {
             color: #4b5563;
         }
+
+        /* Manual Button Style */
+        .login-manual-btn {
+            position: fixed;
+            top: 24px;
+            right: 180px;
+            /* Position to the left of language switcher */
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 16px;
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 99px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
+                0 2px 4px -1px rgba(0, 0, 0, 0.03),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+            color: #A21D21;
+            font-size: 13px;
+            font-weight: 500;
+            text-decoration: none;
+            z-index: 9999;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .login-manual-btn:hover {
+            background: rgba(255, 255, 255, 0.85);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.08);
+            color: #7f1d1d;
+        }
+
+        .login-manual-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Responsive adjust */
+        @media (max-width: 640px) {
+            .login-manual-btn span {
+                display: none;
+            }
+
+            .login-manual-btn {
+                right: 160px;
+                padding: 6px 12px;
+            }
+        }
     </style>
     <script>
         window.APP_BASE_PATH = <?php echo json_encode($basePath); ?>;
@@ -430,6 +479,12 @@ if ($user && !empty($user['role_id']) && !isset($_GET['error'])) {
 </head>
 
 <body>
+    <!-- Manual Button -->
+    <a href="manual.html" target="_blank" class="login-manual-btn">
+        <i class="ri-book-read-line"></i>
+        <span>คู่มือการใช้งาน</span>
+    </a>
+
     <!-- New Language Switcher (Fixed Position) -->
     <div class="login-lang-switcher">
         <button type="button" class="lang-btn" data-lang="th">TH</button>
@@ -1089,6 +1144,69 @@ if ($user && !empty($user['role_id']) && !isset($_GET['error'])) {
                 this.classList.toggle('ri-eye-line');
                 this.classList.toggle('ri-eye-off-line');
             });
+        }
+    </script>
+    <!-- Under Development Modal -->
+    <div id="devModal" class="fixed inset-0 z-[9999] flex items-center justify-center backdrop-blur-sm opacity-0 invisible transition-all duration-300" style="background-color: rgba(0, 0, 0, 0.85);">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 p-6 transform scale-95 transition-all duration-300">
+            <div class="text-center">
+                <div class="w-12 h-12 bg-yellow-50 text-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="ri-hammer-line text-2xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-gray-900 mb-2">ระบบอยู่ระหว่างการพัฒนา</h3>
+                <p class="text-sm text-gray-600 mb-6 leading-relaxed">
+                    เว็บไซต์นี้กำลังอยู่ในช่วงทดสอบ (Beta) <br>
+                    อาจพบข้อผิดพลาดหรือการเปลี่ยนแปลงข้อมูลได้ <br>
+                    หากพบปัญหาในการใช้งาน ต้องขออภัยมา ณ ที่นี้
+                </p>
+                <div class="space-y-3">
+                    <button onclick="closeDevModal()" class="w-full py-2.5 px-4 bg-gray-900 hover:bg-black text-white rounded-lg font-medium transition-colors">
+                        รับทราบ
+                    </button>
+                    <div class="flex items-center justify-center gap-2">
+                        <input type="checkbox" id="dontShowAgain" class="rounded border-gray-300 text-gray-900 focus:ring-gray-900">
+                        <label for="dontShowAgain" class="text-xs text-gray-500 cursor-pointer">ไม่ต้องแสดงในวันนี้</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const lastSeen = localStorage.getItem('devModalSeenDate');
+            const today = new Date().toDateString();
+
+            // Show if never seen OR (seen before BUT not today AND checkbox was checked)
+            // Logic: 
+            // 1. If never seen or closed without checkbox -> Show every reload? User asked for "popup or cookie".
+            // Let's make it: Show ONCE per session (browser close) usually, or "Don't show today" if checked.
+            // Simplified: Always show unless "Don't show today" was checked previously today.
+
+            if (lastSeen !== today) {
+                // Not seen today (or never seen)
+                setTimeout(() => {
+                    const modal = document.getElementById('devModal');
+                    const content = modal.querySelector('div');
+                    modal.classList.remove('opacity-0', 'invisible');
+                    content.classList.remove('scale-95');
+                    content.classList.add('scale-100');
+                }, 500);
+            }
+        });
+
+        function closeDevModal() {
+            const modal = document.getElementById('devModal');
+            const content = modal.querySelector('div');
+            const dontShow = document.getElementById('dontShowAgain').checked;
+
+            if (dontShow) {
+                localStorage.setItem('devModalSeenDate', new Date().toDateString());
+            }
+
+            modal.classList.add('opacity-0', 'invisible');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
         }
     </script>
 </body>

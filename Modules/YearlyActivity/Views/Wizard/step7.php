@@ -8,12 +8,12 @@
     </div>
 
     <!-- Summary Banner -->
-    <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 flex justify-between items-center px-8">
+    <div class="bg-red-50 p-4 rounded-xl border border-red-100 flex justify-between items-center px-8">
         <div>
-            <span class="text-indigo-600 text-sm font-bold uppercase tracking-wide">Total Estimated Cost</span>
+            <span class="text-primary text-sm font-bold uppercase tracking-wide">Total Estimated Cost</span>
         </div>
         <div>
-            <span class="text-2xl font-bold text-indigo-700" id="grand-total">฿0.00</span>
+            <span class="text-2xl font-bold text-red-700" id="grand-total">฿0.00</span>
         </div>
     </div>
 
@@ -38,26 +38,26 @@
             <input type="hidden" id="res-ms-id">
             <div>
                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Resource Name</label>
-                <input type="text" id="res-name" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-indigo-500" placeholder="e.g. Server Hosting, Venue Rental">
+                <input type="text" id="res-name" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-primary" placeholder="e.g. Server Hosting, Venue Rental">
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Quantity</label>
-                    <input type="number" id="res-qty" value="1" min="1" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-indigo-500">
+                    <input type="number" id="res-qty" value="1" min="1" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-primary">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Unit</label>
-                    <input type="text" id="res-unit" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-indigo-500" placeholder="e.g. Day, Hours, Pcs">
+                    <input type="text" id="res-unit" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-primary" placeholder="e.g. Day, Hours, Pcs">
                 </div>
             </div>
             <div>
                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Unit Cost (THB)</label>
-                <input type="number" id="res-cost" value="0" min="0" step="0.01" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-indigo-500">
+                <input type="number" id="res-cost" value="0" min="0" step="0.01" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-primary">
             </div>
         </div>
         <div class="p-4 bg-gray-50 rounded-b-2xl flex justify-end gap-2">
             <button type="button" onclick="closeResourceModal()" class="px-4 py-2 text-gray-500 hover:text-gray-700">Cancel</button>
-            <button type="button" onclick="saveResource()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Add Resource</button>
+            <button type="button" onclick="saveResource()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark">Add Resource</button>
         </div>
     </div>
 </div>
@@ -122,10 +122,10 @@
                 <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                     <div>
                         <h3 class="font-bold text-gray-800">${ms.name}</h3>
-                        <p class="text-xs text-gray-500">Subtotal: <span class="text-indigo-600 font-bold">฿${msTotal.toLocaleString()}</span></p>
+                        <p class="text-xs text-gray-500">Subtotal: <span class="text-primary font-bold">฿${msTotal.toLocaleString()}</span></p>
                     </div>
                     <button type="button" onclick="openResourceModal(${ms.id}, '${ms.name}')" 
-                        class="text-indigo-600 hover:bg-indigo-100 p-2 rounded-lg transition text-sm font-medium">
+                        class="text-primary hover:bg-red-100 p-2 rounded-lg transition text-sm font-medium">
                         <i class="ri-add-line mr-1"></i> Add Resource
                     </button>
                 </div>

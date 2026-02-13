@@ -28,7 +28,9 @@ class MaintenanceController extends DormBaseController
      */
     public function list()
     {
+        $this->requireAuth();
         $status = $_GET['status'] ?? null;
+
         $roomId = $_GET['room_id'] ?? null;
         $categoryId = $_GET['category_id'] ?? null;
         $priority = $_GET['priority'] ?? null;
@@ -112,14 +114,6 @@ class MaintenanceController extends DormBaseController
         ");
         $stmt->execute([$id]);
         $request['updates'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        // ดึงไฟล์แนบ
-        $stmt = $this->pdo->prepare("
-            SELECT * FROM dorm_maintenance_attachments 
-            WHERE request_id = ?
-        ");
-        $stmt->execute([$id]);
-        $request['attachments'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return $this->success(['request' => $request]);
     }
@@ -215,7 +209,7 @@ class MaintenanceController extends DormBaseController
                 $priorityColor = $priorityColors[$priority] ?? '#f59e0b';
                 $priorityName = $priorityNames[$priority] ?? 'ปานกลาง';
 
-                $subject = "🔧 แจ้งซ่อมใหม่ [{$priorityName}] - {$ticketNumber}";
+                $subject = "[แจ้งซ่อม] แจ้งซ่อมใหม่ [{$priorityName}] - {$ticketNumber}";
                 $body = "
                     <h2 style='color:#A21D21;'>มีการแจ้งซ่อมใหม่</h2>
                     <table style='width:100%; border-collapse:collapse;'>
@@ -360,6 +354,7 @@ class MaintenanceController extends DormBaseController
                     'cancelled' => 'ยกเลิก'
                 ];
                 $statusLabel = $statusLabels[$newStatus] ?? $newStatus;
+                $oldStatusLabel = $statusLabels[$oldStatus] ?? $oldStatus;
                 NotificationService::create(
                     $request['requester_id'],
                     in_array($newStatus, ['resolved', 'closed']) ? 'success' : 'info',
@@ -368,6 +363,87 @@ class MaintenanceController extends DormBaseController
                     [],
                     "Modules/Dormitory/?page=request_history"
                 );
+
+                // Send email notification to requester
+                try {
+                    require_once __DIR__ . '/../../../core/Services/EmailService.php';
+
+                    $requesterEmail = $request['requester_email'] ?? null;
+                    if (empty($requesterEmail)) {
+                        // Try to get email from users table
+                        $stmtUser = $this->pdo->prepare("SELECT email FROM users WHERE id = ?");
+                        $stmtUser->execute([$request['requester_id']]);
+                        $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
+                        $requesterEmail = $userRow['email'] ?? null;
+                    }
+
+                    if (!empty($requesterEmail) && filter_var($requesterEmail, FILTER_VALIDATE_EMAIL)) {
+                        // Get room info
+                        $roomInfo = 'ไม่ระบุ';
+                        if (!empty($request['room_id'])) {
+                            $stmtRoom = $this->pdo->prepare("
+                                SELECT CONCAT(b.code, r.room_number) as room 
+                                FROM dorm_rooms r 
+                                JOIN dorm_buildings b ON r.building_id = b.id 
+                                WHERE r.id = ?
+                            ");
+                            $stmtRoom->execute([$request['room_id']]);
+                            $roomResult = $stmtRoom->fetch(PDO::FETCH_ASSOC);
+                            $roomInfo = $roomResult['room'] ?? 'ไม่ระบุ';
+                        }
+
+                        $statusColors = [
+                            'open' => '#6b7280',
+                            'assigned' => '#3b82f6',
+                            'in_progress' => '#f59e0b',
+                            'pending_parts' => '#8b5cf6',
+                            'resolved' => '#10b981',
+                            'closed' => '#6b7280',
+                            'cancelled' => '#ef4444'
+                        ];
+                        $statusColor = $statusColors[$newStatus] ?? '#6b7280';
+                        $commentHtml = !empty($data['comment'])
+                            ? "<tr>
+                                <td style='padding:8px; border-bottom:1px solid #e5e7eb;'><strong>หมายเหตุ:</strong></td>
+                                <td style='padding:8px; border-bottom:1px solid #e5e7eb;'>" . htmlspecialchars($data['comment']) . "</td>
+                               </tr>"
+                            : '';
+
+                        $subject = "[แจ้งซ่อม] อัปเดตสถานะ {$request['ticket_number']} - {$statusLabel}";
+                        $body = "
+                            <h2 style='color:#A21D21;'>อัปเดตสถานะการแจ้งซ่อม</h2>
+                            <table style='width:100%; border-collapse:collapse;'>
+                                <tr>
+                                    <td style='padding:8px; border-bottom:1px solid #e5e7eb;'><strong>เลขที่:</strong></td>
+                                    <td style='padding:8px; border-bottom:1px solid #e5e7eb;'>{$request['ticket_number']}</td>
+                                </tr>
+                                <tr>
+                                    <td style='padding:8px; border-bottom:1px solid #e5e7eb;'><strong>หัวข้อ:</strong></td>
+                                    <td style='padding:8px; border-bottom:1px solid #e5e7eb;'>" . htmlspecialchars($request['title']) . "</td>
+                                </tr>
+                                <tr>
+                                    <td style='padding:8px; border-bottom:1px solid #e5e7eb;'><strong>ห้อง:</strong></td>
+                                    <td style='padding:8px; border-bottom:1px solid #e5e7eb;'>{$roomInfo}</td>
+                                </tr>
+                                <tr>
+                                    <td style='padding:8px; border-bottom:1px solid #e5e7eb;'><strong>สถานะเดิม:</strong></td>
+                                    <td style='padding:8px; border-bottom:1px solid #e5e7eb;'>{$oldStatusLabel}</td>
+                                </tr>
+                                <tr>
+                                    <td style='padding:8px; border-bottom:1px solid #e5e7eb;'><strong>สถานะใหม่:</strong></td>
+                                    <td style='padding:8px; border-bottom:1px solid #e5e7eb;'>
+                                        <span style='background:{$statusColor}; color:#fff; padding:4px 10px; border-radius:4px;'>{$statusLabel}</span>
+                                    </td>
+                                </tr>
+                                {$commentHtml}
+                            </table>
+                        ";
+
+                        EmailService::sendModuleEmail($requesterEmail, $subject, $body, $this->moduleId);
+                    }
+                } catch (Exception $emailError) {
+                    error_log('Maintenance status update email failed: ' . $emailError->getMessage());
+                }
             }
 
             return $this->success([], 'อัพเดทสถานะสำเร็จ');

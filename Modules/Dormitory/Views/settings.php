@@ -563,31 +563,11 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
     function renderEmailTags() {
         document.getElementById('adminEmailTags').innerHTML = adminEmails.length === 0 ?
             '<span class="text-gray-400 text-sm">ยังไม่มีอีเมลผู้ดูแล</span>' :
-            adminEmails.map((email, idx) => ` <
-                span class = "inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-sm text-gray-700" >
-                <
-                i class = "ri-mail-line text-primary" > < /i>
-                $ {
-                    email
-                } <
-                button class = "text-gray-400 hover:text-red-500"
-                onclick = "removeAdminEmail(${idx})" > & times; < /button> <
-                /span>
-                `).join('');
+            adminEmails.map((email, idx) => `<span class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-sm text-gray-700"><i class="ri-mail-line text-primary"></i>${email}<button class="text-gray-400 hover:text-red-500" onclick="removeAdminEmail(${idx})">&times;</button></span>`).join('');
 
         document.getElementById('ccEmailTags').innerHTML = ccEmails.length === 0 ?
             '<span class="text-gray-400 text-sm">ยังไม่มีอีเมล CC</span>' :
-            ccEmails.map((email, idx) => ` <
-                span class = "inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-sm text-gray-700" >
-                <
-                i class = "ri-mail-line text-info" > < /i>
-                $ {
-                    email
-                } <
-                button class = "text-gray-400 hover:text-red-500"
-                onclick = "removeCcEmail(${idx})" > & times; < /button> <
-                /span>
-                `).join('');
+            ccEmails.map((email, idx) => `<span class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-sm text-gray-700"><i class="ri-mail-line text-info"></i>${email}<button class="text-gray-400 hover:text-red-500" onclick="removeCcEmail(${idx})">&times;</button></span>`).join('');
     }
 
     async function searchAdminEmail(query) {
@@ -601,37 +581,38 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 
         searchTimeout = setTimeout(async () => {
             try {
-                const response = await fetch(`
-                $ {
-                    API_BASE.replace('/Dormitory/', '/CarBooking/')
-                } ? controller = bookings & action = searchEmployee & query = $ {
-                    encodeURIComponent(query)
-                }
-                `);
-                const data = await response.json();
+                const apiBase = API_BASE.replace('/Dormitory/', '/CarBooking/');
+                const [dbRes, msRes] = await Promise.all([
+                    fetch(`${apiBase}?controller=bookings&action=searchUsers&query=${encodeURIComponent(query)}`),
+                    fetch(`${apiBase}?controller=bookings&action=searchEmail&query=${encodeURIComponent(query)}`)
+                ]);
 
-                if (data.success && data.employees && data.employees.length > 0) {
-                    const filtered = data.employees.filter(emp => !adminEmails.includes(emp.email));
-                    resultsDiv.innerHTML = filtered.length > 0 ?
-                        filtered.map(emp => ` <
-                div class = "flex items-center gap-3 p-3 cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors"
-                onclick = 'addAdminEmail("${emp.email}", "${emp.name || emp.email}")' >
-                <
-                div class = "w-8 h-8 rounded-full bg-gradient-to-br from-primary to-red-500 flex items-center justify-center text-white text-xs font-medium" > $ {
-                    (emp.name || '?').charAt(0)
-                } < /div> <
-                div class = "flex-1 min-w-0" >
-                <
-                div class = "font-medium text-gray-900 truncate" > $ {
-                    emp.name || emp.email
-                } < /div> <
-                div class = "text-xs text-gray-500" > $ {
-                    emp.email
-                } < /div> <
-                /div> <
-                /div>`).join('') :
-                        '<div class="p-4 text-center text-gray-400">อีเมลทั้งหมดถูกเพิ่มแล้ว</div>';
-                    resultsDiv.classList.remove('hidden');
+                const dbData = await dbRes.json();
+                const msData = await msRes.json();
+
+                const allUsers = [
+                    ...(dbData.success ? dbData.users : []),
+                    ...(msData.success ? msData.users : [])
+                ];
+
+                if (allUsers.length > 0) {
+                    const filtered = allUsers.filter(emp => !adminEmails.includes(emp.email));
+                    if (filtered.length > 0) {
+                        resultsDiv.innerHTML = filtered.map(emp => `
+                            <div class="flex items-center gap-3 p-3 cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors" onclick='addAdminEmail("${emp.email}", "${emp.name || emp.email}")'>
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-red-500 flex items-center justify-center text-white text-xs font-medium">${(emp.name || '?').charAt(0)}</div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 truncate">${emp.name || emp.email}</div>
+                                    <div class="text-xs text-gray-500">${emp.email}</div>
+                                </div>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded ${emp.source === 'microsoft' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}">${emp.source === 'microsoft' ? 'MS' : 'DB'}</span>
+                            </div>
+                        `).join('');
+                        resultsDiv.classList.remove('hidden');
+                    } else {
+                        resultsDiv.innerHTML = '<div class="p-4 text-center text-gray-400">อีเมลทั้งหมดถูกเพิ่มแล้ว</div>';
+                        resultsDiv.classList.remove('hidden');
+                    }
                 } else {
                     resultsDiv.innerHTML = '<div class="p-4 text-center text-gray-400">ไม่พบข้อมูล</div>';
                     resultsDiv.classList.remove('hidden');
@@ -653,22 +634,38 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 
         searchTimeout = setTimeout(async () => {
             try {
-                const response = await fetch(`${API_BASE.replace('/Dormitory/', '/CarBooking/')}?controller=bookings&action=searchEmployee&query=${encodeURIComponent(query)}`);
-                const data = await response.json();
+                const apiBase = API_BASE.replace('/Dormitory/', '/CarBooking/');
+                const [dbRes, msRes] = await Promise.all([
+                    fetch(`${apiBase}?controller=bookings&action=searchUsers&query=${encodeURIComponent(query)}`),
+                    fetch(`${apiBase}?controller=bookings&action=searchEmail&query=${encodeURIComponent(query)}`)
+                ]);
 
-                if (data.success && data.employees && data.employees.length > 0) {
-                    const filtered = data.employees.filter(emp => !ccEmails.includes(emp.email));
-                    resultsDiv.innerHTML = filtered.length > 0 ?
-                        filtered.map(emp => `
+                const dbData = await dbRes.json();
+                const msData = await msRes.json();
+
+                const allUsers = [
+                    ...(dbData.success ? dbData.users : []),
+                    ...(msData.success ? msData.users : [])
+                ];
+
+                if (allUsers.length > 0) {
+                    const filtered = allUsers.filter(emp => !ccEmails.includes(emp.email));
+                    if (filtered.length > 0) {
+                        resultsDiv.innerHTML = filtered.map(emp => `
                             <div class="flex items-center gap-3 p-3 cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors" onclick='addCcEmail("${emp.email}", "${emp.name || emp.email}")'>
                                 <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-red-500 flex items-center justify-center text-white text-xs font-medium">${(emp.name || '?').charAt(0)}</div>
                                 <div class="flex-1 min-w-0">
                                     <div class="font-medium text-gray-900 truncate">${emp.name || emp.email}</div>
                                     <div class="text-xs text-gray-500">${emp.email}</div>
                                 </div>
-                            </div>`).join('') :
-                        '<div class="p-4 text-center text-gray-400">อีเมลทั้งหมดถูกเพิ่มแล้ว</div>';
-                    resultsDiv.classList.remove('hidden');
+                                <span class="text-[10px] px-1.5 py-0.5 rounded ${emp.source === 'microsoft' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}">${emp.source === 'microsoft' ? 'MS' : 'DB'}</span>
+                            </div>
+                        `).join('');
+                        resultsDiv.classList.remove('hidden');
+                    } else {
+                        resultsDiv.innerHTML = '<div class="p-4 text-center text-gray-400">อีเมลทั้งหมดถูกเพิ่มแล้ว</div>';
+                        resultsDiv.classList.remove('hidden');
+                    }
                 } else {
                     resultsDiv.innerHTML = '<div class="p-4 text-center text-gray-400">ไม่พบข้อมูล</div>';
                     resultsDiv.classList.remove('hidden');

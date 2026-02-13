@@ -27,7 +27,7 @@ if (session_status() === PHP_SESSION_NONE) {
     // Configure session cookie for Docker environment
     $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
         (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
-        $_SERVER['SERVER_PORT'] == 443;
+        (!empty($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
 
     session_set_cookie_params([
         'lifetime' => 0, // Session cookie
@@ -39,7 +39,7 @@ if (session_status() === PHP_SESSION_NONE) {
     ]);
 
     // Set additional session settings for reliability
-    ini_set('session.gc_maxlifetime', 7200); // 2 hours
+    ini_set('session.gc_maxlifetime', 28800); // 8 hours
     ini_set('session.gc_probability', 1);
     ini_set('session.gc_divisor', 100);
     ini_set('session.use_strict_mode', 1);

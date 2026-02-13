@@ -12,7 +12,7 @@
         <div class="relative">
             <i class="ri-map-pin-line absolute left-4 top-3.5 text-gray-400"></i>
             <input type="text" name="location" value="<?= htmlspecialchars($data['location'] ?? '') ?>"
-                class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+                class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition"
                 placeholder="e.g. Conference Room A, Zoom Meeting, Bangkok HQ">
         </div>
     </div>

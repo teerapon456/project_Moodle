@@ -2,9 +2,19 @@
 require_once 'BaseController.php';
 require_once __DIR__ . '/../../../core/Services/EmailService.php';
 require_once __DIR__ . '/../../../core/Services/NotificationService.php';
+require_once __DIR__ . '/../../../core/Helpers/UrlHelper.php';
+require_once __DIR__ . '/../Models/BookingModel.php';
 
 class BookingController extends DormBaseController
 {
+    private $bookingModel;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->bookingModel = new BookingModel($this->pdo);
+    }
+
     /**
      * Show User Request Form
      */
@@ -15,44 +25,21 @@ class BookingController extends DormBaseController
     {
         $this->requireAuth();
         $user = $this->user;
+        $userId = $user['id'];
 
         // Fetch Room Types for dropdown
-        $stmt = $this->pdo->query("SELECT * FROM dorm_room_types WHERE status = 'active'");
-        $roomTypes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $roomTypes = $this->bookingModel->getRoomTypes();
 
         // Check if user has current active room
-        $stmt = $this->pdo->prepare("
-            SELECT o.*, r.room_number, b.name as building_name 
-            FROM dorm_occupancies o
-            JOIN dorm_rooms r ON o.room_id = r.id
-            JOIN dorm_buildings b ON r.building_id = b.id
-            WHERE o.employee_id = ? AND o.status = 'active'
-        ");
-        $stmt->execute([$user['id']]);
-        $currentOccupancy = $stmt->fetch(PDO::FETCH_ASSOC);
+        $currentOccupancy = $this->bookingModel->getCurrentOccupancy($userId);
 
         // Fetch User's Request History
-        $stmt = $this->pdo->prepare("
-            SELECT * FROM dorm_reservations 
-            WHERE requester_id = ? 
-            ORDER BY created_at DESC
-        ");
-        $stmt->execute([$user['id']]);
-        $myRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $myRequests = $this->bookingModel->getUserReservations($userId);
 
-        // Fetch User's Maintenance History
         // Fetch Maintenance History (Active Room)
         $myMaintenanceRequests = [];
         if (!empty($currentOccupancy['room_id'])) {
-            $stmt = $this->pdo->prepare("
-                SELECT m.*, c.name as category_name 
-                FROM dorm_maintenance_requests m
-                LEFT JOIN dorm_maintenance_categories c ON m.category_id = c.id
-                WHERE m.room_id = ? 
-                ORDER BY m.created_at DESC
-            ");
-            $stmt->execute([$currentOccupancy['room_id']]);
-            $myMaintenanceRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $myMaintenanceRequests = $this->bookingModel->getMaintenanceRequestsByRoom($currentOccupancy['room_id']);
         }
 
         // Check for specific pending requests
@@ -84,24 +71,10 @@ class BookingController extends DormBaseController
         $user = $this->user;
 
         // Fetch User's Request History
-        $stmt = $this->pdo->prepare("
-            SELECT * FROM dorm_reservations 
-            WHERE requester_id = ? 
-            ORDER BY created_at DESC
-        ");
-        $stmt->execute([$user['id']]);
-        $myRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $myRequests = $this->bookingModel->getUserReservations($user['id']);
 
         // Fetch User's Maintenance History (by requester_id to show all history)
-        $stmt = $this->pdo->prepare("
-            SELECT m.*, c.name as category_name 
-            FROM dorm_maintenance_requests m
-            LEFT JOIN dorm_maintenance_categories c ON m.category_id = c.id
-            WHERE m.requester_id = ? 
-            ORDER BY m.created_at DESC
-        ");
-        $stmt->execute([$user['id']]);
-        $myMaintenanceRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $myMaintenanceRequests = $this->bookingModel->getMaintenanceRequestsByUser($user['id']);
 
         return compact('myRequests', 'myMaintenanceRequests');
     }
@@ -117,6 +90,9 @@ class BookingController extends DormBaseController
         require_once __DIR__ . '/../Views/booking_manage.php';
     }
 
+    /**
+     * API: Submit Request
+     */
     /**
      * API: Submit Request
      */
@@ -155,16 +131,12 @@ class BookingController extends DormBaseController
         // Server-side Validation for Move In
         if ($requestType === 'move_in') {
             // Check active occupancy
-            $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM dorm_occupancies WHERE employee_id = ? AND status = 'active'");
-            $stmt->execute([$userId]);
-            if ($stmt->fetchColumn() > 0) {
+            if ($this->bookingModel->hasActiveOccupancy($userId)) {
                 return $this->error('คุณมีห้องพักอยู่แล้ว ไม่สามารถขอเข้าพักใหม่ได้');
             }
 
             // Check pending request
-            $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM dorm_reservations WHERE requester_id = ? AND request_type = 'move_in' AND status = 'pending'");
-            $stmt->execute([$userId]);
-            if ($stmt->fetchColumn() > 0) {
+            if ($this->bookingModel->hasPendingRequest($userId, 'move_in')) {
                 return $this->error('คุณมีคำขอเข้าพักที่รอการอนุมัติอยู่แล้ว');
             }
         }
@@ -172,9 +144,7 @@ class BookingController extends DormBaseController
         // Server-side Validation for Move Out / Change Room / Add Relative / Remove Relative
         if (in_array($requestType, ['move_out', 'change_room', 'add_relative', 'remove_relative'])) {
             // Check active occupancy - must have a room for these actions
-            $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM dorm_occupancies WHERE employee_id = ? AND status = 'active'");
-            $stmt->execute([$userId]);
-            if ($stmt->fetchColumn() == 0) {
+            if (!$this->bookingModel->hasActiveOccupancy($userId)) {
                 return $this->error('คุณยังไม่มีห้องพัก ไม่สามารถดำเนินการนี้ได้');
             }
         }
@@ -207,6 +177,29 @@ class BookingController extends DormBaseController
         if ($requestType === 'add_relative' && !empty($input['add_relatives_json'])) {
             $relativesData = json_decode($input['add_relatives_json'], true);
             if (is_array($relativesData) && count($relativesData) > 0) {
+                // Check Capacity BEFORE accepting request
+                $occupancy = $this->bookingModel->getCurrentOccupancy($userId);
+                if ($occupancy) {
+                    require_once __DIR__ . '/../Services/RoomService.php';
+                    $roomService = new RoomService($this->pdo); // Just to reuse getRoom/count logic if public, or manual check
+                    // Manual check for efficiency
+                    $roomId = $occupancy['room_id'];
+                    $room = $this->bookingModel->getRoomById($roomId); // Need this method in model or use raw query
+                    if ($room) {
+                        // Get current occupants count
+                        // Quick query to count occupants in this room
+                        $stmt = $this->pdo->prepare("SELECT COALESCE(SUM(1 + COALESCE(accompanying_persons, 0)), 0) FROM dorm_occupancies WHERE room_id = ? AND status = 'active'");
+                        $stmt->execute([$roomId]);
+                        $currentCount = $stmt->fetchColumn();
+
+                        $addCount = count($relativesData);
+
+                        if (($currentCount + $addCount) > $room['capacity']) {
+                            return $this->error("ห้องพักของคุณเต็มแล้ว (ความจุ: {$room['capacity']}, ปัจจุบัน: $currentCount) ไม่สามารถเพิ่มญาติได้");
+                        }
+                    }
+                }
+
                 $hasRelative = 1;
                 $relativeDetails = $input['add_relatives_json'];
                 $relativesCount = count($relativesData);
@@ -219,40 +212,48 @@ class BookingController extends DormBaseController
 
         // File Uploads
         $documentPaths = [];
-        $uploadDir = __DIR__ . '/../../../public/uploads/dorm_docs/';
+        $uploadDir = __DIR__ . '/../public/uploads/dorm_docs/';
         if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
         $fileKeys = ['id_card', 'house_reg', 'marriage_cert', 'birth_cert', 'passport'];
         foreach ($fileKeys as $key) {
             if (isset($_FILES[$key]) && $_FILES[$key]['error'] === UPLOAD_ERR_OK) {
+                // Create sub-directory for this doc type
+                $typeDir = $uploadDir . $key . '/';
+                if (!is_dir($typeDir)) mkdir($typeDir, 0777, true);
+
                 $ext = pathinfo($_FILES[$key]['name'], PATHINFO_EXTENSION);
-                $filename = $userId . '_' . $key . '_' . time() . '.' . $ext;
-                if (move_uploaded_file($_FILES[$key]['tmp_name'], $uploadDir . $filename)) {
-                    $documentPaths[$key] = 'public/uploads/dorm_docs/' . $filename;
+
+                // Naming: Username_Date_DocType_Unique
+                $username = !empty($this->user['username']) ? $this->user['username'] : $userId;
+                $cleanName = preg_replace('/[^a-zA-Z0-9]/', '', $username);
+                $date = date('Y-m-d');
+                $unique = uniqid();
+
+                $filename = "{$cleanName}_{$date}_{$key}_{$unique}.{$ext}";
+
+                if (move_uploaded_file($_FILES[$key]['tmp_name'], $typeDir . $filename)) {
+                    // Store strict relative path (assumes public/ is webroot)
+                    // For Module assets, we need to prefix with Module name if serving via Modules path
+                    $documentPaths[$key] = 'Modules/Dormitory/public/uploads/dorm_docs/' . $key . '/' . $filename;
                 }
             }
         }
 
         // Insert into DB
         try {
-            $stmt = $this->pdo->prepare("
-                INSERT INTO dorm_reservations 
-                (requester_id, request_type, reason, room_type_preference, has_relative, relative_details, document_paths, check_in, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
-            ");
-            $stmt->execute([
-                $userId,
-                $requestType,
-                $reason,
-                $roomTypePref,
-                $hasRelative,
-                $relativeDetails,
-                json_encode($documentPaths, JSON_UNESCAPED_UNICODE),
-                $checkInDate
+            $requestId = $this->bookingModel->createReservation([
+                ':requester_id' => $userId,
+                ':request_type' => $requestType,
+                ':reason' => $reason,
+                ':room_type_preference' => $roomTypePref,
+                ':has_relative' => $hasRelative,
+                ':relative_details' => $relativeDetails,
+                ':document_paths' => json_encode($documentPaths, JSON_UNESCAPED_UNICODE),
+                ':check_in' => $checkInDate
             ]);
 
             // Send Email Notification
-            $requestId = $this->pdo->lastInsertId();
             $this->logAudit('create_request', 'dorm_reservation', $requestId);
             EmailService::sendDormRequestReceived($this->user['email'], $this->user['fullname'], $requestType);
 
@@ -292,21 +293,22 @@ class BookingController extends DormBaseController
         $this->requirePermission('manage');
 
         $status = $_GET['status'] ?? 'pending';
+        $requests = $this->bookingModel->getRequestsByStatus($status);
 
-        $sql = "
-            SELECT r.*, u.fullname, u.department, u.email, rt.name as room_type_name,
-                   ar.room_number as assigned_room_number, ab.name as assigned_building_name
-            FROM dorm_reservations r
-            JOIN users u ON r.requester_id = u.id
-            LEFT JOIN dorm_room_types rt ON r.room_type_preference = rt.id
-            LEFT JOIN dorm_rooms ar ON r.room_id = ar.id
-            LEFT JOIN dorm_buildings ab ON ar.building_id = ab.id
-            WHERE r.status = ?
-            ORDER BY r.created_at DESC
-        ";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$status]);
-        $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Enrich change_room and move_out requests with current occupancy relative data
+        foreach ($requests as &$req) {
+            if (in_array($req['request_type'], ['change_room', 'move_out'])) {
+                $occupancy = $this->bookingModel->getCurrentOccupancy($req['requester_id']);
+                if ($occupancy) {
+                    // Store occupancy relative info so admin can see it
+                    $req['occupancy_accompanying_persons'] = $occupancy['accompanying_persons'] ?? 0;
+                    $req['occupancy_accompanying_details'] = $occupancy['accompanying_details'] ?? null;
+                    $req['current_room_number'] = $occupancy['room_number'] ?? '';
+                    $req['current_building_name'] = $occupancy['building_name'] ?? '';
+                }
+            }
+        }
+        unset($req);
 
         return $this->success(['requests' => $requests]);
     }
@@ -320,25 +322,7 @@ class BookingController extends DormBaseController
             $this->requireAuth();
             $this->requirePermission('manage');
 
-            $sql = "
-                SELECT r.id, r.room_number, r.status, r.room_type as type, b.name as building_name, r.capacity,
-                       (SELECT COUNT(*) FROM dorm_occupancies o WHERE o.room_id = r.id AND o.status = 'active') as current_occupants
-                FROM dorm_rooms r
-                JOIN dorm_buildings b ON r.building_id = b.id
-                WHERE r.status != 'maintenance'
-                ORDER BY b.name, r.room_number
-            ";
-            $stmt = $this->pdo->query($sql);
-            $allRooms = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Filter for available spots
-            $availableRooms = [];
-            foreach ($allRooms as $room) {
-                if ($room['current_occupants'] < $room['capacity']) {
-                    $room['free_spots'] = $room['capacity'] - $room['current_occupants'];
-                    $availableRooms[] = $room;
-                }
-            }
+            $availableRooms = $this->bookingModel->getAvailableRooms();
 
             return $this->success(['data' => $availableRooms]);
         } catch (Exception $e) {
@@ -349,13 +333,16 @@ class BookingController extends DormBaseController
     /**
      * API: Approve Request
      */
+    /**
+     * API: Approve Request
+     */
     public function approve($input)
     {
         $this->requireAuth();
         $this->requirePermission('manage');
 
         $requestId = $input['id'];
-        $roomId = $input['room_id'];
+        $roomId = !empty($input['room_id']) ? $input['room_id'] : null;
         $keyDate = $input['key_pickup_date'];
         $adminRemark = $input['admin_remark'] ?? '';
 
@@ -363,9 +350,7 @@ class BookingController extends DormBaseController
             $this->pdo->beginTransaction();
 
             // Check current status first
-            $stmt = $this->pdo->prepare("SELECT status FROM dorm_reservations WHERE id = ?");
-            $stmt->execute([$requestId]);
-            $currentStatus = $stmt->fetchColumn();
+            $currentStatus = $this->bookingModel->getReservationById($requestId)['status'] ?? null;
 
             if ($currentStatus !== 'pending') {
                 $this->pdo->rollBack();
@@ -373,17 +358,10 @@ class BookingController extends DormBaseController
             }
 
             // Update Reservation
-            $stmt = $this->pdo->prepare("
-                UPDATE dorm_reservations 
-                SET status = 'approved', room_id = ?, key_pickup_date = ?, admin_remark = ?, approver_id = ?, approved_at = NOW(), check_out = NULL
-                WHERE id = ?
-            ");
-            $stmt->execute([$roomId, $keyDate, $adminRemark, $this->user['id'], $requestId]);
+            $this->bookingModel->approveReservation($requestId, $roomId, $keyDate, $adminRemark, $this->user['id']);
 
             // Get Request Details for Email
-            $stmt = $this->pdo->prepare("SELECT r.*, u.email, u.fullname FROM dorm_reservations r JOIN users u ON r.requester_id = u.id WHERE r.id = ?");
-            $stmt->execute([$requestId]);
-            $request = $stmt->fetch(PDO::FETCH_ASSOC);
+            $request = $this->bookingModel->getReservationWithUser($requestId);
 
             // If Move In -> Create Occupancy using RoomService
             if ($request['request_type'] == 'move_in') {
@@ -417,6 +395,106 @@ class BookingController extends DormBaseController
                     $this->pdo->rollBack();
                     return $this->error($e->getMessage());
                 }
+            } elseif ($request['request_type'] == 'move_out') {
+                // ... (Existing Move Out Logic) ...
+                require_once __DIR__ . '/../Services/RoomService.php';
+                $roomService = new RoomService($this->pdo);
+
+                // Find active occupancy for this user
+                $occupancy = $this->bookingModel->getCurrentOccupancy($request['requester_id']);
+
+                if (!$occupancy) {
+                    // Fallback
+                    $stmt = $this->pdo->prepare("SELECT * FROM dorm_occupancies WHERE employee_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1");
+                    $stmt->execute([$request['requester_id']]);
+                    $occupancy = $stmt->fetch(PDO::FETCH_ASSOC);
+                }
+
+                if ($occupancy) {
+                    try {
+                        $roomService->checkOut($occupancy['id'], $keyDate);
+                    } catch (Exception $e) {
+                        $this->pdo->rollBack();
+                        return $this->error('CheckOut Error: ' . $e->getMessage());
+                    }
+                } else {
+                    $this->pdo->rollBack();
+                    return $this->error("ไม่พบข้อมูลการเข้าพักปัจจุบันของผู้ใช้นี้ - ไม่สามารถดำเนินการย้ายออกได้");
+                }
+            } elseif ($request['request_type'] == 'change_room') {
+                // Change Room Logic
+                require_once __DIR__ . '/../Services/RoomService.php';
+                $roomService = new RoomService($this->pdo);
+
+                $occupancy = $this->bookingModel->getCurrentOccupancy($request['requester_id']);
+                if (!$occupancy) {
+                    // Fallback
+                    $stmt = $this->pdo->prepare("SELECT * FROM dorm_occupancies WHERE employee_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1");
+                    $stmt->execute([$request['requester_id']]);
+                    $occupancy = $stmt->fetch(PDO::FETCH_ASSOC);
+                }
+
+                if ($occupancy) {
+                    try {
+                        // Change Room (Move user + existing relatives)
+                        // If request has NEW relative details, we might need to merge or replace?
+                        // User requirement: "Take relatives with them". changeRoom service method copies existing data.
+                        // If they wanted to add/remove relatives during move, they should have done add/remove request? 
+                        // Or maybe change_room form allows updating relatives? 
+                        // Assuming standard "move everyone" for now as per `changeRoom` implementation.
+                        $roomService->changeRoom($occupancy['id'], $roomId, $keyDate, $this->user['id']);
+                    } catch (Exception $e) {
+                        $this->pdo->rollBack();
+                        return $this->error('ChangeRoom Error: ' . $e->getMessage());
+                    }
+                } else {
+                    $this->pdo->rollBack();
+                    return $this->error("ไม่พบข้อมูลการเข้าพักปัจจุบัน - ไม่สามารถย้ายห้องได้");
+                }
+            } elseif ($request['request_type'] == 'add_relative') {
+                // Add Relative Logic
+                require_once __DIR__ . '/../Services/RoomService.php';
+                $roomService = new RoomService($this->pdo);
+
+                $occupancy = $this->bookingModel->getCurrentOccupancy($request['requester_id']);
+                if (!$occupancy) {
+                    // Fallback
+                    $stmt = $this->pdo->prepare("SELECT * FROM dorm_occupancies WHERE employee_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1");
+                    $stmt->execute([$request['requester_id']]);
+                    $occupancy = $stmt->fetch(PDO::FETCH_ASSOC);
+                }
+
+                if ($occupancy) {
+                    try {
+                        // Update Room ID to current room (since we don't select new room)
+                        $roomId = $occupancy['room_id'];
+                        // Update reservation record to reflect the actual room used (current room)
+                        // We need to re-execute the update statement in approveReservation? 
+                        // Actually approveReservation updates room_id. We should pass the current room id to it.
+                        // But wait, approveReservation is caled BEFORE this block at line 308.
+                        // So at line 308, $roomId must be set correctly.
+                        // Logic fix: For add_relative, client might send empty room_id. We must fetch current room ID BEFORE line 308?
+                        // OR: We update it again here? 
+                        // Better: In the beginning of `approve` method, if type is add_relative, force $roomId = current_occupancy_room_id.
+
+                        // But wait, if I change it here, line 308 already ran.
+                        // I'll update lines 308 execution flow in a separate edit if needed, or just update it again here manually? 
+                        // Actually, let's just use `addRelative` service. `approveReservation` stores the decision. 
+                        // If `approveReservation` stored NULL or empty for valid `add_relative`, it's messy but not fatal for the `dorm_reservations` table (just log).
+                        // The critical part is `dorm_occupancies`.
+
+                        $roomService->addRelative($occupancy['id'], $request['relative_details']);
+
+                        // Fix the reservation record to show correct room
+                        $this->bookingModel->approveReservation($requestId, $roomId, $keyDate, $adminRemark, $this->user['id']);
+                    } catch (Exception $e) {
+                        $this->pdo->rollBack();
+                        return $this->error('AddRelative Error: ' . $e->getMessage());
+                    }
+                } else {
+                    $this->pdo->rollBack();
+                    return $this->error("ไม่พบข้อมูลการเข้าพักปัจจุบัน - ไม่สามารถเพิ่มญาติได้");
+                }
             }
 
             $this->pdo->commit();
@@ -441,7 +519,7 @@ class BookingController extends DormBaseController
                     'อนุมัติคำขอหอพักแล้ว',
                     $request['request_type'] == 'move_in' ? 'คำขอเข้าพักได้รับการอนุมัติ กรุณารับกุญแจ ' . $keyDate : 'คำขอย้ายออกได้รับการอนุมัติ',
                     ['request_id' => $requestId],
-                    '/dormitory?view=my-room'
+                    \Core\Helpers\UrlHelper::getBaseUrl() . '/Modules/Dormitory/?page=my-room'
                 );
             } catch (Exception $notifEx) {
                 error_log("Notification failed: " . $notifEx->getMessage());
@@ -471,21 +549,15 @@ class BookingController extends DormBaseController
             $this->pdo->beginTransaction();
 
             // Check status (Lock row)
-            $stmt = $this->pdo->prepare("SELECT status FROM dorm_reservations WHERE id = ? FOR UPDATE");
-            $stmt->execute([$requestId]);
-            $currentStatus = $stmt->fetchColumn();
+            $reservation = $this->bookingModel->getReservationById($requestId, true);
+            $currentStatus = $reservation['status'] ?? null;
 
             if ($currentStatus !== 'pending') {
                 $this->pdo->rollBack();
                 return $this->error('คำขอนี้ถูกดำเนินการไปแล้ว');
             }
 
-            $stmt = $this->pdo->prepare("
-                UPDATE dorm_reservations 
-                SET status = 'rejected', cancel_reason = ?, approver_id = ?, approved_at = NOW()
-                WHERE id = ?
-            ");
-            $stmt->execute([$reason, $this->user['id'], $requestId]);
+            $this->bookingModel->updateStatus($requestId, 'rejected', $reason, $this->user['id']);
 
             $this->pdo->commit();
         } catch (Exception $e) {
@@ -494,9 +566,7 @@ class BookingController extends DormBaseController
         }
 
         // Email (After commit)
-        $stmt = $this->pdo->prepare("SELECT r.*, u.email, u.fullname FROM dorm_reservations r JOIN users u ON r.requester_id = u.id WHERE r.id = ?");
-        $stmt->execute([$requestId]);
-        $request = $stmt->fetch(PDO::FETCH_ASSOC);
+        $request = $this->bookingModel->getReservationWithUser($requestId);
 
         if ($request) {
             EmailService::sendDormRequestRejected($request['email'], $request['fullname'], $request['request_type'], $reason);
@@ -513,7 +583,7 @@ class BookingController extends DormBaseController
                 'คำขอหอพักถูกปฏิเสธ',
                 'คำขอ' . ($request['request_type'] == 'move_in' ? 'เข้าพัก' : 'ย้ายออก') . 'ถูกปฏิเสธ: ' . mb_substr($reason, 0, 50),
                 ['request_id' => $requestId],
-                '/dormitory?view=booking_form'
+                \Core\Helpers\UrlHelper::getBaseUrl() . '/Modules/Dormitory/?page=booking_form'
             );
         }
 
@@ -538,9 +608,7 @@ class BookingController extends DormBaseController
             $this->pdo->beginTransaction();
 
             // Check Ownership & Status
-            $stmt = $this->pdo->prepare("SELECT * FROM dorm_reservations WHERE id = ? FOR UPDATE");
-            $stmt->execute([$requestId]);
-            $request = $stmt->fetch(PDO::FETCH_ASSOC);
+            $request = $this->bookingModel->getReservationById($requestId, true);
 
             if (!$request) {
                 $this->pdo->rollBack();
@@ -548,9 +616,6 @@ class BookingController extends DormBaseController
             }
 
             // Must be owner OR Admin
-            // If user is admin/manager, they might want to "Revoke" (handled separately or allow here?)
-            // For now, restrict to Owner for consistency with "User Cancel".
-            // Adding Admin override capability just in case.
             $isOwner = $request['requester_id'] == $this->user['id'];
             $isAdmin = $this->hasPermission('manage'); // Check if user has manage permission loosely
 
@@ -565,12 +630,7 @@ class BookingController extends DormBaseController
             }
 
             // Update Status
-            $stmt = $this->pdo->prepare("
-                UPDATE dorm_reservations 
-                SET status = 'cancelled', cancel_reason = ?, updated_at = NOW()
-                WHERE id = ?
-            ");
-            $stmt->execute([$reason, $requestId]);
+            $this->bookingModel->updateStatus($requestId, 'cancelled', $reason);
 
             $this->pdo->commit();
 

@@ -77,28 +77,34 @@ if (!$canView) {
 }
 
 
-// Valid pages based on role
-$managerPages = ['dashboard', 'bookings', 'manage', 'in-use', 'cars', 'fleet-cards', 'reports', 'calendar', 'settings', 'audit-log'];
-$userPages = ['dashboard', 'bookings', 'calendar'];
-$validPages = $canManage ? $managerPages : $userPages;
-
-if (!in_array($page, $validPages)) {
-    $page = 'dashboard';
-}
-
-// Refresh supervisor email from DB (reusing $pdo)
+// Refresh supervisor email and check level from DB (reusing $pdo)
 // Note: Session is already closed, only update local $user variable
+$canApprove = false;
 try {
     if ($user && !empty($user['id']) && $pdo) {
-        $stmtTmp = $pdo->prepare("SELECT default_supervisor_email FROM users WHERE id = :uid LIMIT 1");
+        $stmtTmp = $pdo->prepare("SELECT default_supervisor_email, emplevel_id FROM users WHERE id = :uid LIMIT 1");
         $stmtTmp->execute([':uid' => $user['id']]);
-        $refEmail = $stmtTmp->fetchColumn();
-        if ($refEmail) {
-            $user['default_supervisor_email'] = $refEmail;
+        $row = $stmtTmp->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            if (!empty($row['default_supervisor_email'])) {
+                $user['default_supervisor_email'] = $row['default_supervisor_email'];
+            }
+            // L06 = emplevel_id 7, show approval tab for L06+
+            $canApprove = !empty($row['emplevel_id']) && (int)$row['emplevel_id'] >= 7;
         }
     }
 } catch (Exception $e) {
     // ignore
+}
+
+// Valid pages based on role
+$managerPages = ['dashboard', 'bookings', 'manage', 'in-use', 'cars', 'fleet-cards', 'reports', 'calendar', 'settings', 'audit-log'];
+$userPages = ['dashboard', 'bookings', 'calendar'];
+if ($canApprove) $userPages[] = 'manage';
+$validPages = $canManage ? $managerPages : $userPages;
+
+if (!in_array($page, $validPages)) {
+    $page = 'dashboard';
 }
 ?>
 <!DOCTYPE html>
@@ -300,6 +306,15 @@ try {
                     </a>
                 </li>
 
+                <?php if ($canApprove && !$canManage): ?>
+                    <li>
+                        <a href="?page=manage" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors <?= $page === 'manage' ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100' ?>">
+                            <i class="ri-checkbox-circle-line text-lg"></i>
+                            <span class="sidebar-text">คำขออนุมัติ</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
                 <?php if ($canManage): ?>
                     <li class="nav-section pt-4 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">จัดการระบบ</li>
                     <li>
@@ -359,9 +374,9 @@ try {
                     <div class="text-xs text-gray-500"><?= $canManage ? 'ผู้จัดการ' : 'พนักงาน' ?></div>
                 </div>
             </div>
-            <a href="<?= $assetBase ?>index.php" class="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-lg text-sm transition-colors">
+            <a href="<?= $basePath ?>/Modules/HRServices/public/index.php" class="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-lg text-sm transition-colors">
                 <i class="ri-arrow-left-line"></i>
-                <span class="sidebar-text">กลับหน้าหลัก</span>
+                <span class="sidebar-text">กลับสู่ระบบหลัก</span>
             </a>
         </div>
     </aside>
@@ -380,7 +395,7 @@ try {
                         'dashboard' => 'หน้าหลัก',
                         'bookings' => 'รายการคำขอ',
                         'calendar' => 'ปฏิทิน',
-                        'manage' => 'อนุมัติคำขอ',
+                        'manage' => ($canManage ? 'อนุมัติคำขอ' : 'คำขออนุมัติ'),
                         'in-use' => 'รถที่ยังไม่คืน',
                         'cars' => 'จัดการรถ',
                         'fleet-cards' => 'Fleet Card',

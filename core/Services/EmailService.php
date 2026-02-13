@@ -385,9 +385,9 @@ class EmailService
     {
         $baseUrl = Env::getBaseUrl();
         // Point to CarBooking approval endpoint (in public folder)
-        $reviewUrl = $baseUrl . "/public/approval.php?token=$token";
+        $reviewUrl = $baseUrl . "/Modules/CarBooking/public/approval.php?token=$token";
 
-        $userName = !empty($booking['user_fullname']) ? $booking['user_fullname'] : $booking['user_name'];
+        $userName = $booking['user_fullname'] ?? $booking['fullname'] ?? $booking['username'] ?? 'Unknown User';
         $department = !empty($booking['user_department']) ? " - {$booking['user_department']}" : "";
         $subject = "การขออนุมัติการจองรถ - {$userName}{$department}";
 
@@ -434,7 +434,7 @@ class EmailService
             return false;
         }
 
-        $userName = !empty($booking['user_fullname']) ? $booking['user_fullname'] : $booking['user_name'];
+        $userName = $booking['user_fullname'] ?? $booking['fullname'] ?? $booking['username'] ?? 'Unknown User';
         $department = !empty($booking['user_department']) ? " - {$booking['user_department']}" : "";
         $subject = "คำขอจองรถใหม่ - {$userName}{$department}";
 

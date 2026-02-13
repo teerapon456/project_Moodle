@@ -140,16 +140,16 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                 @apply inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 border;
             }
             .btn-edit {
-                @apply border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300;
+                @apply border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-colors;
             }
             .btn-danger {
-                @apply border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300;
+                @apply border-transparent bg-red-600 hover:bg-red-700 text-white transition-colors shadow-sm;
             }
             .btn-primary {
-                @apply border-transparent bg-primary text-white hover:bg-primary-dark shadow-sm;
+                @apply border-transparent bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors;
             }
             .btn-secondary {
-                @apply border-gray-300 bg-white text-gray-700 hover:bg-gray-50;
+                @apply border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors;
             }
             .btn-success {
                 @apply border-transparent bg-green-600 text-white hover:bg-green-700 shadow-sm;
@@ -158,16 +158,16 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                 @apply bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden;
             }
             .form-input {
-                @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm px-3 py-2;
+                @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-sm px-3 py-2 transition-all;
             }
             .form-select {
-                @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm px-3 py-2;
+                @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-sm px-3 py-2 transition-all;
             }
             .tab-btn {
                 @apply px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 flex items-center gap-2;
             }
             .tab-btn.active {
-                @apply bg-primary text-white shadow-sm;
+                @apply bg-blue-600 text-white shadow-sm;
             }
             .tab-btn:not(.active) {
                 @apply text-gray-600 hover:bg-gray-100;
@@ -434,112 +434,82 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                 <!-- Sync Settings Tab -->
                 <div id="tab-sync-settings" class="tab-panel hidden animate-fade-in" data-tab="sync-settings">
                     <?php if (!empty($canManage)): ?>
-                        <div class="max-w-4xl mx-auto space-y-6">
+                        <div class="max-w-5xl mx-auto mt-10 px-4">
 
-                            <!-- Main Settings Card -->
-                            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                                <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                                    <h3 class="text-xl font-bold text-gray-900 flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600">
-                                            <i class="ri-settings-4-line text-xl"></i>
+                            <!-- Header & Toggle -->
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 pb-6 border-b border-gray-100">
+                                <div>
+                                    <h3 class="text-xl font-bold text-gray-900">Auto Sync Settings</h3>
+                                    <p class="text-gray-500 mt-1">Configure daily automatic synchronization schedule.</p>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-sm font-medium text-gray-700">Enable Auto Sync</span>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" name="auto_sync_enabled" id="auto_sync_enabled" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <form id="sync-settings-form" class="space-y-8">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <!-- Time Picker -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Sync Time</label>
+                                        <div class="relative">
+                                            <input type="time" name="auto_sync_time" id="auto_sync_time" class="block w-full pl-11 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 shadow-sm transition-colors text-gray-900 bg-white" value="02:00">
+                                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                                <i class="ri-time-line text-lg"></i>
+                                            </div>
                                         </div>
-                                        การตั้งค่า Auto Sync
-                                    </h3>
-                                    <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-600">
-                                        <i class="ri-server-line"></i> Server Config
+                                        <p class="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
+                                            <i class="ri-information-line"></i> Daily execution time (Server Time)
+                                        </p>
+                                    </div>
+
+                                    <!-- Email Notification -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Notification Email <span class="text-gray-400 font-normal">(Optional)</span></label>
+                                        <div class="relative">
+                                            <input type="email" name="notification_email" id="notification_email" class="block w-full pl-11 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 shadow-sm transition-colors text-gray-900 bg-white" placeholder="admin@example.com">
+                                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                                <i class="ri-mail-line text-lg"></i>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div class="p-8">
-                                    <form id="sync-settings-form" class="space-y-8">
-                                        <!-- Auto Sync Toggle -->
-                                        <div class="flex items-start justify-between group">
-                                            <div class="flex gap-4">
-                                                <div class="pt-1">
-                                                    <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
-                                                        <i class="ri-refresh-line text-xl"></i>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label class="text-base font-semibold text-gray-900 block mb-1">เปิดใช้งาน Auto Sync</label>
-                                                    <div class="text-sm text-gray-500 leading-relaxed max-w-md">
-                                                        ระบบจะทำการ Sync ข้อมูลพนักงานโดยอัตโนมัติทุกวันตามเวลาที่กำหนด
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Modern Toggle -->
-                                            <label class="relative inline-flex items-center cursor-pointer mt-2">
-                                                <input type="checkbox" name="auto_sync_enabled" id="auto_sync_enabled" class="sr-only peer">
-                                                <div class="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-500"></div>
-                                            </label>
-                                        </div>
-
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            <!-- Time Picker -->
-                                            <div>
-                                                <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                                    เวลาที่ต้องการ Sync
-                                                    <span class="text-xs font-normal text-gray-500 ml-1">(ทุกวัน)</span>
-                                                </label>
-                                                <div class="relative group">
-                                                    <input type="time" name="auto_sync_time" id="auto_sync_time" class="block w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium text-gray-900" value="02:00">
-                                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-hover:text-emerald-500 transition-colors">
-                                                        <i class="ri-time-line text-lg"></i>
-                                                    </div>
-                                                </div>
-                                                <p class="mt-2 text-xs text-gray-500 flex items-center gap-1">
-                                                    <i class="ri-lightbulb-line text-orange-400"></i>
-                                                    แนะนำช่วงเวลา 01:00 - 04:00 (Off-peak hours)
-                                                </p>
-                                            </div>
-
-                                            <!-- Email Notification -->
-                                            <div>
-                                                <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                                    อีเมลแจ้งเตือน
-                                                    <span class="text-xs font-normal text-gray-500 ml-1">(Optional)</span>
-                                                </label>
-                                                <div class="relative group">
-                                                    <input type="email" name="notification_email" id="notification_email" class="block w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-900" placeholder="admin@example.com">
-                                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-hover:text-blue-500 transition-colors">
-                                                        <i class="ri-mail-line text-lg"></i>
-                                                    </div>
-                                                </div>
-                                                <p class="mt-2 text-xs text-gray-500">รับการแจ้งเตือนเฉพาะกรณีที่เกิดข้อผิดพลาด</p>
-                                            </div>
-                                        </div>
-
-                                        <!-- Save Button -->
-                                        <div class="pt-6 border-t border-gray-100 flex justify-end">
-                                            <button type="submit" class="bg-gray-900 hover:bg-black text-white px-8 py-3 rounded-xl flex items-center gap-2 shadow-lg shadow-gray-200 hover:shadow-xl transition-all transform active:scale-95 font-medium">
-                                                <i class="ri-save-line"></i>
-                                                บันทึกการตั้งค่า
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-
-                            <!-- Cron Info -->
-                            <div class="bg-slate-800 rounded-2xl p-6 shadow-md border border-slate-700 overflow-hidden relative">
-                                <div class="absolute top-0 right-0 p-4 opacity-10">
-                                    <i class="ri-terminal-box-line text-6xl text-white"></i>
-                                </div>
-                                <h5 class="text-slate-200 font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wider">
-                                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                                    Server Setup Instructions
-                                </h5>
-                                <p class="text-slate-400 text-sm mb-4">หากตั้งค่าแล้ว Auto Sync ไม่ทำงาน ให้ตรวจสอบ Cron Job ที่ฝั่ง Server:</p>
-                                <div class="bg-black/50 p-4 rounded-xl border border-slate-700/50 backdrop-blur-sm group relative">
-                                    <code class="font-mono text-emerald-400 text-sm break-all leading-relaxed">
-                                        * * * * * docker exec myhr-portal-dev php /var/www/html/Modules/PermissionManagement/public/sync_users.php action=auto_run >> /dev/null 2>&1
-                                    </code>
-                                    <button onclick="navigator.clipboard.writeText(this.previousElementSibling.innerText.trim());" class="absolute top-2 right-2 p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors opacity-0 group-hover:opacity-100" title="Copy to clipboard">
-                                        <i class="ri-file-copy-line"></i>
+                                <div class="pt-4 flex justify-end">
+                                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all font-medium">
+                                        <i class="ri-save-line"></i> Save Configuration
                                     </button>
                                 </div>
+                            </form>
+
+                            <hr class="my-10 border-gray-100">
+
+                            <!-- Cron Info -->
+                            <div>
+                                <h4 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                    <i class="ri-terminal-box-line text-gray-500"></i>
+                                    Server Cron Config
+                                </h4>
+                                <div class="bg-slate-900 rounded-xl p-6 shadow-md relative overflow-hidden group">
+                                    <div class="absolute top-0 right-0 p-4 opacity-10">
+                                        <i class="ri-command-line text-6xl text-white"></i>
+                                    </div>
+                                    <p class="text-slate-400 text-sm mb-4">If auto sync is not running, please check your server cron job:</p>
+                                    <div class="bg-black/50 p-4 rounded-lg border border-slate-700 flex items-start gap-4">
+                                        <code class="font-mono text-emerald-400 text-sm break-all flex-1">
+                                            * * * * * docker exec myhr-portal-dev php /var/www/html/Modules/PermissionManagement/public/sync_users.php action=auto_run >> /dev/null 2>&1
+                                        </code>
+                                        <button onclick="navigator.clipboard.writeText(this.previousElementSibling.innerText.trim()); Swal.fire({icon: 'success', title: 'Copied', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000});" class="text-slate-400 hover:text-white transition-colors" title="Copy">
+                                            <i class="ri-file-copy-line"></i>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
+
                         </div>
                     <?php else: ?>
                         <div class="p-12 text-center text-gray-500">Access Denied</div>
@@ -707,7 +677,21 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
         const API_BASE_URL = BASE_PATH + '/routes.php';
         const CAN_EDIT = <?= !empty($canEdit) ? 'true' : 'false' ?>;
         const CAN_MANAGE = <?= !empty($canManage) ? 'true' : 'false' ?>;
-        const LOGIN_URL = '<?= $linkBase ?>public/index.php'; // Use linkBase from PHP
+        const LOGIN_URL = '<?= $linkBase ?>'; // Go to root
+
+        // Polyfill notify
+        if (!window.notify) {
+            window.notify = function(msg, type = 'info') {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: type,
+                    title: msg,
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            };
+        }
 
         async function logout() {
             try {
@@ -1243,11 +1227,11 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
             modal.className = 'fixed inset-0 z-50 flex items-center justify-center hidden';
             modal.id = 'role-modal';
             modal.innerHTML = `
-                    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" id="role-modal-overlay"></div>
-                    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl transform transition-all z-10 m-4 overflow-hidden flex flex-col max-h-[90vh]">
+                    <div class="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" id="role-modal-overlay"></div>
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl transform transition-all z-10 m-4 overflow-hidden flex flex-col max-h-[90vh]">
                         <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-20">
                             <h3 class="text-2xl font-bold text-gray-800 flex items-center gap-4">
-                                <div class="w-12 h-12 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100">
+                                <div class="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
                                     <i class="ri-shield-star-line text-2xl"></i>
                                 </div>
                                 <div class="flex flex-col">
@@ -1312,8 +1296,8 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                         </div>
 
                         <div class="px-8 py-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 sticky bottom-0 z-20">
-                            <button class="px-6 py-3 rounded-md border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 hover:text-gray-900 transition-colors focus:ring-2 focus:ring-gray-200" id="role-modal-cancel">ยกเลิก</button>
-                            <button class="px-6 py-3 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700 shadow-sm shadow-indigo-200 transition-all transform hover:-translate-y-0.5 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 flex items-center gap-2" id="role-modal-save">
+                            <button class="px-6 py-3 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors" id="role-modal-cancel">ยกเลิก</button>
+                            <button class="px-6 py-3 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 shadow-sm transition-all transform hover:-translate-y-0.5 flex items-center gap-2" id="role-modal-save">
                                 <i class="ri-save-line text-lg"></i> บันทึก
                             </button>
                         </div>
@@ -1392,8 +1376,8 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
             modal.className = 'fixed inset-0 z-50 flex items-center justify-center hidden';
             modal.id = 'user-modal';
             modal.innerHTML = `
-                    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" id="user-modal-overlay"></div>
-                    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl transform transition-all z-10 m-4 overflow-hidden flex flex-col max-h-[90vh]">
+                    <div class="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" id="user-modal-overlay"></div>
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl transform transition-all z-10 m-4 overflow-hidden flex flex-col max-h-[90vh]">
                         <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-20">
                             <h3 class="text-2xl font-bold text-gray-800 flex items-center gap-4">
                                 <div class="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
@@ -1474,8 +1458,8 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                         </div>
 
                         <div class="px-8 py-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 sticky bottom-0 z-20">
-                            <button class="px-6 py-3 rounded-md border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 hover:text-gray-900 transition-colors focus:ring-2 focus:ring-gray-200" id="user-modal-cancel">ยกเลิก</button>
-                            <button class="px-6 py-3 rounded-md bg-blue-600 text-white font-medium hover:bg-blue-700 shadow-sm shadow-blue-200 transition-all transform hover:-translate-y-0.5 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex items-center gap-2" id="user-modal-save">
+                            <button class="px-6 py-3 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors" id="user-modal-cancel">ยกเลิก</button>
+                            <button class="px-6 py-3 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 shadow-sm transition-all transform hover:-translate-y-0.5 flex items-center gap-2" id="user-modal-save">
                                 <i class="ri-save-line text-lg"></i> บันทึกการเปลี่ยนแปลง
                             </button>
                         </div>
@@ -1564,11 +1548,11 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                 modal.className = 'fixed inset-0 z-50 flex items-center justify-center hidden';
                 modal.id = 'add-user-modal';
                 modal.innerHTML = `
-                    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" id="add-user-modal-overlay"></div>
-                    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl transform transition-all z-10 m-4 overflow-hidden flex flex-col max-h-[90vh]">
+                    <div class="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" id="add-user-modal-overlay"></div>
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl transform transition-all z-10 m-4 overflow-hidden flex flex-col max-h-[90vh]">
                         <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-20">
                             <h3 class="text-2xl font-bold text-gray-800 flex items-center gap-4">
-                                <div class="w-12 h-12 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100">
+                                <div class="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
                                     <i class="ri-user-add-line text-2xl"></i>
                                 </div>
                                 <div class="flex flex-col">

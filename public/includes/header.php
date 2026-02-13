@@ -179,67 +179,71 @@ $profilePic = $user['profile_picture'] ?? null;
             <div class="text-xs text-gray-500">กลับสู่หน้าหลัก</div>
         </div>
     </a>
-    <div class="text-xs uppercase tracking-wide text-gray-400 mt-4 mb-1">Service Settings</div>
-    <?php if (!empty($userPerms['can_edit'])): ?>
-        <a href="<?= $linkBase ?>Modules/HRServices/public/index.php?edit=1" class="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 text-inherit no-underline">
-            <i class="ri-database-2-line text-xl mt-0.5" style="color:#A21D21;"></i>
-            <div>
-                <div class="font-bold text-sm text-gray-900">จัดการ Service</div>
-                <div class="text-xs text-gray-500">สลับเข้า Edit Mode</div>
-            </div>
-        </a>
-    <?php endif; ?>
-    <?php if (!empty($hrNewsPerm['can_manage']) || !empty($hrNewsPerm['can_edit'])): ?>
-        <a href="<?= $linkBase ?>Modules/HRNews/public/index.php" class="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 text-inherit no-underline">
-            <i class="ri-newspaper-line text-xl mt-0.5" style="color:#A21D21;"></i>
-            <div>
-                <div class="font-bold text-sm text-gray-900">จัดการ HR News</div>
-                <div class="text-xs text-gray-500">โพสต์/ปักหมุด ข่าวสาร</div>
-            </div>
-        </a>
-    <?php endif; ?>
-    <?php if (!empty($permManage['can_view'])): ?>
-        <a href="<?= $linkBase ?>Modules/PermissionManagement/public/index.php" class="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 text-inherit no-underline">
-            <i class="ri-shield-user-line text-xl mt-0.5" style="color:#A21D21;"></i>
-            <div>
-                <div class="font-bold text-sm text-gray-900">จัดการสิทธิ์</div>
-                <div class="text-xs text-gray-500">ตั้งสิทธิ์การเข้าถึง</div>
-            </div>
-        </a>
-    <?php endif; ?>
     <?php
-    $activityPerm = userHasModuleAccess('ACTIVITY_DASHBOARD', (int)($user['role_id'] ?? 0));
-    $emailLogPerm = userHasModuleAccess('EMAIL_LOGS', (int)($user['role_id'] ?? 0));
+    $canShowServiceSettings = !empty($userPerms['can_edit']) ||
+        (!empty($hrNewsPerm['can_manage']) || !empty($hrNewsPerm['can_edit'])) ||
+        !empty($permManage['can_view']) ||
+        !empty($activityPerm['can_view']) ||
+        !empty($emailLogPerm['can_view']) ||
+        !empty($scheduledPerm['can_view']);
     ?>
-    <?php if (!empty($activityPerm['can_view'])): ?>
-        <a href="<?= $linkBase ?>Modules/ActivityLog/public/index.php" class="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 text-inherit no-underline">
-            <i class="ri-bar-chart-line text-xl mt-0.5" style="color:#A21D21;"></i>
-            <div>
-                <div class="font-bold text-sm text-gray-900">Activity Dashboard</div>
-                <div class="text-xs text-gray-500">ดูประวัติการใช้งาน</div>
-            </div>
-        </a>
-    <?php endif; ?>
-    <?php if (!empty($emailLogPerm['can_view'])): ?>
-        <a href="<?= $linkBase ?>Modules/EmailLogs/public/index.php" class="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 text-inherit no-underline">
-            <i class="ri-mail-send-line text-xl mt-0.5" style="color:#A21D21;"></i>
-            <div>
-                <div class="font-bold text-sm text-gray-900">Email Logs</div>
-                <div class="text-xs text-gray-500">ประวัติการส่งอีเมล</div>
-            </div>
-        </a>
-    <?php endif; ?>
-    <?php
-    $scheduledPerm = userHasModuleAccess('SCHEDULED_REPORTS', (int)($user['role_id'] ?? 0));
-    ?>
-    <?php if (!empty($scheduledPerm['can_view'])): ?>
-        <a href="<?= $linkBase ?>Modules/ScheduledReports/public/index.php" class="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 text-inherit no-underline">
-            <i class="ri-calendar-check-line text-xl mt-0.5" style="color:#A21D21;"></i>
-            <div>
-                <div class="font-bold text-sm text-gray-900">Scheduled Reports</div>
-                <div class="text-xs text-gray-500">รายงานอัตโนมัติ</div>
-            </div>
-        </a>
+
+    <?php if ($canShowServiceSettings): ?>
+        <div class="text-xs uppercase tracking-wide text-gray-400 mt-4 mb-1">Service Settings</div>
+        <?php if (!empty($userPerms['can_edit'])): ?>
+            <a href="<?= $linkBase ?>Modules/HRServices/public/index.php?edit=1" class="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 text-inherit no-underline">
+                <i class="ri-database-2-line text-xl mt-0.5" style="color:#A21D21;"></i>
+                <div>
+                    <div class="font-bold text-sm text-gray-900">จัดการ Service</div>
+                    <div class="text-xs text-gray-500">สลับเข้า Edit Mode</div>
+                </div>
+            </a>
+        <?php endif; ?>
+        <?php if (!empty($hrNewsPerm['can_manage']) || !empty($hrNewsPerm['can_edit'])): ?>
+            <a href="<?= $linkBase ?>Modules/HRNews/public/index.php" class="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 text-inherit no-underline">
+                <i class="ri-newspaper-line text-xl mt-0.5" style="color:#A21D21;"></i>
+                <div>
+                    <div class="font-bold text-sm text-gray-900">จัดการ HR News</div>
+                    <div class="text-xs text-gray-500">โพสต์/ปักหมุด ข่าวสาร</div>
+                </div>
+            </a>
+        <?php endif; ?>
+        <?php if (!empty($permManage['can_view'])): ?>
+            <a href="<?= $linkBase ?>Modules/PermissionManagement/public/index.php" class="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 text-inherit no-underline">
+                <i class="ri-shield-user-line text-xl mt-0.5" style="color:#A21D21;"></i>
+                <div>
+                    <div class="font-bold text-sm text-gray-900">จัดการสิทธิ์</div>
+                    <div class="text-xs text-gray-500">ตั้งสิทธิ์การเข้าถึง</div>
+                </div>
+            </a>
+        <?php endif; ?>
+        <?php if (!empty($activityPerm['can_view'])): ?>
+            <a href="<?= $linkBase ?>Modules/ActivityLog/public/index.php" class="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 text-inherit no-underline">
+                <i class="ri-bar-chart-line text-xl mt-0.5" style="color:#A21D21;"></i>
+                <div>
+                    <div class="font-bold text-sm text-gray-900">Activity Dashboard</div>
+                    <div class="text-xs text-gray-500">ดูประวัติการใช้งาน</div>
+                </div>
+            </a>
+        <?php endif; ?>
+        <?php if (!empty($emailLogPerm['can_view'])): ?>
+            <a href="<?= $linkBase ?>Modules/EmailLogs/public/index.php" class="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 text-inherit no-underline">
+                <i class="ri-mail-send-line text-xl mt-0.5" style="color:#A21D21;"></i>
+                <div>
+                    <div class="font-bold text-sm text-gray-900">Email Logs</div>
+                    <div class="text-xs text-gray-500">ประวัติการส่งอีเมล</div>
+                </div>
+            </a>
+        <?php endif; ?>
+        <?php if (!empty($scheduledPerm['can_view'])): ?>
+            <a href="<?= $linkBase ?>Modules/ScheduledReports/public/index.php" class="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 text-inherit no-underline">
+                <i class="ri-calendar-check-line text-xl mt-0.5" style="color:#A21D21;"></i>
+                <div>
+                    <div class="font-bold text-sm text-gray-900">Scheduled Reports</div>
+                    <div class="text-xs text-gray-500">รายงานอัตโนมัติ</div>
+                </div>
+            </a>
+        <?php endif; ?>
     <?php endif; ?>
 
 </aside>

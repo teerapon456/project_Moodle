@@ -29,7 +29,7 @@ $CFG->dboptions = array(
 //=========================================================================
 // Web Address Settings (from environment variable)
 //=========================================================================
-$CFG->wwwroot = getenv('MOODLE_WWWROOT') ?: 'https://172.17.100.55:8080/moodle';
+$CFG->wwwroot   = getenv('MOODLE_WWWROOT') ?: getenv('MOODLE_PUBLIC_URL') ?: 'https://172.17.100.55:8080/moodle';
 
 $CFG->dataroot = '/var/www/moodledata';
 $CFG->admin = 'admin';

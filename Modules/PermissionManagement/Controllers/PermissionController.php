@@ -115,9 +115,11 @@ class PermissionController extends BaseController
             throw new Exception('ไม่มีสิทธิจัดการ Role');
         }
 
+        require_once __DIR__ . '/../../../core/Security/InputSanitizer.php';
+
         $id = isset($data['id']) ? (int)$data['id'] : 0;
-        $name = trim($data['name'] ?? '');
-        $description = trim($data['description'] ?? '');
+        $name = InputSanitizer::sanitize($data['name'] ?? '');
+        $description = InputSanitizer::sanitize($data['description'] ?? '');
         $isActive = isset($data['is_active']) ? (int)$data['is_active'] : 1;
 
         if ($name === '') {
@@ -216,9 +218,11 @@ class PermissionController extends BaseController
             throw new Exception('ไม่มีสิทธิ์สร้างผู้ใช้');
         }
 
-        $username = trim($data['username'] ?? '');
-        $email = trim($data['email'] ?? '');
-        $fullname = trim($data['fullname'] ?? '');
+        require_once __DIR__ . '/../../../core/Security/InputSanitizer.php';
+
+        $username = InputSanitizer::sanitize($data['username'] ?? '');
+        $email = InputSanitizer::sanitize($data['email'] ?? '', 'email');
+        $fullname = InputSanitizer::sanitize($data['fullname'] ?? '');
         $password = $data['password'] ?? '';
         $roleId = intval($data['role_id'] ?? 0);
 

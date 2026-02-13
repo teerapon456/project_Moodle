@@ -11,7 +11,7 @@ $isSyncConnected = $syncController->checkConnectionStatus(); // Assumes this met
     <!-- Header -->
     <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
         <h1 class="text-3xl font-bold text-gray-800 flex items-center gap-3">
-            <i class="ri-settings-3-line text-indigo-600"></i>
+            <i class="ri-settings-3-line text-primary"></i>
             Module Settings
         </h1>
         <p class="text-gray-500 mt-1">Configure your yearly activity preferences and integrations.</p>
@@ -22,7 +22,7 @@ $isSyncConnected = $syncController->checkConnectionStatus(); // Assumes this met
         <div class="md:col-span-1">
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                 <nav class="space-y-1">
-                    <a href="#" class="block px-4 py-3 rounded-xl bg-indigo-50 text-indigo-700 font-medium flex items-center gap-3">
+                    <a href="#" class="block px-4 py-3 rounded-xl bg-red-50 text-red-700 font-medium flex items-center gap-3">
                         <i class="ri-refresh-line"></i> Check Status
                     </a>
                     <a href="#" class="block px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 font-medium flex items-center gap-3">
@@ -44,7 +44,7 @@ $isSyncConnected = $syncController->checkConnectionStatus(); // Assumes this met
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="p-6 border-b border-gray-50">
                     <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <i class="ri-microsoft-fill text-blue-600"></i> Calendar Integration
+                        <i class="ri-microsoft-fill text-primary"></i> Calendar Integration
                     </h2>
                     <p class="text-gray-500 text-sm mt-1">Sync your activities with Microsoft Outlook Calendar.</p>
                 </div>
@@ -63,7 +63,7 @@ $isSyncConnected = $syncController->checkConnectionStatus(); // Assumes this met
                         </div>
 
                         <div class="flex flex-wrap gap-4">
-                            <a href="?action=calendar_sync" class="px-6 py-2.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition flex items-center gap-2">
+                            <a href="?action=calendar_sync" class="px-6 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition flex items-center gap-2">
                                 <i class="ri-refresh-line"></i> Sync Now
                             </a>
                             <a href="?action=calendar_disconnect" class="px-6 py-2.5 bg-white border border-gray-200 text-red-600 rounded-lg font-medium hover:bg-red-50 transition flex items-center gap-2" onclick="return confirm('Are you sure you want to disconnect?');">
@@ -102,10 +102,10 @@ $isSyncConnected = $syncController->checkConnectionStatus(); // Assumes this met
                             </p>
 
                             <div class="flex flex-wrap gap-4">
-                                <a href="?action=calendar_connect&provider=outlook" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition flex items-center gap-2">
+                                <a href="?action=calendar_connect&provider=outlook" class="px-6 py-2.5 bg-primary text-white rounded-lg font-bold hover:bg-primary-dark transition flex items-center gap-2">
                                     <i class="ri-microsoft-fill"></i> Connect Microsoft Account
                                 </a>
-                                <a href="?action=ics_all" class="px-6 py-2.5 bg-white border border-gray-200 text-indigo-600 rounded-lg font-medium hover:bg-indigo-50 transition flex items-center gap-2">
+                                <a href="?action=ics_all" class="px-6 py-2.5 bg-white border border-gray-200 text-primary rounded-lg font-medium hover:bg-red-50 transition flex items-center gap-2">
                                     <i class="ri-download-line"></i> Download .ICS File
                                 </a>
                             </div>

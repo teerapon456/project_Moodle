@@ -99,7 +99,7 @@ $uri = explode('/', $uri);
 
 // Remove /api/ prefix if present and find the resource
 $resourceIndex = 0;
-$validResources = ['auth', 'bookings', 'cars', 'settings', 'users', 'dashboard', 'pdf', 'reports', 'email_logs', 'approval', 'fleetcards', 'modules', 'hrnews', 'dormitory', 'dorm', 'permissions', 'notifications', 'activity', 'scheduled_reports', 'yearlyactivity'];
+$validResources = ['auth', 'bookings', 'cars', 'settings', 'users', 'dashboard', 'pdf', 'reports', 'email_logs', 'approval', 'fleetcards', 'modules', 'hrnews', 'dormitory', 'dorm', 'permissions', 'notifications', 'activity', 'scheduled_reports', 'yearlyactivity', 'sso'];
 // Remove empty segments and find resource
 $cleanUri = array_values(array_filter($uri, function ($segment) {
     return $segment !== '' && $segment !== 'api';
@@ -276,6 +276,11 @@ if (isset($resource)) {
         case 'email_logs':
             include_once __DIR__ . '/core/Controllers/EmailLogController.php';
             $controller = new EmailLogController();
+            $controller->processRequest();
+            break;
+        case 'sso':
+            include_once __DIR__ . '/core/Controllers/SSOController.php';
+            $controller = new SSOController();
             $controller->processRequest();
             break;
         case 'scheduled_reports':

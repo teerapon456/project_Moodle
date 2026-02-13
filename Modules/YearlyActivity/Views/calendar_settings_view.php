@@ -5,7 +5,7 @@
 <div class="max-w-4xl mx-auto space-y-6">
     <!-- Header -->
     <div class="flex items-center gap-3 mb-6">
-        <a href="?page=calendar&id=<?= $calendar['id'] ?>" class="p-2 text-gray-400 hover:text-indigo-600 hover:bg-white rounded-lg transition">
+        <a href="?page=calendar&id=<?= $calendar['id'] ?>" class="p-2 text-gray-400 hover:text-primary hover:bg-white rounded-lg transition">
             <i class="ri-arrow-left-line text-xl"></i>
         </a>
         <div>
@@ -23,27 +23,27 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Calendar Name</label>
                 <input type="text" name="name" value="<?= htmlspecialchars($calendar['name']) ?>" required
-                    class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                    class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Year</label>
                 <input type="number" name="year" value="<?= $calendar['year'] ?>" required
-                    class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                    class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
                 <textarea name="description" rows="3"
-                    class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"><?= htmlspecialchars($calendar['description'] ?? '') ?></textarea>
+                    class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"><?= htmlspecialchars($calendar['description'] ?? '') ?></textarea>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select name="status" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                <select name="status" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary outline-none bg-white">
                     <option value="active" <?= ($calendar['status'] ?? 'active') === 'active' ? 'selected' : '' ?>>Active</option>
                     <option value="archived" <?= ($calendar['status'] ?? 'active') === 'archived' ? 'selected' : '' ?>>Archived</option>
                 </select>
             </div>
             <div class="pt-2">
-                <button type="submit" class="px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium">Save Changes</button>
+                <button type="submit" class="px-5 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition font-medium">Save Changes</button>
             </div>
         </form>
     </div>
@@ -52,7 +52,7 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-50">
             <h2 class="text-lg font-bold text-gray-800">Members & Permissions</h2>
-            <span class="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full"><?= count($members) + 1 // +1 for owner 
+            <span class="text-xs bg-red-50 text-primary px-2 py-1 rounded-full"><?= count($members) + 1 // +1 for owner 
                                                                                         ?> users</span>
         </div>
 
@@ -63,18 +63,18 @@
             <div class="md:col-span-6">
                 <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">User Email</label>
                 <input type="email" name="email" required placeholder="colleague@example.com"
-                    class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                    class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary outline-none">
             </div>
             <div class="md:col-span-3">
                 <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Role</label>
-                <select name="role" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                <select name="role" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary outline-none bg-white">
                     <option value="viewer">Viewer</option>
                     <option value="editor">Editor</option>
                     <option value="admin">Admin</option>
                 </select>
             </div>
             <div class="md:col-span-3">
-                <button type="submit" class="w-full px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium whitespace-nowrap flex justify-center items-center">
+                <button type="submit" class="w-full px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition font-medium whitespace-nowrap flex justify-center items-center">
                     <i class="ri-user-add-line mr-2"></i> Add Member
                 </button>
             </div>
@@ -95,14 +95,14 @@
                     <!-- Owner (Static) -->
                     <tr class="border-b border-gray-50 last:border-b-0">
                         <td class="py-3 font-medium text-gray-900 flex items-center gap-2">
-                            <span class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
+                            <span class="w-8 h-8 rounded-full bg-red-100 text-primary flex items-center justify-center text-xs font-bold">
                                 <?= strtoupper(substr($calendar['owner_name'], 0, 2)) ?>
                             </span>
                             <?= htmlspecialchars($calendar['owner_name']) ?>
                         </td>
                         <td class="py-3 text-gray-500"><?= htmlspecialchars($calendar['owner_email']) ?></td>
                         <td class="py-3">
-                            <span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs font-bold uppercase">Owner</span>
+                            <span class="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-bold uppercase">Owner</span>
                         </td>
                         <td class="py-3 text-right text-gray-400">
                             <i class="ri-lock-line"></i>

@@ -169,4 +169,106 @@ class RoomService
             return (int)$stmt->fetchColumn();
         }
     }
+    /**
+     * Change Room
+     * Moves user and their relatives + notes to a new room
+     */
+    public function changeRoom($occupancyId, $newRoomId, $moveDate, $creatorId)
+    {
+        // 1. Get Current Occupancy
+        $stmt = $this->pdo->prepare("SELECT * FROM dorm_occupancies WHERE id = ? AND status = 'active'");
+        $stmt->execute([$occupancyId]);
+        $currentOccupancy = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$currentOccupancy) throw new Exception('ไม่พบข้อมูลการเข้าพักปัจจุบัน');
+
+        // 2. Prepare Data for New Room
+        $userData = [
+            'employee_id' => $currentOccupancy['employee_id'],
+            'employee_name' => $currentOccupancy['employee_name'],
+            'employee_email' => $currentOccupancy['employee_email'],
+            'department' => $currentOccupancy['department'],
+            'check_in_date' => $moveDate,
+            'notes' => $currentOccupancy['notes'],
+            // Copied relative data
+            'accompanying_persons' => $currentOccupancy['accompanying_persons'],
+            'accompanying_details' => $currentOccupancy['accompanying_details']
+        ];
+
+        // 3. Check Out from Old Room (force=true to skip bill check during internal move)
+        $this->checkOut($occupancyId, $moveDate, true);
+
+        // 4. Check In to New Room
+        $newOccupancyId = $this->checkIn($newRoomId, $userData, $creatorId);
+
+        return $newOccupancyId;
+    }
+
+    /**
+     * Add Relative to Existing Occupancy
+     */
+    public function addRelative($occupancyId, $additionalRelativesData)
+    {
+        // 1. Get Current Occupancy
+        $stmt = $this->pdo->prepare("SELECT * FROM dorm_occupancies WHERE id = ? AND status = 'active'");
+        $stmt->execute([$occupancyId]);
+        $occupancy = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$occupancy) throw new Exception('ไม่พบข้อมูลการเข้าพักปัจจุบัน');
+
+        $roomId = $occupancy['room_id'];
+        $room = $this->getRoom($roomId);
+        if (!$room) throw new Exception('ไม่พบห้องพัก');
+
+        // 2. Calculate New Count
+        // Parse existing
+        $existingRelatives = [];
+        if (!empty($occupancy['accompanying_details'])) {
+            $decoded = json_decode($occupancy['accompanying_details'], true);
+            if (is_array($decoded)) $existingRelatives = $decoded;
+        }
+
+        // Parse new
+        $newRelatives = [];
+        if (is_string($additionalRelativesData)) {
+            $decodedNew = json_decode($additionalRelativesData, true);
+            if (is_array($decodedNew)) $newRelatives = $decodedNew;
+        } elseif (is_array($additionalRelativesData)) {
+            $newRelatives = $additionalRelativesData;
+        }
+
+        // Combine
+        $allRelatives = array_merge($existingRelatives, $newRelatives);
+        $totalRelativesCount = count($allRelatives);
+
+        // 3. Check Capacity
+        // Current occupants in room (excluding this user's OLD count, adding NEW count)
+        // Optimization: just check if (room.capacity - current_occupants + old_relative_count) >= (1 + new_relative_count)
+        // Or simpler: verify room capacity vs (current active occupants in room + newly added count)
+        // wait, 'countActiveOccupants' returns total. 
+        // We are increasing the count for THIS occupancy by (new - old).
+        $increase = count($newRelatives); // We are ADDING these people.
+
+        $currentRoomOccupants = $this->countActiveOccupants($roomId);
+
+        if (($currentRoomOccupants + $increase) > $room['capacity']) {
+            throw new Exception("ห้องพักเต็ม ไม่สามารถเพิ่มญาติได้ (ว่าง: " . ($room['capacity'] - $currentRoomOccupants) . ", ต้องการเพิ่ม: $increase)");
+        }
+
+        // 4. Update Occupancy
+        $stmt = $this->pdo->prepare("
+            UPDATE dorm_occupancies 
+            SET accompanying_persons = ?, accompanying_details = ? 
+            WHERE id = ?
+        ");
+        $stmt->execute([
+            $totalRelativesCount,
+            json_encode($allRelatives, JSON_UNESCAPED_UNICODE),
+            $occupancyId
+        ]);
+
+        // 5. Update Room Status
+        $this->updateRoomStatus($roomId);
+
+        return true;
+    }
 }

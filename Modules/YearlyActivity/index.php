@@ -496,7 +496,7 @@ if (isset($_GET['action'])) {
     $unreadCount = $notifController->getUnreadCount();
     $notifications = $notifController->getMyNotifications(5);
     ?>
-    <header class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 sm:px-6 py-3 sm:py-4 shadow-lg">
+    <header class="bg-gradient-to-r from-primary to-primary-light text-white px-4 sm:px-6 py-3 sm:py-4 shadow-lg">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
             <div class="flex items-center gap-3 sm:gap-4">
                 <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur">
@@ -527,7 +527,7 @@ if (isset($_GET['action'])) {
                     <div id="notif-dropdown" class="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 hidden z-50 overflow-hidden">
                         <div class="p-4 border-b border-gray-100 flex justify-between items-center">
                             <h3 class="font-bold text-gray-800">Notifications</h3>
-                            <button onclick="markAllRead()" class="text-xs text-indigo-600 hover:underline">Mark all read</button>
+                            <button onclick="markAllRead()" class="text-xs text-primary hover:underline">Mark all read</button>
                         </div>
                         <div class="max-h-80 overflow-y-auto">
                             <?php if (empty($notifications)): ?>
@@ -551,7 +551,7 @@ if (isset($_GET['action'])) {
                                                 <div class="text-xs text-gray-400 mt-1"><?= date('M j, g:i A', strtotime($notif['created_at'])) ?></div>
                                             </div>
                                             <?php if (!$notif['is_read']): ?>
-                                                <span class="w-2 h-2 bg-indigo-500 rounded-full mt-2"></span>
+                                                <span class="w-2 h-2 bg-blue-500 rounded-full mt-2"></span>
                                             <?php endif; ?>
                                         </div>
                                     </a>
@@ -600,7 +600,7 @@ if (isset($_GET['action'])) {
                 foreach ($navItems as $key => $item) {
                     $isActive = $page === $key;
                     $activeClass = $isActive
-                        ? 'bg-indigo-600 text-white shadow-md'
+                        ? 'bg-primary text-white shadow-md'
                         : 'text-gray-600 hover:bg-gray-100';
                     echo "<a href='?page=$key' class='flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap $activeClass'>";
                     echo "<i class='{$item['icon']}'></i>";

@@ -10,7 +10,7 @@
 
     <div class="flex justify-end mb-4">
         <button type="button" onclick="openMilestoneModal()"
-            class="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition font-medium flex items-center gap-2">
+            class="px-4 py-2 bg-red-50 text-primary rounded-lg hover:bg-red-100 transition font-medium flex items-center gap-2">
             <i class="ri-add-line"></i> Add Milestone
         </button>
     </div>
@@ -48,32 +48,32 @@
         <div class="p-6 space-y-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Milestone Name</label>
-                <input type="text" id="ms-name" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-indigo-500">
+                <input type="text" id="ms-name" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-primary">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea id="ms-desc" rows="2" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-indigo-500"></textarea>
+                <textarea id="ms-desc" rows="2" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-primary"></textarea>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Start Date & Time</label>
-                    <input type="datetime-local" id="ms-start-date" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-indigo-500">
+                    <input type="datetime-local" id="ms-start-date" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-primary">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Due Date & Time</label>
-                    <input type="datetime-local" id="ms-date" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-indigo-500">
+                    <input type="datetime-local" id="ms-date" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-primary">
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Weight (%)</label>
-                    <input type="number" id="ms-weight" min="0" max="100" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-indigo-500">
+                    <input type="number" id="ms-weight" min="0" max="100" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-primary">
                 </div>
             </div>
         </div>
         <div class="p-4 border-t border-gray-100 flex justify-end gap-2 bg-gray-50 rounded-b-2xl">
             <button type="button" onclick="closeMilestoneModal()" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-600">Cancel</button>
-            <button type="button" onclick="saveMilestone()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save</button>
+            <button type="button" onclick="saveMilestone()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark">Save</button>
         </div>
     </div>
 </div>
@@ -112,7 +112,7 @@
                 <td class="px-6 py-4 text-center text-sm text-gray-500">${ms.weight_percent}%</td>
                 <td class="px-6 py-4 text-right flex justify-end gap-2">
                     <button type="button" onclick='editMilestone(${JSON.stringify(ms).replace(/'/g, "&#39;")})'
-                        class="text-indigo-500 hover:bg-indigo-50 p-1.5 rounded transition"><i class="ri-edit-line"></i></button>
+                        class="text-blue-500 hover:bg-red-50 p-1.5 rounded transition"><i class="ri-edit-line"></i></button>
                     <button type="button" onclick="deleteMilestone(${ms.id})"
                         class="text-red-500 hover:bg-red-50 p-1.5 rounded transition"><i class="ri-delete-bin-line"></i></button>
                 </td>

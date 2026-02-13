@@ -102,17 +102,17 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                     </div>
                 </div>
 
-                <div>
+                <div id="roomSelectContainer">
                     <label class="block text-sm font-medium text-gray-700 mb-1">จัดสรรห้องพัก <span class="text-red-500">*</span></label>
-                    <select name="room_id" id="room_select" class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" required>
+                    <select name="room_id" id="room_select" class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary">
                         <option value="">กำลังโหลดห้องว่าง...</option>
                     </select>
                     <small class="text-gray-500 mt-1 block">แสดงเฉพาะห้องที่มีที่ว่างเพียงพอ</small>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">วันนัดรับกุญแจ/เข้าพัก <span class="text-red-500">*</span></label>
-                    <input type="datetime-local" name="key_pickup_date" class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" required>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" id="dateLabel">วันนัดรับกุญแจ/เข้าพัก <span class="text-red-500">*</span></label>
+                    <input type="datetime-local" name="key_pickup_date" id="key_pickup_date" class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" required>
                 </div>
 
                 <div>
@@ -165,7 +165,9 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 </style>
 
 <script>
+    const SITE_URL = '<?php echo \Core\Helpers\UrlHelper::getBaseUrl(); ?>';
     let currentRequests = [];
+
 
     document.addEventListener('DOMContentLoaded', () => {
         loadRequests();
@@ -225,18 +227,28 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                 </td>
                 <td class="px-6 py-4">
                     ${getRequestTypeBadge(req.request_type)}
-                    ${req.has_relative && req.relative_details ? (() => {
-                        try {
-                            const relatives = JSON.parse(req.relative_details);
-                            const count = Array.isArray(relatives) ? relatives.length : 0;
-                            if (count > 0) {
-                                return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 ml-1" title="รวมญาติ ${count} คน">
-                                    <i class="ri-user-add-line"></i> +${count}
-                                </span>`;
-                            }
-                        } catch(e) {}
-                        return '';
-                    })() : ''}
+                    ${(() => {
+                        // For change_room/move_out: show relatives from current occupancy
+                        // For move_in/add_relative: show relatives from request
+                        let relCount = 0;
+                        if (['change_room', 'move_out'].includes(req.request_type)) {
+                            relCount = parseInt(req.occupancy_accompanying_persons || 0);
+                        } else if (req.has_relative && req.relative_details) {
+                            try {
+                                const relatives = JSON.parse(req.relative_details);
+                                relCount = Array.isArray(relatives) ? relatives.length : 0;
+                            } catch(e) {}
+                        }
+                        let badges = '';
+                        if (relCount > 0) {
+                            badges += '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 ml-1" title="รวมญาติ ' + relCount + ' คน"><i class="ri-user-add-line"></i> +' + relCount + '</span>';
+                        }
+                        // Show current room for change_room/move_out
+                        if (['change_room', 'move_out'].includes(req.request_type) && req.current_room_number) {
+                            badges += '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 ml-1" title="ห้องปัจจุบัน"><i class="ri-home-line"></i> ' + (req.current_building_name || '') + ' ' + req.current_room_number + '</span>';
+                        }
+                        return badges;
+                    })()}
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
                     ${req.reason || '-'}
@@ -247,7 +259,17 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                 <td class="px-6 py-4 text-right">
                     ${req.status === 'pending' ? `
                         <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onclick="openApprove(${req.id}, '${req.request_type}', '${req.check_in_date || ''}', ${req.has_relative ? ((() => { try { const r = JSON.parse(req.relative_details || '[]'); return Array.isArray(r) ? r.length : 0; } catch(e) { return 0; } })()) : 0})" class="p-1.5 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors" title="อนุมัติ">
+                            <button onclick="openApprove(${req.id}, '${req.request_type}', '${req.check_in_date || ''}', ${(() => {
+                                // For change_room/move_out: count from current occupancy
+                                if (['change_room', 'move_out'].includes(req.request_type)) {
+                                    return parseInt(req.occupancy_accompanying_persons || 0);
+                                }
+                                // For move_in/add_relative: count from request
+                                if (req.has_relative && req.relative_details) {
+                                    try { const r = JSON.parse(req.relative_details || '[]'); return Array.isArray(r) ? r.length : 0; } catch(e) { return 0; }
+                                }
+                                return 0;
+                            })()})" class="p-1.5 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors" title="อนุมัติ">
                                 <i class="ri-check-line text-lg"></i>
                             </button>
                             <button onclick="openReject(${req.id})" class="p-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors" title="ปฏิเสธ">
@@ -297,17 +319,56 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
         document.getElementById('approve_id').value = id;
         document.getElementById('approve_request_type').value = type;
 
-        // Calculate required capacity (1 person + relatives)
-        const requiredCapacity = 1 + relativesCount;
-        document.getElementById('approve_required_capacity').value = requiredCapacity;
-        document.getElementById('requiredCountDisplay').textContent = requiredCapacity;
+        const roomSelectContainer = document.getElementById('roomSelectContainer');
+        const roomSelect = document.getElementById('room_select');
+        const dateLabel = document.getElementById('dateLabel');
+        const capacityInfo = document.getElementById('capacityInfo');
+        const modalTitle = document.querySelector('#approveModal h3');
 
-        // Filter rooms by required capacity
-        filterRoomsByCapacity(requiredCapacity);
+        // Reset defaults
+        roomSelectContainer.style.display = 'block';
+        roomSelect.required = true;
+        capacityInfo.style.display = 'block';
+        dateLabel.innerHTML = 'วันนัดรับกุญแจ/เข้าพัก <span class="text-red-500">*</span>';
+        modalTitle.innerHTML = '<i class="ri-checkbox-circle-line text-emerald-500"></i> อนุมัติคำขอ';
+
+        if (type === 'move_out') {
+            // Move Out: no room needed, just date
+            roomSelectContainer.style.display = 'none';
+            roomSelect.required = false;
+            capacityInfo.style.display = 'none';
+            dateLabel.innerHTML = 'วันที่ย้ายออก <span class="text-red-500">*</span>';
+            modalTitle.innerHTML = '<i class="ri-logout-box-line text-red-500"></i> อนุมัติย้ายออก';
+        } else if (type === 'add_relative') {
+            // Add Relative: no room needed (auto-uses current room), just date
+            roomSelectContainer.style.display = 'none';
+            roomSelect.required = false;
+            capacityInfo.style.display = 'none';
+            dateLabel.innerHTML = 'วันที่เพิ่มญาติ <span class="text-red-500">*</span>';
+            modalTitle.innerHTML = '<i class="ri-user-add-line text-purple-500"></i> อนุมัติเพิ่มญาติ';
+        } else if (type === 'change_room') {
+            // Change Room: need new room, capacity must account for relatives moving with user
+            roomSelectContainer.style.display = 'block';
+            roomSelect.required = true;
+            capacityInfo.style.display = 'block';
+            dateLabel.innerHTML = 'วันที่ย้ายห้อง <span class="text-red-500">*</span>';
+            modalTitle.innerHTML = '<i class="ri-swap-line text-blue-500"></i> อนุมัติย้ายห้อง';
+
+            // Need enough capacity for user + their existing relatives
+            const requiredCapacity = 1 + relativesCount;
+            document.getElementById('approve_required_capacity').value = requiredCapacity;
+            document.getElementById('requiredCountDisplay').textContent = requiredCapacity;
+            filterRoomsByCapacity(requiredCapacity);
+        } else {
+            // Move In: need room + date
+            const requiredCapacity = 1 + relativesCount;
+            document.getElementById('approve_required_capacity').value = requiredCapacity;
+            document.getElementById('requiredCountDisplay').textContent = requiredCapacity;
+            filterRoomsByCapacity(requiredCapacity);
+        }
 
         const minDate = checkIn ? new Date(checkIn).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16);
-        document.querySelector('input[name="key_pickup_date"]').min = minDate;
-        document.querySelector('input[name="key_pickup_date"]').value = minDate;
+        document.getElementById('key_pickup_date').value = minDate;
 
         openModal('approveModal');
     }
@@ -336,8 +397,8 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
     }
 
     function openReject(id) {
-        document.getElementById('reject_id').value = id;
         document.getElementById('rejectForm').reset();
+        document.getElementById('reject_id').value = id;
         openModal('rejectModal');
     }
 
@@ -450,10 +511,15 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
         try {
             const files = JSON.parse(jsonStr);
             return `<div class="flex gap-2">
-                ${Object.values(files).map(path => `
-                    <a href="${path}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-800 transition"><i class="ri-file-text-line text-lg"></i></a>
-                `).join('')}
+                ${Object.values(files).map(path => {
+                    // Fix path: remove 'public/' prefix if present to avoid duplication with docroot
+                    const cleanPath = path.replace(/^public\//, '');
+                    const fullUrl = `${SITE_URL}/${cleanPath}`;
+                    return `<a href="${fullUrl}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-800 transition"><i class="ri-file-text-line text-lg"></i></a>`;
+                }).join('')}
+
             </div>`;
+
         } catch (e) {
             return '-';
         }

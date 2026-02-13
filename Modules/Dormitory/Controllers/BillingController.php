@@ -15,6 +15,8 @@ class BillingController extends DormBaseController
      */
     public function getRates()
     {
+        $this->requireAuth();
+
         $stmt = $this->pdo->query("
             SELECT * FROM dorm_utility_rates 
             WHERE status = 'active'
@@ -94,6 +96,8 @@ class BillingController extends DormBaseController
      */
     public function getMeterReadings()
     {
+        $this->requireAuth();
+
         $monthCycle = $_GET['month'] ?? date('Y-m');
         $buildingId = $_GET['building_id'] ?? null;
 
@@ -226,7 +230,9 @@ class BillingController extends DormBaseController
      */
     public function listInvoices()
     {
+        $this->requireAuth();
         $monthCycle = $_GET['month'] ?? null;
+
         $status = $_GET['status'] ?? null;
         $buildingId = $_GET['building_id'] ?? null;
         $roomId = $_GET['room_id'] ?? null;
@@ -314,7 +320,9 @@ class BillingController extends DormBaseController
      */
     public function getInvoice($data)
     {
+        $this->requireAuth();
         $id = $data['id'] ?? $_GET['id'] ?? null;
+
         if (!$id) {
             return $this->error('กรุณาระบุ ID บิล');
         }
@@ -336,6 +344,17 @@ class BillingController extends DormBaseController
         if (!$invoice) {
             return $this->error('ไม่พบบิล', 404);
         }
+
+        // Security Check: Only Admin OR Owner can view
+        $isAdmin = $this->hasPermission('manage');
+        if (!$isAdmin) {
+            $isOwner = ($invoice['employee_id'] === ($this->user['employee_id'] ?? '')) ||
+                ($invoice['employee_email'] === ($this->user['email'] ?? ''));
+            if (!$isOwner) {
+                return $this->error('ไม่มีสิทธิ์เข้าถึงบิลนี้', 403);
+            }
+        }
+
 
         $stmt = $this->pdo->prepare("SELECT * FROM dorm_invoice_items WHERE invoice_id = ?");
         $stmt->execute([$id]);
@@ -560,7 +579,9 @@ class BillingController extends DormBaseController
      */
     public function summary()
     {
+        $this->requireAuth();
         $monthCycle = $_GET['month'] ?? date('Y-m');
+
         $roomId = $_GET['room_id'] ?? null;
 
         // RBAC

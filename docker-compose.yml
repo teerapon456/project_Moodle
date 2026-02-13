@@ -74,6 +74,11 @@ services:
       - MOODLE_DB_PASS=${MOODLE_DB_PASS}
       - MOODLE_WWWROOT=${MOODLE_WWWROOT}
       - REDIS_HOST=redis
+      # Access to Portal DB for SSO
+      - DB_HOST=${DB_HOST}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
     depends_on:
       - moodle_db
       - redis
@@ -125,6 +130,7 @@ services:
       - "3000"
     environment:
       - NODE_ENV=production
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
       - MOODLE_INTERNAL_URL=${MOODLE_INTERNAL_URL}
       - MOODLE_PUBLIC_URL=${MOODLE_PUBLIC_URL}
       - NEXT_PUBLIC_MOODLE_PUBLIC_URL=${NEXT_PUBLIC_MOODLE_PUBLIC_URL}

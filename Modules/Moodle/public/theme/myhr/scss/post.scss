@@ -1,0 +1,73 @@
+$primary: #A21D21 !default;
+$secondary: #374151 !default;
+$green: #10b981 !default;
+$red: #ef4444 !default;
+$body-bg: #f3f4f6 !default; // gray-100
+$font-family-sans-serif: 'Kanit', sans-serif !default;
+
+// Override Bootstrap variables
+$navbar-bg: $primary;
+
+// Custom Styles
+body {
+    font-family: $font-family-sans-serif;
+}
+
+// Global Primary Button Fix (Force White Text on Red)
+.btn-primary {
+    color: #ffffff !important;
+    background-color: $primary !important;
+    border-color: $primary !important;
+}
+
+// Force Navbar Background
+.navbar {
+    background-color: $primary !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+// Force Navbar Text Colors
+.navbar-light .navbar-nav .nav-link,
+.navbar-light .navbar-brand,
+.navbar .nav-link,
+.navbar .navbar-brand,
+.navbar .btn-link,
+.navbar .usertext,
+.navbar .icon,
+.navbar .dropdown-toggle,
+.navbar .login a,
+/* Fix login link */
+.navbar .btn,
+/* Fix navbar buttons */
+.navbar .custom-control-label,
+/* Fix Edit Mode Label */
+.navbar .custom-switch .custom-control-label::before,
+/* Fix Edit Mode Switch Background */
+.navbar .custom-switch .custom-control-label::after
+
+/* Fix Edit Mode Switch Handle */
+    {
+    color: #ffffff !important;
+}
+
+// Specific fix for Edit Mode Switch text
+.navbar .custom-switch .custom-control-input:checked~.custom-control-label::before {
+    background-color: rgba(255, 255, 255, 0.5) !important;
+    border-color: #ffffff !important;
+}
+
+// Active state in navbar
+.navbar-light .navbar-nav .nav-link.active,
+.navbar-light .navbar-nav .show>.nav-link,
+.navbar .nav-link.active,
+.navbar .nav-link:hover,
+.navbar .nav-link:focus,
+.navbar .login a:hover {
+    color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.primary-navigation .navigation .nav-link.active {
+    background-color: darken($primary, 10%);
+    border-radius: 0.375rem;
+}

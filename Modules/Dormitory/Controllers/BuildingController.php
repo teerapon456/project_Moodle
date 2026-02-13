@@ -14,7 +14,9 @@ class BuildingController extends DormBaseController
      */
     public function list()
     {
+        $this->requireAuth();
         $stmt = $this->pdo->query("
+
             SELECT b.*, 
                    COUNT(r.id) as total_rooms,
                    SUM(CASE WHEN r.status = 'available' THEN 1 ELSE 0 END) as available_rooms,
@@ -34,7 +36,9 @@ class BuildingController extends DormBaseController
      */
     public function get($data)
     {
+        $this->requireAuth();
         $id = $data['id'] ?? $_GET['id'] ?? null;
+
         if (!$id) {
             return $this->error('กรุณาระบุ ID อาคาร');
         }

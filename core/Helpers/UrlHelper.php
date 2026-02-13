@@ -88,6 +88,13 @@ class UrlHelper
             return self::$baseUrl;
         }
 
+        // 0. Check APP_URL from environment (Priority)
+        $envUrl = getenv('APP_URL');
+        if ($envUrl !== false && $envUrl !== '') {
+            self::$baseUrl = rtrim($envUrl, '/');
+            return self::$baseUrl;
+        }
+
         // 1. Protocol - respect proxy headers if present (e.g., Render, Heroku)
         if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
             $protocol = strtok($_SERVER['HTTP_X_FORWARDED_PROTO'], ',');

@@ -170,7 +170,7 @@
 
         searchTimeout = setTimeout(async () => {
             try {
-                const response = await fetch(`${API_BASE}?controller=bookings&action=searchEmployee&query=${encodeURIComponent(query)}`);
+                const response = await fetch(`${API_BASE}?controller=bookings&action=searchManager&query=${encodeURIComponent(query)}`);
                 const data = await response.json();
 
                 if (data.success && data.employees.length > 0) {
@@ -204,7 +204,7 @@
         document.getElementById('supervisorSearchContainer').classList.add('hidden');
         document.getElementById('supervisorResults').classList.add('hidden');
 
-        if (saveAsDefault && !hasDefaultSupervisor) saveDefaultSupervisor(emp);
+        if (saveAsDefault) saveDefaultSupervisor(emp);
     }
 
     async function saveDefaultSupervisor(emp) {
@@ -244,7 +244,7 @@
 
         searchTimeout = setTimeout(async () => {
             try {
-                const response = await fetch(`${API_BASE}?controller=bookings&action=searchEmployee&query=${encodeURIComponent(query)}`);
+                const response = await fetch(`${API_BASE}?controller=bookings&action=searchManager&query=${encodeURIComponent(query)}`);
                 const data = await response.json();
 
                 if (data.success && data.employees.length > 0) {
@@ -300,7 +300,7 @@
 
         searchTimeout = setTimeout(async () => {
             try {
-                const response = await fetch(`${API_BASE}?controller=bookings&action=searchEmployee&query=${encodeURIComponent(query)}`);
+                const response = await fetch(`${API_BASE}?controller=bookings&action=searchManager&query=${encodeURIComponent(query)}`);
                 const data = await response.json();
 
                 if (data.success && data.employees.length > 0) {

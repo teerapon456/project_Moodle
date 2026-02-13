@@ -121,11 +121,22 @@ $ccEmails = $settings['cc_emails'] ?? '';
 
         searchTimeout = setTimeout(async () => {
             try {
-                const response = await fetch(`${API_BASE}?controller=bookings&action=searchEmployee&query=${encodeURIComponent(query)}`);
-                const data = await response.json();
+                // Fetch from both local DB and MS Graph
+                const [dbRes, msRes] = await Promise.all([
+                    fetch(`${API_BASE}?controller=bookings&action=searchUsers&query=${encodeURIComponent(query)}`),
+                    fetch(`${API_BASE}?controller=bookings&action=searchEmail&query=${encodeURIComponent(query)}`)
+                ]);
 
-                if (data.success && data.employees.length > 0) {
-                    const filtered = data.employees.filter(emp => !adminEmails.includes(emp.email));
+                const dbData = await dbRes.json();
+                const msData = await msRes.json();
+
+                const allUsers = [
+                    ...(dbData.success ? dbData.users : []),
+                    ...(msData.success ? msData.users : [])
+                ];
+
+                if (allUsers.length > 0) {
+                    const filtered = allUsers.filter(emp => !adminEmails.includes(emp.email));
                     if (filtered.length > 0) {
                         resultsDiv.innerHTML = filtered.map(emp => `
                             <div class="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0" onclick='addAdminEmail("${emp.email}", "${emp.name || emp.email}")'>
@@ -163,11 +174,22 @@ $ccEmails = $settings['cc_emails'] ?? '';
 
         searchTimeout = setTimeout(async () => {
             try {
-                const response = await fetch(`${API_BASE}?controller=bookings&action=searchEmployee&query=${encodeURIComponent(query)}`);
-                const data = await response.json();
+                // Fetch from both local DB and MS Graph
+                const [dbRes, msRes] = await Promise.all([
+                    fetch(`${API_BASE}?controller=bookings&action=searchUsers&query=${encodeURIComponent(query)}`),
+                    fetch(`${API_BASE}?controller=bookings&action=searchEmail&query=${encodeURIComponent(query)}`)
+                ]);
 
-                if (data.success && data.employees.length > 0) {
-                    const filtered = data.employees.filter(emp => !ccEmails.includes(emp.email));
+                const dbData = await dbRes.json();
+                const msData = await msRes.json();
+
+                const allUsers = [
+                    ...(dbData.success ? dbData.users : []),
+                    ...(msData.success ? msData.users : [])
+                ];
+
+                if (allUsers.length > 0) {
+                    const filtered = allUsers.filter(emp => !ccEmails.includes(emp.email));
                     if (filtered.length > 0) {
                         resultsDiv.innerHTML = filtered.map(emp => `
                             <div class="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0" onclick='addCcEmail("${emp.email}", "${emp.name || emp.email}")'>

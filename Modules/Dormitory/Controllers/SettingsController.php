@@ -138,7 +138,9 @@ class SettingsController extends DormBaseController
      */
     public function getRoomTypes()
     {
+        $this->requireAuth();
         $stmt = $this->pdo->query("SELECT * FROM dorm_room_types ORDER BY id ASC");
+
         return $this->success(['room_types' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
     }
 
@@ -151,32 +153,21 @@ class SettingsController extends DormBaseController
         $this->requirePermission('manage');
 
         $name = trim($data['name'] ?? '');
-        $code = trim($data['code'] ?? '');
-        $capacity = (int)($data['capacity'] ?? 1);
-        $monthlyRent = (float)($data['monthly_rent'] ?? 0);
-        $description = trim($data['description'] ?? '');
+        $maxPerson = (int)($data['max_person'] ?? $data['capacity'] ?? 1);
+        $priceMonth = (float)($data['price_month'] ?? $data['monthly_rent'] ?? 0);
+        $priceNight = (float)($data['price_night'] ?? 0);
+        $amenities = trim($data['amenities'] ?? $data['description'] ?? '');
+        $allowedTypes = trim($data['allowed_employee_types'] ?? '');
 
         if (empty($name)) {
             return $this->error('กรุณาระบุชื่อประเภทห้อง');
         }
 
-        if (empty($code)) {
-            // Auto-generate code from name
-            $code = strtolower(preg_replace('/[^a-zA-Z0-9]/', '_', $name));
-        }
-
-        // Check for duplicate code
-        $stmt = $this->pdo->prepare("SELECT id FROM dorm_room_types WHERE code = ?");
-        $stmt->execute([$code]);
-        if ($stmt->fetch()) {
-            return $this->error('รหัสประเภทห้องนี้มีอยู่แล้ว');
-        }
-
         $stmt = $this->pdo->prepare("
-            INSERT INTO dorm_room_types (name, code, capacity, monthly_rent, description, status)
-            VALUES (?, ?, ?, ?, ?, 'active')
+            INSERT INTO dorm_room_types (name, max_person, price_month, price_night, amenities, allowed_employee_types, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'active', NOW(), NOW())
         ");
-        $stmt->execute([$name, $code, $capacity, $monthlyRent, $description]);
+        $stmt->execute([$name, $maxPerson, $priceMonth, $priceNight, $amenities, $allowedTypes]);
 
         return $this->success(['id' => $this->pdo->lastInsertId()], 'สร้างประเภทห้องสำเร็จ');
     }
@@ -195,29 +186,23 @@ class SettingsController extends DormBaseController
         }
 
         $name = trim($data['name'] ?? '');
-        $code = trim($data['code'] ?? '');
-        $capacity = (int)($data['capacity'] ?? 1);
-        $monthlyRent = (float)($data['monthly_rent'] ?? 0);
-        $description = trim($data['description'] ?? '');
+        $maxPerson = (int)($data['max_person'] ?? $data['capacity'] ?? 1);
+        $priceMonth = (float)($data['price_month'] ?? $data['monthly_rent'] ?? 0);
+        $priceNight = (float)($data['price_night'] ?? 0);
+        $amenities = trim($data['amenities'] ?? $data['description'] ?? '');
+        $allowedTypes = trim($data['allowed_employee_types'] ?? '');
         $status = $data['status'] ?? 'active';
 
         if (empty($name)) {
             return $this->error('กรุณาระบุชื่อประเภทห้อง');
         }
 
-        // Check for duplicate code (excluding self)
-        $stmt = $this->pdo->prepare("SELECT id FROM dorm_room_types WHERE code = ? AND id != ?");
-        $stmt->execute([$code, $id]);
-        if ($stmt->fetch()) {
-            return $this->error('รหัสประเภทห้องนี้มีอยู่แล้ว');
-        }
-
         $stmt = $this->pdo->prepare("
             UPDATE dorm_room_types 
-            SET name = ?, code = ?, capacity = ?, monthly_rent = ?, description = ?, status = ?
+            SET name = ?, max_person = ?, price_month = ?, price_night = ?, amenities = ?, allowed_employee_types = ?, status = ?, updated_at = NOW()
             WHERE id = ?
         ");
-        $stmt->execute([$name, $code, $capacity, $monthlyRent, $description, $status, $id]);
+        $stmt->execute([$name, $maxPerson, $priceMonth, $priceNight, $amenities, $allowedTypes, $status, $id]);
 
         return $this->success([], 'อัพเดทประเภทห้องสำเร็จ');
     }

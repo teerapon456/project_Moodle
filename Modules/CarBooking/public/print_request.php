@@ -349,6 +349,12 @@ ob_start();
         </div>
     </div>
 
+    <div style="text-align: center; margin-top: 15px;">
+        <div style="font-weight: bold; margin-bottom: 5px;">สแกนเพื่อติดต่อเจ้าหน้าที่ / Scan for Contact</div>
+        <img src="<?= __DIR__ ?>/assets/images/line_qr.jpg" style="width: 90px; height: 90px;" alt="LINE QR Code">
+        <div style="font-size: 9pt; margin-top: 3px;">LINE Official Account</div>
+    </div>
+
     <div class="footer">
         <strong>INTEQC Car Booking System</strong><br>
         กรุณาส่งคืนเอกสารฉบับนี้หลังใช้รถเสร็จสิ้น / Please return this form after use
@@ -363,7 +369,11 @@ ob_start();
 $html = ob_get_clean();
 $mpdf = new \Mpdf\Mpdf([
     'autoLangToFont' => true,
-    'tempDir' => sys_get_temp_dir()
+    'tempDir' => sys_get_temp_dir(),
+    'margin_top' => 12,
+    'margin_bottom' => 12,
+    'margin_left' => 12,
+    'margin_right' => 12
 ]);
 $mpdf->WriteHTML($html);
 $mpdf->Output('car_request_' . $booking['id'] . '.pdf', 'I');

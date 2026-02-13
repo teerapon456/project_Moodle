@@ -26,7 +26,7 @@ $progress = ($step / count($steps)) * 100;
                 <?= $id ? 'Edit Activity' : 'Create New Activity' ?>
             </h1>
             <p class="text-gray-500 text-sm mt-1">
-                Step <?= $step ?> of <?= count($steps) ?>: <span class="text-indigo-600 font-semibold"><?= $steps[$step] ?></span>
+                Step <?= $step ?> of <?= count($steps) ?>: <span class="text-primary font-semibold"><?= $steps[$step] ?></span>
             </p>
         </div>
         <a href="?page=calendar&id=<?= $calendarId ?>" class="px-4 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition text-sm">
@@ -36,7 +36,7 @@ $progress = ($step / count($steps)) * 100;
 
     <!-- Progress Bar -->
     <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
-        <div class="h-full bg-gradient-to-r from-indigo-600 to-purple-600 transition-all duration-500" style="width: <?= $progress ?>%"></div>
+        <div class="h-full bg-gradient-to-r from-primary to-primary-light transition-all duration-500" style="width: <?= $progress ?>%"></div>
     </div>
 </div>
 
@@ -74,7 +74,7 @@ $progress = ($step / count($steps)) * 100;
                 <?php if ($id): ?>
                     <!-- Editing: Allow Save & Exit at any step -->
                     <button type="submit" name="action_type" value="save_exit"
-                        class="px-6 py-2.5 bg-white text-indigo-600 border border-indigo-200 rounded-xl hover:bg-indigo-50 transition font-medium">
+                        class="px-6 py-2.5 bg-white text-primary border border-red-200 rounded-xl hover:bg-red-50 transition font-medium">
                         <i class="ri-save-line mr-1"></i> Save Changes
                     </button>
                 <?php elseif ($step == 1): ?>
@@ -86,7 +86,7 @@ $progress = ($step / count($steps)) * 100;
                 <?php endif; ?>
 
                 <button type="submit" name="action_type" value="next"
-                    class="px-8 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition font-medium shadow-md shadow-indigo-200 flex items-center gap-2">
+                    class="px-8 py-2.5 bg-primary text-white rounded-xl hover:bg-primary-dark transition font-medium shadow-md shadow-red-200 flex items-center gap-2">
                     <?= $step < count($steps) ? 'Next Step' : 'Finish Activity' ?>
                     <i class="ri-arrow-right-line"></i>
                 </button>

@@ -48,10 +48,9 @@ class SSOController
             $stmt->execute([$token, $userId, $expiresAt]);
 
             // 4. Redirect to Moodle Plugin
-            $baseUrl = $this->getBaseUrl();
-            // Assuming Moodle is at /moodle and the plugin is at /auth/myhrauth/login_sso.php
-            // We use the public URL structure
-            $moodleUrl = $baseUrl . "/moodle/auth/myhrauth/login_sso.php?token=$token";
+            // Use configured public URL
+            $moodleBase = getenv('MOODLE_PUBLIC_URL') ?: ($this->getBaseUrl() . '/moodle');
+            $moodleUrl = $moodleBase . "/auth/myhrauth/login_sso.php?token=$token";
 
             header("Location: $moodleUrl");
             exit;

@@ -6,7 +6,7 @@
     <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h1 class="text-3xl font-bold text-gray-800 flex items-center gap-3">
-                <i class="ri-file-chart-line text-indigo-600"></i>
+                <i class="ri-file-chart-line text-primary"></i>
                 Reports Center
             </h1>
             <p class="text-gray-500 mt-1">Generate and export reports for your yearly activities.</p>
@@ -18,16 +18,16 @@
 
         <!-- Activity Report Card -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition group">
-            <div class="h-2 bg-indigo-500"></div>
+            <div class="h-2 bg-red-500"></div>
             <div class="p-6">
-                <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition">
+                <div class="w-12 h-12 bg-red-50 text-primary rounded-lg flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition">
                     <i class="ri-calendar-event-line"></i>
                 </div>
                 <h3 class="text-xl font-bold text-gray-800 mb-2">Activities Report</h3>
                 <p class="text-gray-500 text-sm mb-6"> Comprehensive list of all planned activities, their status, progress, and timelines.</p>
 
                 <div class="flex flex-col gap-2">
-                    <a href="?action=pdf_activities" target="_blank" class="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-100 transition">
+                    <a href="?action=pdf_activities" target="_blank" class="flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-700 rounded-lg text-sm font-medium hover:bg-red-100 transition">
                         <i class="ri-file-pdf-line"></i> View PDF Report
                     </a>
                     <a href="?action=export_activities" class="flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition">

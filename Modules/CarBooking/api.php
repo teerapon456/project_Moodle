@@ -25,6 +25,27 @@ if (!$controller) {
 // Create user object from session (session still open for controllers)
 $user = $_SESSION['user'] ?? null;
 
+// ============================================
+// NEW: Centralized User Search Routes
+// ============================================
+if ($action === 'searchUsers') {
+    require_once __DIR__ . '/../../core/Services/UserSearchService.php';
+    echo json_encode(UserSearchService::searchUsers($_GET['query'] ?? ''));
+    exit;
+}
+
+if ($action === 'searchManager') {
+    require_once __DIR__ . '/../../core/Services/UserSearchService.php';
+    echo json_encode(UserSearchService::searchManager($_GET['query'] ?? ''));
+    exit;
+}
+if ($action === 'searchEmail') {
+    require_once __DIR__ . '/../../core/Services/UserSearchService.php';
+    echo json_encode(UserSearchService::searchEmail($_GET['query'] ?? ''));
+    exit;
+}
+// ============================================
+
 try {
     switch ($controller) {
         case 'bookings':
@@ -64,18 +85,19 @@ try {
             exit;
     }
 
-    // Handle searchEmployee specially (doesn't use processRequest)
-    if ($controller === 'bookings' && $action === 'searchEmployee') {
-        $query = $_GET['query'] ?? '';
-        $result = $ctrl->searchEmployee($query);
-        echo json_encode($result);
-        exit;
-    }
+
 
     // Handle listAuditLogs (Admin only)
     if ($controller === 'bookings' && $action === 'listAuditLogs') {
         $result = $ctrl->listAuditLogs();
         echo json_encode($result);
+        exit;
+    }
+
+    // Handle listMyPendingApprovals (for supervisor/approver users)
+    if ($controller === 'bookings' && $action === 'listMyPendingApprovals') {
+        $result = $ctrl->listMyPendingApprovals();
+        echo json_encode(['success' => true, 'data' => $result]);
         exit;
     }
 

@@ -86,16 +86,18 @@ class ActivityController
             return ['success' => false, 'message' => 'Access Denied'];
         }
 
+        require_once __DIR__ . '/../../../core/Security/InputSanitizer.php';
+
         // Prepare data map
         $dbData = [
             'calendar_id' => $calendarId,
-            'name' => $data['title'] ?? $data['name'], // View sends 'title', Model expects 'name'
-            'type' => $data['activity_type'] ?? $data['type'],
-            'objective' => $data['objective'] ?? '',
-            'description' => $data['description'] ?? '',
-            'start_date' => $data['start_date'] ?? null,
-            'end_date' => $data['end_date'] ?? null,
-            'location' => $data['location'] ?? '', // View doesn't have location field in form yet
+            'name' => InputSanitizer::sanitize($data['title'] ?? $data['name']),
+            'type' => InputSanitizer::sanitize($data['activity_type'] ?? $data['type']),
+            'objective' => InputSanitizer::sanitize($data['objective'] ?? ''),
+            'description' => InputSanitizer::sanitize($data['description'] ?? '', 'string'), // Keep string, maybe allow some html later?
+            'start_date' => InputSanitizer::sanitize($data['start_date'] ?? null),
+            'end_date' => InputSanitizer::sanitize($data['end_date'] ?? null),
+            'location' => InputSanitizer::sanitize($data['location'] ?? ''),
             'created_by' => $this->userId
         ];
 
@@ -166,20 +168,19 @@ class ActivityController
             // Add Owner too
             $calDetails = $calModel->getCalendar($calendarId, $this->userId);
             if ($calDetails) {
-                $db = new \Database();
-                $conn = $db->getConnection();
-                $stmt = $conn->prepare("SELECT id as user_id, fullname FROM users WHERE id = ?");
-                $stmt->execute([$calDetails['owner_id']]);
-                $owner = $stmt->fetch(PDO::FETCH_ASSOC);
-                if ($owner) {
-                    $owner['role'] = 'owner';
-                    // check duplicate
-                    $exists = false;
-                    foreach ($calMembers as $cm) {
-                        if ($cm['user_id'] == $owner['user_id']) $exists = true;
-                    }
-                    if (!$exists) array_unshift($calMembers, $owner);
+                // Use details from CalendarModel instead of direct query
+                $owner = [
+                    'user_id' => $calDetails['owner_id'],
+                    'fullname' => $calDetails['owner_name'],
+                    'role' => 'owner'
+                ];
+
+                // check duplicate
+                $exists = false;
+                foreach ($calMembers as $cm) {
+                    if ($cm['user_id'] == $owner['user_id']) $exists = true;
                 }
+                if (!$exists) array_unshift($calMembers, $owner);
             }
         } else {
             $calMembers = []; // Should not happen if calendar_id is required
@@ -390,16 +391,14 @@ class ActivityController
         // Also include the owner
         $calendar = $calModel->getCalendar($calendarId, $this->userId);
         if ($calendar) {
-            // Fetch owner details manually since getMembers only returns added members
-            $db = new \Database();
-            $conn = $db->getConnection();
-            $stmt = $conn->prepare("SELECT id as user_id, fullname, email FROM users WHERE id = ?");
-            $stmt->execute([$calendar['owner_id']]);
-            $owner = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($owner) {
-                $owner['role'] = 'owner';
-                array_unshift($members, $owner);
-            }
+            // Fetch owner details from calendar object
+            $owner = [
+                'user_id' => $calendar['owner_id'],
+                'fullname' => $calendar['owner_name'],
+                'email' => $calendar['owner_email'],
+                'role' => 'owner'
+            ];
+            array_unshift($members, $owner);
         }
         echo json_encode($members);
     }

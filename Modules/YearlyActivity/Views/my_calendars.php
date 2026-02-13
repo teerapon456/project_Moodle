@@ -12,7 +12,7 @@ $calendars = $controller->getUserCalendars();
         <p class="text-gray-500 text-sm mt-1">Manage your yearly activity plans</p>
     </div>
     <button onclick="document.getElementById('create-modal').classList.remove('hidden')"
-        class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl shadow-lg hover:shadow-xl hover:opacity-95 transition-all flex items-center gap-2 transform active:scale-95">
+        class="px-5 py-2.5 bg-gradient-to-r from-primary to-primary-light text-white rounded-xl shadow-lg hover:shadow-xl hover:opacity-95 transition-all flex items-center gap-2 transform active:scale-95">
         <i class="ri-add-line text-lg"></i>
         <span class="font-medium">New Calendar</span>
     </button>
@@ -21,13 +21,13 @@ $calendars = $controller->getUserCalendars();
 <!-- Calendar Grid -->
 <?php if (empty($calendars)): ?>
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-        <div class="w-20 h-20 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div class="w-20 h-20 bg-red-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <i class="ri-calendar-line text-4xl"></i>
         </div>
         <h3 class="text-xl font-bold text-gray-800 mb-2">No Calendars Yet</h3>
         <p class="text-gray-500 mb-6">Create your first yearly activity calendar to get started.</p>
         <button onclick="document.getElementById('create-modal').classList.remove('hidden')"
-            class="px-6 py-2 bg-white border-2 border-indigo-100 text-indigo-600 rounded-xl hover:border-indigo-600 hover:bg-indigo-50 transition font-medium">
+            class="px-6 py-2 bg-white border-2 border-red-100 text-primary rounded-xl hover:border-primary hover:bg-red-50 transition font-medium">
             Create Calendar
         </button>
     </div>
@@ -36,11 +36,11 @@ $calendars = $controller->getUserCalendars();
         <?php foreach ($calendars as $cal): ?>
             <div class="group bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all relative overflow-hidden">
                 <!-- Decorative Circle -->
-                <div class="absolute -right-4 -top-4 w-24 h-24 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-full blur-2xl group-hover:bg-indigo-100 transition"></div>
+                <div class="absolute -right-4 -top-4 w-24 h-24 bg-gradient-to-br from-blue-50 to-blue-100 rounded-full blur-2xl group-hover:bg-red-100 transition"></div>
 
                 <div class="relative">
                     <div class="flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl font-bold">
+                        <div class="w-12 h-12 rounded-xl bg-red-50 text-primary flex items-center justify-center text-xl font-bold">
                             <?= $cal['year'] ?>
                         </div>
                         <span class="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-lg capitalize">
@@ -56,7 +56,7 @@ $calendars = $controller->getUserCalendars();
                         </span>
                     </div>
 
-                    <a href="?page=calendar&id=<?= $cal['id'] ?>" class="block group-hover:text-indigo-600 transition">
+                    <a href="?page=calendar&id=<?= $cal['id'] ?>" class="block group-hover:text-primary transition">
                         <h3 class="text-lg font-bold text-gray-800 mb-1 truncate"><?= htmlspecialchars($cal['name']) ?></h3>
                     </a>
 
@@ -72,7 +72,7 @@ $calendars = $controller->getUserCalendars();
                     </div>
 
                     <a href="?page=calendar&id=<?= $cal['id'] ?>"
-                        class="w-full py-2.5 flex items-center justify-center gap-2 bg-gray-50 text-gray-600 rounded-xl hover:bg-indigo-600 hover:text-white transition font-medium">
+                        class="w-full py-2.5 flex items-center justify-center gap-2 bg-gray-50 text-gray-600 rounded-xl hover:bg-primary hover:text-white transition font-medium">
                         <span>View Calendar</span>
                         <i class="ri-arrow-right-line"></i>
                     </a>
@@ -98,12 +98,12 @@ $calendars = $controller->getUserCalendars();
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Calendar Name</label>
                     <input type="text" name="name" required placeholder="e.g. Activity Plan 2026"
-                        class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                        class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Year</label>
                     <input type="number" name="year" value="<?= date('Y') ?>" required min="2000" max="2100"
-                        class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                        class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition">
                 </div>
             </div>
 
@@ -113,7 +113,7 @@ $calendars = $controller->getUserCalendars();
                     Cancel
                 </button>
                 <button type="submit"
-                    class="px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition font-medium shadow-md shadow-indigo-200">
+                    class="px-5 py-2.5 bg-primary text-white rounded-xl hover:bg-primary-dark transition font-medium shadow-md shadow-red-200">
                     Create Calendar
                 </button>
             </div>

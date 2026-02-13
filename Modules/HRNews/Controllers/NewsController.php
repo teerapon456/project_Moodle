@@ -8,15 +8,7 @@ use Core\Helpers\UrlHelper;
 
 class NewsController
 {
-    private $conn;
-    private $user;
-    private $roleId;
-    private $roleActive;
-    private $canView = false;
-    private $canEdit = false;
-    private $canManage = false;
-    private $basePath;
-    private $publicBase;
+    private $newsModel;
 
     public function __construct()
     {
@@ -27,8 +19,10 @@ class NewsController
             if (session_status() === PHP_SESSION_NONE) session_start();
         }
 
+        require_once __DIR__ . '/../Models/NewsModel.php';
         $db = new Database();
-        $this->conn = $db->getConnection();
+        $this->newsModel = new NewsModel($db->getConnection());
+
         $this->user = $_SESSION['user'] ?? null;
         $this->roleId = $this->user['role_id'] ?? null;
         $this->roleActive = $this->user['role_active'] ?? 1;
@@ -48,25 +42,11 @@ class NewsController
         $this->canEdit = false;
         $this->canManage = false;
 
-        if (!$this->conn || !$this->roleId) {
+        if (!$this->roleId) {
             return;
         }
 
-        $sql = "
-            SELECT COALESCE(p.can_view, 0) AS can_view,
-                   COALESCE(p.can_edit, 0) AS can_edit,
-                   COALESCE(p.can_delete, 0) AS can_delete,
-                   COALESCE(p.can_manage, 0) AS can_manage
-            FROM core_modules cm
-            LEFT JOIN core_module_permissions p
-              ON p.module_id = cm.id AND p.role_id = :role_id
-            WHERE cm.code = 'HR_NEWS'
-            LIMIT 1
-        ";
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bindValue(':role_id', $this->roleId, PDO::PARAM_INT);
-        $stmt->execute();
-        $perm = $stmt->fetch(PDO::FETCH_ASSOC);
+        $perm = $this->newsModel->getPermissions($this->roleId);
         if ($perm) {
             $this->canView = (bool)$perm['can_view'];
             $this->canEdit = (bool)($perm['can_edit'] || $perm['can_manage']);
@@ -76,7 +56,7 @@ class NewsController
 
     private function requireAuth(bool $needManage = false): bool
     {
-        if (!$this->conn || !$this->user || !$this->roleId) {
+        if (!$this->user || !$this->roleId) {
             http_response_code(401);
             echo json_encode(['message' => 'Not authenticated']);
             return false;
@@ -138,25 +118,6 @@ class NewsController
         }
     }
 
-    private function fetchAttachmentsForNews(array $newsIds): array
-    {
-        if (empty($newsIds)) {
-            return [];
-        }
-        $placeholders = implode(',', array_fill(0, count($newsIds), '?'));
-        $stmt = $this->conn->prepare("SELECT id, news_id, file_name, file_path, file_url, mime_type, file_size, attachment_type FROM hr_news_attachments WHERE news_id IN ($placeholders)");
-        foreach ($newsIds as $idx => $nid) {
-            $stmt->bindValue($idx + 1, $nid, PDO::PARAM_INT);
-        }
-        $stmt->execute();
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $grouped = [];
-        foreach ($rows as $row) {
-            $grouped[$row['news_id']][] = $row;
-        }
-        return $grouped;
-    }
-
     private function listNews(): void
     {
         if (!$this->requireAuth(false)) {
@@ -166,39 +127,13 @@ class NewsController
         $statusFilter = $_GET['status'] ?? null;
         $showAll = $this->canEdit;
 
-        $where = [];
-        $params = [];
+        $rows = $this->newsModel->getAll($statusFilter, $showAll);
 
-        if ($statusFilter && in_array($statusFilter, ['draft', 'scheduled', 'published', 'archived'])) {
-            $where[] = 'n.status = :status';
-            $params[':status'] = $statusFilter;
-        }
-
-        if (!$showAll) {
-            $where[] = '((n.status = "published") OR (n.status = "scheduled" AND n.publish_at IS NOT NULL AND n.publish_at <= NOW()))';
-            $where[] = '(n.expire_at IS NULL OR n.expire_at > NOW())';
-        }
-
-        $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-        $sql = "
-            SELECT n.id, n.title, n.summary, n.content, n.status, n.is_pinned,
-                   n.title_translations, n.summary_translations, n.content_translations,
-                   n.publish_at, n.expire_at, n.hero_image, n.link_url,
-                   n.created_at, n.updated_at
-            FROM hr_news n
-            $whereSql
-            ORDER BY n.is_pinned DESC, COALESCE(n.publish_at, n.created_at) DESC, n.id DESC
-        ";
-        $stmt = $this->conn->prepare($sql);
-        foreach ($params as $k => $v) {
-            $stmt->bindValue($k, $v);
-        }
-        $stmt->execute();
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $attachments = $this->fetchAttachmentsForNews(array_column($rows, 'id'));
-        foreach ($rows as &$row) {
-            $row['attachments'] = $attachments[$row['id']] ?? [];
+        if (!empty($rows)) {
+            $attachments = $this->newsModel->getAttachmentsByNewsIds(array_column($rows, 'id'));
+            foreach ($rows as &$row) {
+                $row['attachments'] = $attachments[$row['id']] ?? [];
+            }
         }
 
         echo json_encode($rows);
@@ -207,34 +142,14 @@ class NewsController
     private function listPublished(): void
     {
         // Public-facing: only published and within schedule
-        if (!$this->conn) {
-            http_response_code(500);
-            echo json_encode(['message' => 'Database connection failed']);
-            return;
-        }
-
         $limit = isset($_GET['limit']) ? max(1, intval($_GET['limit'])) : 6;
+        $rows = $this->newsModel->getPublished($limit);
 
-        $sql = "
-            SELECT n.id, n.title, n.summary, n.content, n.status, n.is_pinned,
-                   n.title_translations, n.summary_translations, n.content_translations,
-                   n.publish_at, n.expire_at, n.hero_image, n.link_url,
-                   n.created_at, n.updated_at
-            FROM hr_news n
-            WHERE (n.status = 'published'
-               OR (n.status = 'scheduled' AND n.publish_at IS NOT NULL AND n.publish_at <= NOW()))
-              AND (n.expire_at IS NULL OR n.expire_at > NOW())
-            ORDER BY n.is_pinned DESC, COALESCE(n.publish_at, n.created_at) DESC
-            LIMIT :lim
-        ";
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
-        $stmt->execute();
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $attachments = $this->fetchAttachmentsForNews(array_column($rows, 'id'));
-        foreach ($rows as &$row) {
-            $row['attachments'] = $attachments[$row['id']] ?? [];
+        if (!empty($rows)) {
+            $attachments = $this->newsModel->getAttachmentsByNewsIds(array_column($rows, 'id'));
+            foreach ($rows as &$row) {
+                $row['attachments'] = $attachments[$row['id']] ?? [];
+            }
         }
 
         echo json_encode($rows);
@@ -243,12 +158,6 @@ class NewsController
     private function saveNews(): void
     {
         if (!$this->requireAuth(true)) {
-            return;
-        }
-
-        if (!$this->conn) {
-            http_response_code(500);
-            echo json_encode(['message' => 'Database connection failed']);
             return;
         }
 
@@ -294,10 +203,7 @@ class NewsController
         // Fetch current hero for cleanup if updating
         $currentHeroImage = null;
         if ($id > 0) {
-            $stmtHero = $this->conn->prepare("SELECT hero_image FROM hr_news WHERE id = :id LIMIT 1");
-            $stmtHero->bindValue(':id', $id, PDO::PARAM_INT);
-            $stmtHero->execute();
-            $currentHeroImage = $stmtHero->fetchColumn();
+            $currentHeroImage = $this->newsModel->getHeroImage($id);
         }
 
         // If uploaded hero image exists, upload and override $heroImage
@@ -306,57 +212,39 @@ class NewsController
             $heroImage = $uploadedHero;
         }
 
+        $newsData = [
+            'title' => $title,
+            'summary' => $summary,
+            'content' => $content,
+            'title_translations' => $titleTranslations,
+            'summary_translations' => $summaryTranslations,
+            'content_translations' => $contentTranslations,
+            'status' => $status,
+            'is_pinned' => $isPinned,
+            'publish_at' => $publishAt,
+            'expire_at' => $expireAt,
+            'hero_image' => $heroImage,
+            'link_url' => $linkUrl,
+            'uid' => $this->user['id'] ?? null
+        ];
+
         // Insert/update news
         if ($id > 0) {
-            $sql = "
-                UPDATE hr_news
-                SET title = :title,
-                    summary = :summary,
-                    content = :content,
-                    title_translations = :title_translations,
-                    summary_translations = :summary_translations,
-                    content_translations = :content_translations,
-                    status = :status,
-                    is_pinned = :is_pinned,
-                    publish_at = :publish_at,
-                    expire_at = :expire_at,
-                    hero_image = :hero_image,
-                    link_url = :link_url,
-                    updated_by = :uid
-                WHERE id = :id
-            ";
+            if (!$this->newsModel->update($id, $newsData)) {
+                http_response_code(500);
+                echo json_encode(['message' => 'บันทึกข่าวไม่สำเร็จ']);
+                return;
+            }
         } else {
-            $sql = "
-                INSERT INTO hr_news (title, summary, content, title_translations, summary_translations, content_translations, status, is_pinned, publish_at, expire_at, hero_image, link_url, created_by, updated_by)
-                VALUES (:title, :summary, :content, :title_translations, :summary_translations, :content_translations, :status, :is_pinned, :publish_at, :expire_at, :hero_image, :link_url, :uid, :uid)
-            ";
+            $id = $this->newsModel->create($newsData);
+            if (!$id) {
+                http_response_code(500);
+                echo json_encode(['message' => 'บันทึกข่าวไม่สำเร็จ']);
+                return;
+            }
         }
 
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bindValue(':title', $title);
-        $stmt->bindValue(':summary', $summary);
-        $stmt->bindValue(':content', $content);
-        $stmt->bindValue(':title_translations', $titleTranslations);
-        $stmt->bindValue(':summary_translations', $summaryTranslations);
-        $stmt->bindValue(':content_translations', $contentTranslations);
-        $stmt->bindValue(':status', $status);
-        $stmt->bindValue(':is_pinned', $isPinned, PDO::PARAM_INT);
-        $stmt->bindValue(':publish_at', $publishAt !== '' ? $publishAt : null);
-        $stmt->bindValue(':expire_at', $expireAt !== '' ? $expireAt : null);
-        $stmt->bindValue(':hero_image', $heroImage !== '' ? $heroImage : null);
-        $stmt->bindValue(':link_url', $linkUrl !== '' ? $linkUrl : null);
-        $stmt->bindValue(':uid', $this->user['id'] ?? null, PDO::PARAM_INT);
-        if ($id > 0) {
-            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-        }
-
-        if (!$stmt->execute()) {
-            http_response_code(500);
-            echo json_encode(['message' => 'บันทึกข่าวไม่สำเร็จ']);
-            return;
-        }
-
-        $newsId = $id > 0 ? $id : intval($this->conn->lastInsertId());
+        $newsId = intval($id);
 
         // Handle attachments to delete
         if (!empty($attachmentsToDelete)) {
@@ -443,18 +331,7 @@ class NewsController
 
     private function insertAttachment(int $newsId, array $payload): void
     {
-        $stmt = $this->conn->prepare("
-            INSERT INTO hr_news_attachments (news_id, file_name, file_path, file_url, mime_type, file_size, attachment_type)
-            VALUES (:news_id, :file_name, :file_path, :file_url, :mime_type, :file_size, :attachment_type)
-        ");
-        $stmt->bindValue(':news_id', $newsId, PDO::PARAM_INT);
-        $stmt->bindValue(':file_name', $payload['file_name']);
-        $stmt->bindValue(':file_path', $payload['file_path']);
-        $stmt->bindValue(':file_url', $payload['file_url']);
-        $stmt->bindValue(':mime_type', $payload['mime_type']);
-        $stmt->bindValue(':file_size', $payload['file_size']);
-        $stmt->bindValue(':attachment_type', $payload['attachment_type'] ?? 'file');
-        $stmt->execute();
+        $this->newsModel->insertAttachment($newsId, $payload);
     }
 
     private function handleHeroUpload(?string $oldPath = null): ?string
@@ -502,10 +379,7 @@ class NewsController
 
     private function deleteLinkAttachments(int $newsId): void
     {
-        $stmt = $this->conn->prepare("SELECT id FROM hr_news_attachments WHERE news_id = :nid AND (mime_type = 'link' OR attachment_type = 'link')");
-        $stmt->bindValue(':nid', $newsId, PDO::PARAM_INT);
-        $stmt->execute();
-        $linkIds = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'id');
+        $linkIds = $this->newsModel->getLinkAttachmentIds($newsId);
         if (!empty($linkIds)) {
             $this->deleteAttachmentsByIds($newsId, $linkIds);
         }
@@ -514,25 +388,17 @@ class NewsController
     private function deleteAttachmentsByIds(int $newsId, array $ids): void
     {
         if (empty($ids)) return;
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $stmt = $this->conn->prepare("SELECT id, file_path FROM hr_news_attachments WHERE news_id = ? AND id IN ($placeholders)");
-        $stmt->bindValue(1, $newsId, PDO::PARAM_INT);
-        foreach ($ids as $idx => $id) {
-            $stmt->bindValue($idx + 2, $id, PDO::PARAM_INT);
-        }
-        $stmt->execute();
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // 1. Get file paths to unlink
+        $rows = $this->newsModel->getAttachmentsByIds($newsId, $ids);
         foreach ($rows as $row) {
             if (!empty($row['file_path']) && file_exists($row['file_path'])) {
                 @unlink($row['file_path']);
             }
         }
-        $del = $this->conn->prepare("DELETE FROM hr_news_attachments WHERE news_id = ? AND id IN ($placeholders)");
-        $del->bindValue(1, $newsId, PDO::PARAM_INT);
-        foreach ($ids as $idx => $id) {
-            $del->bindValue($idx + 2, $id, PDO::PARAM_INT);
-        }
-        $del->execute();
+
+        // 2. Delete from DB
+        $this->newsModel->deleteAttachmentsByIds($newsId, $ids);
     }
 
     private function deleteNews(): void
@@ -550,17 +416,12 @@ class NewsController
         }
 
         // Delete attachments first
-        $stmt = $this->conn->prepare("SELECT id FROM hr_news_attachments WHERE news_id = :nid");
-        $stmt->bindValue(':nid', $id, PDO::PARAM_INT);
-        $stmt->execute();
-        $attIds = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'id');
+        $attIds = $this->newsModel->getAttachmentsByNewsId($id);
         if (!empty($attIds)) {
             $this->deleteAttachmentsByIds($id, $attIds);
         }
 
-        $del = $this->conn->prepare("DELETE FROM hr_news WHERE id = :id");
-        $del->bindValue(':id', $id, PDO::PARAM_INT);
-        if ($del->execute()) {
+        if ($this->newsModel->delete($id)) {
             echo json_encode(['message' => 'ลบสำเร็จ']);
         } else {
             http_response_code(500);

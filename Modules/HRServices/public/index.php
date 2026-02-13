@@ -36,23 +36,16 @@ if ($docRoot && is_dir($docRoot . '/assets')) {
 // $linkBase calculated above
 
 require_once __DIR__ . '/../../../core/Helpers/PermissionHelper.php';
+require_once __DIR__ . '/../../PermissionManagement/Models/PermissionModel.php';
 
-function getPermissionModuleCode()
-
-{
-    try {
-        $db = new Database();
-        $conn = $db->getConnection();
-        if ($conn) {
-            $sql = "SELECT code FROM core_modules WHERE path LIKE '%modules/manage.php%' OR name LIKE '%permission%' OR code LIKE 'PERMISSION%' ORDER BY id ASC LIMIT 1";
-            $stmt = $conn->prepare($sql);
-            $stmt->execute();
-            $code = $stmt->fetchColumn();
-            if ($code) return $code;
-        }
-    } catch (Exception $e) {
-    }
-    return Env::get('PERMISSION_MODULE_CODE', 'PERMISSION_MANAGEMENT');
+// Instantiate PermissionModel
+try {
+    $db = new Database();
+    $conn = $db->getConnection();
+    $permissionModel = new PermissionModel($conn);
+} catch (Exception $e) {
+    // Fallback if DB fails
+    die('Database Connection Failed');
 }
 
 function normalizePathForMatch($path)
@@ -69,24 +62,8 @@ function normalizePathForMatch($path)
     return $p;
 }
 
-function getRoleModulePermissions($roleId)
-{
-    try {
-        $db = new Database();
-        $conn = $db->getConnection();
-        if (!$conn) return [];
-        $sql = "SELECT cm.id, cm.code, cm.path, cm.name, cm.is_active, COALESCE(p.can_view, 0) as can_view, COALESCE(p.can_edit, 0) as can_edit, COALESCE(p.can_delete, 0) as can_delete, COALESCE(p.can_manage, 0) as can_manage FROM core_modules cm LEFT JOIN core_module_permissions p ON p.module_id = cm.id AND p.role_id = :role_id WHERE cm.is_active = 1";
-        $stmt = $conn->prepare($sql);
-        $stmt->bindValue(':role_id', $roleId, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
-        return [];
-    }
-}
-
 $currentModuleCode = 'HR_SERVICES';
-$permModuleCode = getPermissionModuleCode();
+$permModuleCode = $permissionModel->getPermissionManagementModuleCode();
 
 if (!$isLoggedIn || empty($user['role_id'])) {
     // Don't destroy session, just redirect
@@ -113,7 +90,11 @@ if (empty($userPerms['can_view'])) {
 
 $permManage = userHasModuleAccess($permModuleCode, (int)$user['role_id']);
 $hrNewsPerm = userHasModuleAccess('HR_NEWS', (int)$user['role_id']);
-$roleModulePerms = getRoleModulePermissions((int)$user['role_id']);
+$activityPerm = userHasModuleAccess('ACTIVITY_DASHBOARD', (int)$user['role_id']);
+$emailLogPerm = userHasModuleAccess('EMAIL_LOGS', (int)$user['role_id']);
+$scheduledPerm = userHasModuleAccess('SCHEDULED_REPORTS', (int)$user['role_id']);
+
+$roleModulePerms = $permissionModel->getRoleModulePermissions((int)$user['role_id']);
 $profilePic = $user['profile_picture'] ?? null;
 ?>
 <!DOCTYPE html>
@@ -137,95 +118,6 @@ $profilePic = $user['profile_picture'] ?? null;
     </script>
     <!-- i18n Module -->
     <script src="<?= $assetBase ?>assets/js/i18n.js"></script>
-    <style>
-        body {
-            font-family: 'Kanit', sans-serif;
-        }
-
-        .side-nav {
-            transform: translateX(-100%);
-            transition: transform 0.25s ease;
-        }
-
-        .side-nav.open {
-            transform: translateX(0);
-        }
-
-        .service-modal {
-            display: none;
-        }
-
-        .service-modal.show {
-            display: flex;
-        }
-
-        .profile-modal-overlay {
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.2s ease;
-        }
-
-        .profile-modal-overlay.show {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .edit-mode .add-service-btn,
-        .edit-mode .exit-edit-btn {
-            display: inline-flex;
-        }
-
-        .edit-mode .card-actions {
-            display: flex;
-        }
-
-        .edit-mode .service-card {
-            pointer-events: none;
-            border-style: dashed;
-        }
-
-        .edit-mode .card-actions,
-        .edit-mode .card-actions * {
-            pointer-events: auto;
-        }
-
-        .service-card.coming-soon {
-            opacity: 0.5;
-        }
-
-        .service-card.maintenance {
-            opacity: 0.4;
-            filter: grayscale(0.2);
-        }
-
-        /* Delete Modal */
-        .delete-modal {
-            display: none;
-        }
-
-        .delete-modal.show {
-            display: flex;
-        }
-
-        /* Thin scrollbar for icon grid */
-        #icon-grid::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        #icon-grid::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-        }
-
-        #icon-grid::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 4px;
-        }
-
-        #icon-grid::-webkit-scrollbar-thumb:hover {
-            background: #a1a1a1;
-        }
-    </style>
 </head>
 
 <body class="bg-gray-100 min-h-screen">
@@ -239,8 +131,8 @@ $profilePic = $user['profile_picture'] ?? null;
             <h1 class="text-3xl font-bold text-gray-900" data-i18n="hrservices.title">My HR Services</h1>
             <?php if (!empty($userPerms['can_edit']) || !empty($userPerms['can_manage'])): ?>
                 <div class="flex items-center gap-3">
-                    <button class="hidden items-center gap-2 px-4 py-2.5 rounded-lg border border-dashed border-primary bg-red-50 text-primary font-bold cursor-pointer add-service-btn" id="add-service-btn">+ <span data-i18n="hrservices.add_service">Add Service</span></button>
-                    <button class="hidden items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-400 bg-gray-50 text-gray-700 font-bold cursor-pointer exit-edit-btn" id="exit-edit-btn" data-i18n="hrservices.exit_edit">Exit Edit</button>
+                    <button class="hidden items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors cursor-pointer add-service-btn" id="add-service-btn">+ <span data-i18n="hrservices.add_service">Add Service</span></button>
+                    <button class="hidden items-center gap-2 px-4 py-2.5 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium transition-colors cursor-pointer exit-edit-btn" id="exit-edit-btn" data-i18n="hrservices.exit_edit">Exit Edit</button>
                 </div>
             <?php endif; ?>
         </div>
@@ -248,7 +140,7 @@ $profilePic = $user['profile_picture'] ?? null;
             <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <i class="ri-search-line text-gray-400"></i>
             </span>
-            <input type="text" id="service-search" class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm" placeholder="Search" data-i18n-placeholder="hrservices.search_placeholder">
+            <input type="text" id="service-search" class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm" placeholder="Search" data-i18n-placeholder="hrservices.search_placeholder">
         </div>
         <div id="modules-container"></div>
     </div>
@@ -257,7 +149,7 @@ $profilePic = $user['profile_picture'] ?? null;
     <div id="notification" class="fixed right-5 bottom-5 bg-white px-6 py-4 rounded-lg shadow-lg hidden items-center gap-3 z-[400]"></div>
 
     <!-- Service Edit Modal -->
-    <div class="service-modal fixed inset-0 bg-black/45 items-center justify-center z-[300] overflow-y-auto p-4" id="service-modal">
+    <div class="service-modal hidden fixed inset-0 backdrop-blur-sm bg-black/40 items-center justify-center z-[300] overflow-y-auto p-4" id="service-modal">
         <div class="bg-white w-full max-w-2xl rounded-xl shadow-xl p-6 flex flex-col gap-4 my-auto max-h-[90vh] overflow-y-auto">
             <h3 id="service-modal-title" class="font-semibold text-lg border-b pb-3">เพิ่มบริการ</h3>
             <input type="hidden" id="service-id">
@@ -268,30 +160,30 @@ $profilePic = $user['profile_picture'] ?? null;
                 <div class="flex flex-col gap-3">
                     <div class="flex flex-col gap-1.5">
                         <label class="text-sm text-gray-600" data-i18n="hrservices.label_core_module">Core Module</label>
-                        <select id="service-module" class="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm">
+                        <select id="service-module" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm">
                             <option value="" data-i18n="hrservices.label_no_permission">(ไม่ผูกสิทธิ์)</option>
                         </select>
                     </div>
                     <div class="flex flex-col gap-1.5">
                         <label class="text-sm text-gray-600"><span data-i18n="hrservices.label_name_en">ชื่อบริการ (English)</span> <span class="text-red-500">*</span></label>
-                        <input type="text" id="service-name-en" class="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm" placeholder="e.g. Request for Uniform">
+                        <input type="text" id="service-name-en" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm" placeholder="e.g. Request for Uniform">
                     </div>
                     <div class="flex flex-col gap-1.5">
                         <label class="text-sm text-gray-600" data-i18n="hrservices.label_name_th">ชื่อบริการ (ภาษาไทย)</label>
-                        <input type="text" id="service-name-th" class="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm" placeholder="เช่น ขอเบิกยูนิฟอร์ม">
+                        <input type="text" id="service-name-th" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm" placeholder="เช่น ขอเบิกยูนิฟอร์ม">
                     </div>
                     <div class="flex flex-col gap-1.5">
                         <label class="text-sm text-gray-600" data-i18n="hrservices.label_name_mm">ชื่อบริการ (မြန်မာဘာသာ)</label>
-                        <input type="text" id="service-name-mm" class="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm" placeholder="ဝန်ဆောင်မှု">
+                        <input type="text" id="service-name-mm" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm" placeholder="ဝန်ဆောင်မှု">
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div class="flex flex-col gap-1.5">
                             <label class="text-sm text-gray-600" data-i18n="hrservices.label_category">หมวด</label>
-                            <input type="text" id="service-category" class="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm" placeholder="Facilities">
+                            <input type="text" id="service-category" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm" placeholder="Facilities">
                         </div>
                         <div class="flex flex-col gap-1.5">
                             <label class="text-sm text-gray-600" data-i18n="hrservices.label_status">สถานะ</label>
-                            <select id="service-status" class="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm">
+                            <select id="service-status" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm">
                                 <option value="ready" data-i18n="hrservices.status_ready">พร้อมใช้</option>
                                 <option value="soon" data-i18n="hrservices.status_soon">เร็วๆนี้</option>
                                 <option value="maintenance" data-i18n="hrservices.status_maintenance">ปิดปรับปรุง</option>
@@ -300,7 +192,7 @@ $profilePic = $user['profile_picture'] ?? null;
                     </div>
                     <div class="flex flex-col gap-1.5">
                         <label class="text-sm text-gray-600" data-i18n="hrservices.label_path">ลิงก์ (path)</label>
-                        <input type="text" id="service-path" class="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm" placeholder="/path หรือ #">
+                        <input type="text" id="service-path" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm" placeholder="/path หรือ #">
                     </div>
                 </div>
 
@@ -346,14 +238,14 @@ $profilePic = $user['profile_picture'] ?? null;
 
             <!-- Buttons -->
             <div class="flex gap-2.5 justify-end pt-3 border-t">
-                <button class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium" id="service-cancel" data-i18n="common.cancel">ยกเลิก</button>
-                <button class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium" id="service-save" data-i18n="common.save">บันทึก</button>
+                <button class="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors" id="service-cancel" data-i18n="common.cancel">ยกเลิก</button>
+                <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors" id="service-save" data-i18n="common.save">บันทึก</button>
             </div>
         </div>
     </div>
 
     <!-- Delete Confirmation Modal -->
-    <div class="delete-modal fixed inset-0 bg-black/45 items-center justify-center z-[350]" id="delete-modal">
+    <div class="delete-modal hidden fixed inset-0 backdrop-blur-sm bg-black/40 items-center justify-center z-[350]" id="delete-modal">
         <div class="bg-white w-[90%] max-w-sm rounded-xl shadow-xl p-6 flex flex-col items-center gap-4 text-center">
             <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
                 <i class="ri-delete-bin-line text-3xl text-red-500"></i>
@@ -362,8 +254,8 @@ $profilePic = $user['profile_picture'] ?? null;
             <p class="text-gray-600 text-sm" id="delete-modal-message">คุณต้องการลบบริการนี้หรือไม่?</p>
             <input type="hidden" id="delete-service-id">
             <div class="flex gap-3 w-full mt-2">
-                <button class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-bold" id="delete-cancel" data-i18n="common.cancel">ยกเลิก</button>
-                <button class="flex-1 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold" id="delete-confirm" data-i18n="common.delete">ลบ</button>
+                <button class="flex-1 px-4 py-2.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors" id="delete-cancel" data-i18n="common.cancel">ยกเลิก</button>
+                <button class="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors" id="delete-confirm" data-i18n="common.delete">ลบ</button>
             </div>
         </div>
     </div>
@@ -489,7 +381,23 @@ $profilePic = $user['profile_picture'] ?? null;
 
         async function fetchModules() {
             const container = document.getElementById('modules-container');
-            if (container) container.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="ri-loader-4-line animate-spin text-2xl"></i></div>';
+            if (container) {
+                // Skeleton Loader
+                container.innerHTML = `
+                    <div class="mb-5 pl-3.5 border-l-4 border-gray-200">
+                        <div class="h-6 w-32 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                    <div class="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-5 mb-12">
+                        ${Array(8).fill(0).map(() => `
+                            <div class="bg-white border border-gray-100 rounded-xl p-6 flex flex-col items-center gap-3 min-h-[120px] animate-pulse">
+                                <div class="w-12 h-12 bg-gray-200 rounded-full"></div>
+                                <div class="h-4 w-24 bg-gray-200 rounded mt-2"></div>
+                                <div class="h-3 w-16 bg-gray-200 rounded"></div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
 
             try {
                 const res = await fetch(`${API_BASE_URL}/modules/list`, {
@@ -523,7 +431,7 @@ $profilePic = $user['profile_picture'] ?? null;
             container.innerHTML = Object.entries(groups).map(([category, items]) => {
                 const cards = items.map(item => {
                     const status = item.status || 'ready';
-                    const statusClass = status === 'soon' ? 'coming-soon' : status === 'maintenance' ? 'maintenance' : '';
+                    const statusClass = status === 'soon' ? 'opacity-50' : status === 'maintenance' ? 'opacity-40 grayscale' : '';
                     const isReady = status === 'ready';
                     const href = item.path && item.path !== '' ? item.path : '#';
                     const icon = item.icon || 'ri-apps-line';
@@ -583,7 +491,7 @@ $profilePic = $user['profile_picture'] ?? null;
                                 }
                             </div>
                             <div class="text-center"><div class="text-sm text-gray-700">${displayName}</div></div>
-                            <div class="card-actions hidden absolute top-2 right-2 items-center gap-1">
+                            <div class="card-actions hidden absolute top-2 right-2 items-center gap-1 pointer-events-auto">
                                 ${CAN_EDIT ? '<button class="action-btn edit w-7 h-7 flex items-center justify-center border border-blue-500 text-blue-600 bg-white rounded-lg hover:bg-blue-50" title="Edit"><i class="ri-pencil-line text-sm"></i></button>' : ''}
                                 ${CAN_DELETE ? '<button class="action-btn delete w-7 h-7 flex items-center justify-center border border-red-500 text-red-600 bg-white rounded-lg hover:bg-red-50" title="Delete"><i class="ri-delete-bin-line text-sm"></i></button>' : ''}
                             </div>
@@ -596,7 +504,14 @@ $profilePic = $user['profile_picture'] ?? null;
                 `;
             }).join('');
 
-            if (document.body.classList.contains('edit-mode')) applyEditControls();
+            if (document.body.classList.contains('edit-mode')) {
+
+                document.querySelectorAll('.service-card').forEach(card => {
+                    card.classList.add('border-dashed');
+                    card.querySelector('.card-actions')?.classList.remove('hidden');
+                    card.querySelector('.card-actions')?.classList.add('flex');
+                });
+            }
         }
 
         // Initialize icon grid - Updated size to w-9 h-9
@@ -719,16 +634,55 @@ $profilePic = $user['profile_picture'] ?? null;
             });
         }
 
-        // Click guard
+        // Click guard & Event Delegation
         document.addEventListener('click', (e) => {
+            // 1. Handle Action Buttons (Edit/Delete) first
+            const actionBtn = e.target.closest('.action-btn');
+            if (actionBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const card = actionBtn.closest('.service-card');
+                if (!card) return;
+
+                const isEdit = actionBtn.classList.contains('edit');
+                const isDelete = actionBtn.classList.contains('delete');
+                const id = card.getAttribute('data-id');
+                const name = card.querySelector('.text-sm')?.innerText || '';
+
+                if (isDelete) {
+                    // Show custom delete modal
+                    document.getElementById('delete-service-id').value = id;
+                    document.getElementById('delete-modal-message').textContent = `"${name}"`;
+                    document.getElementById('delete-modal').classList.add('show');
+                    document.getElementById('delete-modal').classList.remove('hidden', 'flex'); // Reset classes just in case, logic below handles it
+                    document.getElementById('delete-modal').classList.add('flex');
+                    document.getElementById('delete-modal').classList.remove('hidden');
+
+                    I18n.apply();
+                    return;
+                }
+
+                if (isEdit) {
+                    promptServiceData(card);
+                    return;
+                }
+                return;
+            }
+
+            // 2. Handle Card Clicks (Navigation)
             const card = e.target.closest('.service-card');
             if (!card) return;
+
+            // Allow actions in edit mode (prevent nav)
+            if (document.body.classList.contains('edit-mode')) {
+                e.preventDefault();
+                return;
+            }
+
             const allowed = card.getAttribute('data-allowed') === '1';
             const status = card.getAttribute('data-status') || 'ready';
             const name = card.querySelector('.text-sm')?.innerText || 'บริการนี้';
-
-            // Allow actions in edit mode
-            if (document.body.classList.contains('edit-mode')) return;
 
             if (status !== 'ready') {
                 e.preventDefault();
@@ -744,45 +698,43 @@ $profilePic = $user['profile_picture'] ?? null;
         });
 
         // Edit mode
+        // Edit mode
         const setEditMode = (on) => {
             if (!CAN_MANAGE) return;
             document.body.classList.toggle('edit-mode', on);
+
+            // Toggle Card Styles via JS since we removed custom CSS
+            document.querySelectorAll('.service-card').forEach(card => {
+                const actions = card.querySelector('.card-actions');
+                if (on) {
+                    card.classList.add('border-dashed');
+                    if (actions) {
+                        actions.classList.remove('hidden');
+                        actions.classList.add('flex');
+                    }
+                } else {
+                    card.classList.remove('border-dashed');
+                    if (actions) {
+                        actions.classList.add('hidden');
+                        actions.classList.remove('flex');
+                    }
+                }
+            });
+
             if (on) {
                 // Close side nav if open
                 document.getElementById('side-nav')?.classList.remove('open');
                 document.getElementById('side-nav-close')?.click();
-                applyEditControls();
+
             }
             document.getElementById('exit-edit-btn').style.display = on ? 'inline-flex' : 'none';
             document.getElementById('add-service-btn').style.display = on ? 'inline-flex' : 'none';
         };
 
-        applyEditControls = () => {
-            if (!CAN_MANAGE) return;
-            document.querySelectorAll('.service-card').forEach(card => {
-                card.querySelectorAll('.action-btn').forEach(btn => {
-                    btn.addEventListener('click', async (ev) => {
-                        ev.preventDefault();
-                        ev.stopPropagation();
-                        const isEdit = btn.classList.contains('edit');
-                        const isDelete = btn.classList.contains('delete');
-                        const id = card.getAttribute('data-id');
-                        const name = card.querySelector('.text-sm')?.innerText || '';
-                        if (isDelete) {
-                            // Show custom delete modal
-                            document.getElementById('delete-service-id').value = id;
-                            document.getElementById('delete-modal-message').textContent = `"${name}"`;
-                            document.getElementById('delete-modal').classList.add('show');
-                            I18n.apply();
-                            return;
-                        }
-                        if (isEdit) promptServiceData(card);
-                    });
-                });
-            });
-        };
 
-        const promptServiceData = (card) => {
+
+
+        function promptServiceData(card) {
             const modal = document.getElementById('service-modal');
             document.getElementById('service-id').value = card.getAttribute('data-id') || '';
 
@@ -879,7 +831,8 @@ $profilePic = $user['profile_picture'] ?? null;
             // Use i18n for modal title
             const isEdit = !!card.getAttribute('data-id');
             document.getElementById('service-modal-title').textContent = I18n.t(isEdit ? 'hrservices.modal_edit_title' : 'hrservices.modal_add_title');
-            modal.classList.add('show');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
             // Apply translations to modal elements
             I18n.apply();
         };
@@ -961,15 +914,22 @@ $profilePic = $user['profile_picture'] ?? null;
                     status,
                     path
                 });
-                modal.classList.remove('show');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
                 fetchModules();
             } catch (err) {
                 alert(err.message || 'บันทึกไม่สำเร็จ');
             }
         });
-        document.getElementById('service-cancel')?.addEventListener('click', () => modal.classList.remove('show'));
+        document.getElementById('service-cancel')?.addEventListener('click', () => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        });
         modal?.addEventListener('click', (e) => {
-            if (e.target === modal) modal.classList.remove('show');
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
         });
 
         if (new URLSearchParams(location.search).get('edit') === '1') setEditMode(true);
@@ -1015,10 +975,14 @@ $profilePic = $user['profile_picture'] ?? null;
         // Delete Modal Handlers
         const deleteModal = document.getElementById('delete-modal');
         document.getElementById('delete-cancel')?.addEventListener('click', () => {
-            deleteModal.classList.remove('show');
+            deleteModal.classList.add('hidden');
+            deleteModal.classList.remove('flex');
         });
         deleteModal?.addEventListener('click', (e) => {
-            if (e.target === deleteModal) deleteModal.classList.remove('show');
+            if (e.target === deleteModal) {
+                deleteModal.classList.add('hidden');
+                deleteModal.classList.remove('flex');
+            }
         });
         document.getElementById('delete-confirm')?.addEventListener('click', async () => {
             const id = document.getElementById('delete-service-id').value;
@@ -1028,7 +992,8 @@ $profilePic = $user['profile_picture'] ?? null;
                     id: parseInt(id),
                     delete: true
                 });
-                deleteModal.classList.remove('show');
+                deleteModal.classList.add('hidden');
+                deleteModal.classList.remove('flex');
                 showNotification(I18n.t('hrservices.delete_success'), 'success');
                 fetchModules();
             } catch (err) {

@@ -73,13 +73,13 @@
 
             <div class="booking-details">
                 <p><strong>ผู้ขอจอง:</strong> <?php
-                                                echo htmlspecialchars(!empty($booking['user_fullname']) ? $booking['user_fullname'] : $booking['user_name']);
+                                                echo htmlspecialchars($booking['user_fullname'] ?? $booking['fullname'] ?? $booking['username'] ?? 'Unknown User');
                                                 ?></p>
                 <p><strong>แผนก/ฝ่าย:</strong> <?php echo htmlspecialchars($booking['user_department'] ?? '-'); ?></p>
-            <p><strong>ปลายทาง:</strong> <?php echo htmlspecialchars($booking['destination']); ?></p>
-            <p><strong>วัตถุประสงค์:</strong> <?php echo htmlspecialchars($booking['purpose']); ?></p>
-            <p><strong>เวลาเริ่มต้น:</strong> <?php echo date('d/m/Y H:i', strtotime($booking['start_time'])); ?> น.</p>
-            <p><strong>เวลาสิ้นสุด:</strong> <?php echo date('d/m/Y H:i', strtotime($booking['end_time'])); ?> น.</p>
+                <p><strong>ปลายทาง:</strong> <?php echo htmlspecialchars($booking['destination']); ?></p>
+                <p><strong>วัตถุประสงค์:</strong> <?php echo htmlspecialchars($booking['purpose']); ?></p>
+                <p><strong>เวลาเริ่มต้น:</strong> <?php echo date('d/m/Y H:i', strtotime($booking['start_time'])); ?> น.</p>
+                <p><strong>เวลาสิ้นสุด:</strong> <?php echo date('d/m/Y H:i', strtotime($booking['end_time'])); ?> น.</p>
 
                 <p><strong>คนขับ:</strong>
                     <?php

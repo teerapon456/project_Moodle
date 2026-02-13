@@ -9,19 +9,25 @@ $upcoming = $data['upcoming'];
 
 <div class="space-y-8">
     <!-- Header -->
-    <div class="bg-gradient-to-r from-indigo-600 to-purple-700 rounded-xl sm:rounded-2xl p-4 sm:p-8 text-white shadow-lg relative overflow-hidden">
-        <div class="relative z-10">
-            <h1 class="text-2xl sm:text-3xl font-bold mb-2">My Overview</h1>
-            <p class="text-indigo-100 text-lg">Here's what's happening across all your calendars.</p>
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <i class="ri-dashboard-line text-primary"></i>
+                My Overview
+            </h1>
+            <p class="text-gray-500 mt-1">Here's what's happening across all your calendars.</p>
         </div>
-        <div class="absolute right-0 top-0 h-full w-1/3 bg-white/10 skew-x-12 translate-x-12"></div>
-        <div class="absolute right-20 bottom-[-50px] w-64 h-64 bg-purple-500/30 rounded-full blur-3xl"></div>
+        <div class="hidden sm:block">
+            <a href="?page=my_calendars" class="px-4 py-2 bg-red-50 text-primary rounded-lg font-medium hover:bg-red-100 transition flex items-center gap-2">
+                <i class="ri-calendar-line"></i> Manage Calendars
+            </a>
+        </div>
     </div>
 
     <!-- Stats -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div class="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3 sm:gap-4">
-            <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xl sm:text-2xl">
+            <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-red-50 text-primary flex items-center justify-center text-xl sm:text-2xl">
                 <i class="ri-calendar-check-line"></i>
             </div>
             <div>
@@ -166,7 +172,7 @@ $upcoming = $data['upcoming'];
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="p-6 border-b border-gray-50 flex justify-between items-center">
             <h2 class="text-xl font-bold text-gray-800">Use-Wide Upcoming Activities</h2>
-            <a href="?page=my_calendars" class="text-indigo-600 text-sm font-medium hover:underline">View All Calendars</a>
+            <a href="?page=my_calendars" class="text-primary text-sm font-medium hover:underline">View All Calendars</a>
         </div>
         <div class="divide-y divide-gray-50">
             <?php
@@ -205,7 +211,7 @@ $upcoming = $data['upcoming'];
                         </div>
                         <div class="flex-1">
                             <h4 class="font-bold text-gray-800 <?php echo $titleSize; ?>">
-                                <a href="?page=activity_detail&id=<?= $act['id'] ?>" class="hover:text-indigo-600"><?= htmlspecialchars($act['name']) ?></a>
+                                <a href="?page=activity_detail&id=<?= $act['id'] ?>" class="hover:text-primary"><?= htmlspecialchars($act['name']) ?></a>
                                 <?php if ($isSoon): ?>
                                     <span class="ml-2 px-2 py-0.5 bg-red-100 text-red-600 text-xs rounded-full font-bold uppercase">Soon</span>
                                 <?php endif; ?>
@@ -220,7 +226,7 @@ $upcoming = $data['upcoming'];
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
-                            <a href="?page=activity_detail&id=<?= $act['id'] ?>" class="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition">
+                            <a href="?page=activity_detail&id=<?= $act['id'] ?>" class="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-red-50 hover:text-primary hover:border-primary transition">
                                 View Details
                             </a>
                         </div>

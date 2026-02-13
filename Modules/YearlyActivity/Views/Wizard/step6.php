@@ -4,14 +4,14 @@
 <div class="max-w-6xl mx-auto space-y-6">
     <div class="text-center mb-8">
         <h2 class="text-xl font-bold text-gray-800">RASCI Matrix</h2>
-        <p class="text-gray-500 text-sm">Assign responsibilities: <strong class="text-indigo-600">Click cells</strong> to toggle roles.</p>
+        <p class="text-gray-500 text-sm">Assign responsibilities: <strong class="text-primary">Click cells</strong> to toggle roles.</p>
     </div>
 
     <!-- Legend -->
     <div class="flex flex-wrap justify-center gap-4 text-sm mb-4">
         <div class="flex items-center gap-2"><span class="w-6 h-6 rounded bg-red-100 text-red-700 font-bold flex items-center justify-center text-xs">R</span> Responsible</div>
         <div class="flex items-center gap-2"><span class="w-6 h-6 rounded bg-orange-100 text-orange-700 font-bold flex items-center justify-center text-xs">A</span> Accountable</div>
-        <div class="flex items-center gap-2"><span class="w-6 h-6 rounded bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs">S</span> Support</div>
+        <div class="flex items-center gap-2"><span class="w-6 h-6 rounded bg-blue-100 text-red-700 font-bold flex items-center justify-center text-xs">S</span> Support</div>
         <div class="flex items-center gap-2"><span class="w-6 h-6 rounded bg-purple-100 text-purple-700 font-bold flex items-center justify-center text-xs">C</span> Consulted</div>
         <div class="flex items-center gap-2"><span class="w-6 h-6 rounded bg-gray-100 text-gray-700 font-bold flex items-center justify-center text-xs">I</span> Informed</div>
     </div>
@@ -52,7 +52,7 @@
         '': 'bg-transparent',
         'R': 'bg-red-100 text-red-700',
         'A': 'bg-orange-100 text-orange-700',
-        'S': 'bg-blue-100 text-blue-700',
+        'S': 'bg-blue-100 text-red-700',
         'C': 'bg-purple-100 text-purple-700',
         'I': 'bg-gray-100 text-gray-700'
     };

@@ -14,7 +14,9 @@ class DashboardController extends DormBaseController
      */
     public function getSummary()
     {
+        $this->requireAuth();
         $summary = [];
+
 
         // สถิติอาคารและห้องพัก
         $stmt = $this->pdo->query("
@@ -83,7 +85,9 @@ class DashboardController extends DormBaseController
      */
     public function getRecentMaintenance()
     {
+        $this->requireAuth();
         $limit = (int)($_GET['limit'] ?? 5);
+
         if ($limit < 1 || $limit > 50) $limit = 5;
 
         $sql = "
@@ -107,7 +111,9 @@ class DashboardController extends DormBaseController
      */
     public function getOverdueInvoices()
     {
+        $this->requireAuth();
         $stmt = $this->pdo->query("
+
             SELECT i.id, i.invoice_number, i.month_cycle, i.total_amount, i.paid_amount, 
                    i.due_date, i.status,
                    r.room_number, b.code as building_code,
@@ -129,7 +135,9 @@ class DashboardController extends DormBaseController
      */
     public function getRecentOccupancy()
     {
+        $this->requireAuth();
         $limit = (int)($_GET['limit'] ?? 5);
+
         if ($limit < 1 || $limit > 50) $limit = 5;
 
         $sql = "
@@ -151,7 +159,9 @@ class DashboardController extends DormBaseController
      */
     public function getMonthlyStats()
     {
+        $this->requireAuth();
         $months = $_GET['months'] ?? 6;
+
 
         $stats = [];
 

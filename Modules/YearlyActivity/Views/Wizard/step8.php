@@ -35,12 +35,12 @@
             <input type="hidden" id="risk-ms-id">
             <div>
                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Risk Description</label>
-                <textarea id="risk-desc" rows="2" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-indigo-500" placeholder="What could go wrong?"></textarea>
+                <textarea id="risk-desc" rows="2" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-primary" placeholder="What could go wrong?"></textarea>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Impact (1-5)</label>
-                    <select id="risk-impact" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-indigo-500 bg-white">
+                    <select id="risk-impact" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-primary bg-white">
                         <option value="1">1 - Negligible</option>
                         <option value="2">2 - Minor</option>
                         <option value="3">3 - Moderate</option>
@@ -50,7 +50,7 @@
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Probability (1-5)</label>
-                    <select id="risk-prob" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-indigo-500 bg-white">
+                    <select id="risk-prob" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-primary bg-white">
                         <option value="1">1 - Rare</option>
                         <option value="2">2 - Unlikely</option>
                         <option value="3">3 - Possible</option>
@@ -61,12 +61,12 @@
             </div>
             <div>
                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Mitigation Plan</label>
-                <textarea id="risk-plan" rows="2" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-indigo-500" placeholder="How will we prevent or handle this?"></textarea>
+                <textarea id="risk-plan" rows="2" class="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-primary" placeholder="How will we prevent or handle this?"></textarea>
             </div>
         </div>
         <div class="p-4 bg-gray-50 rounded-b-2xl flex justify-end gap-2">
             <button type="button" onclick="closeRiskModal()" class="px-4 py-2 text-gray-500 hover:text-gray-700">Cancel</button>
-            <button type="button" onclick="saveRisk()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Add Risk</button>
+            <button type="button" onclick="saveRisk()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark">Add Risk</button>
         </div>
     </div>
 </div>
@@ -135,7 +135,7 @@
                         <p class="text-xs text-gray-500">Log any risks associated with this milestone.</p>
                     </div>
                     <button type="button" onclick="openRiskModal(${ms.id}, '${ms.name}')" 
-                        class="text-indigo-600 hover:bg-indigo-100 p-2 rounded-lg transition text-sm font-medium">
+                        class="text-primary hover:bg-red-100 p-2 rounded-lg transition text-sm font-medium">
                         <i class="ri-shield-flash-line mr-1"></i> Log Risk
                     </button>
                 </div>

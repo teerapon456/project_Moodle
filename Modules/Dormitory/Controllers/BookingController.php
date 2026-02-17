@@ -511,13 +511,21 @@ class BookingController extends DormBaseController
             // Audit Log
             $this->logAudit('approve_request', 'dorm_reservation', $requestId, ['status' => 'pending'], ['status' => 'approved', 'room_id' => $roomId]);
 
-            // Real-time notification (non-blocking)
+            // Real-time notification (non-blocking) - ข้อความตามประเภทคำขอ
+            $approveMessage = match ($request['request_type']) {
+                'move_in' => 'คำขอเข้าพักได้รับการอนุมัติ กรุณารับกุญแจ ' . $keyDate,
+                'move_out' => 'คำขอย้ายออกได้รับการอนุมัติแล้ว',
+                'change_room' => 'คำขอเปลี่ยนห้องได้รับการอนุมัติแล้ว' . ($keyDate ? ' วันที่ดำเนินการ: ' . $keyDate : ''),
+                'add_relative' => 'คำขอเพิ่มญาติได้รับการอนุมัติแล้ว',
+                'remove_relative' => 'คำขอนำญาติออกได้รับการอนุมัติแล้ว',
+                default => 'คำขอหอพักได้รับการอนุมัติแล้ว',
+            };
             try {
                 NotificationService::create(
                     $request['requester_id'],
                     'success',
                     'อนุมัติคำขอหอพักแล้ว',
-                    $request['request_type'] == 'move_in' ? 'คำขอเข้าพักได้รับการอนุมัติ กรุณารับกุญแจ ' . $keyDate : 'คำขอย้ายออกได้รับการอนุมัติ',
+                    $approveMessage,
                     ['request_id' => $requestId],
                     \Core\Helpers\UrlHelper::getBaseUrl() . '/Modules/Dormitory/?page=my-room'
                 );
@@ -575,13 +583,21 @@ class BookingController extends DormBaseController
         // Audit Log
         $this->logAudit('reject_request', 'dorm_reservation', $requestId, ['status' => 'pending'], ['status' => 'rejected', 'reason' => $reason]);
 
-        // Real-time notification
+        // Real-time notification - ข้อความตามประเภทคำขอ
         if ($request) {
+            $rejectLabel = match ($request['request_type']) {
+                'move_in' => 'เข้าพัก',
+                'move_out' => 'ย้ายออก',
+                'change_room' => 'เปลี่ยนห้อง',
+                'add_relative' => 'เพิ่มญาติ',
+                'remove_relative' => 'นำญาติออก',
+                default => 'หอพัก',
+            };
             NotificationService::create(
                 $request['requester_id'],
                 'error',
                 'คำขอหอพักถูกปฏิเสธ',
-                'คำขอ' . ($request['request_type'] == 'move_in' ? 'เข้าพัก' : 'ย้ายออก') . 'ถูกปฏิเสธ: ' . mb_substr($reason, 0, 50),
+                'คำขอ' . $rejectLabel . 'ถูกปฏิเสธ: ' . mb_substr($reason, 0, 50),
                 ['request_id' => $requestId],
                 \Core\Helpers\UrlHelper::getBaseUrl() . '/Modules/Dormitory/?page=booking_form'
             );

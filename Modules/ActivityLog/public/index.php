@@ -42,6 +42,8 @@ $userPerms = userHasModuleAccess('HR_SERVICES', (int)$user['role_id']);
 $hrNewsPerm = userHasModuleAccess('HR_NEWS', (int)$user['role_id']);
 $permManage = userHasModuleAccess('PERMISSION_MANAGEMENT', (int)$user['role_id']);
 $activityPerm = userHasModuleAccess('ACTIVITY_DASHBOARD', (int)$user['role_id']);
+$emailLogPerm = userHasModuleAccess('EMAIL_LOGS', (int)$user['role_id']);
+$scheduledPerm = userHasModuleAccess('SCHEDULED_REPORTS', (int)$user['role_id']);
 
 // Check Activity Dashboard permission
 if (empty($activityPerm['can_view'])) {
@@ -73,6 +75,34 @@ if (empty($activityPerm['can_view'])) {
         body {
             font-family: 'Kanit', sans-serif;
         }
+
+        /* Modal Glassmorphism */
+        .modal-overlay {
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.2s ease-out forwards;
+        }
     </style>
 </head>
 
@@ -99,7 +129,7 @@ if (empty($activityPerm['can_view'])) {
             <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-500 text-sm">กิจกรรมวันนี้</p>
+                        <p class="text-gray-500 text-sm">กิจกรรมวันนี้ (รวม)</p>
                         <p class="text-3xl font-bold text-gray-900 mt-1" id="stat-activities-today">-</p>
                     </div>
                     <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -118,52 +148,59 @@ if (empty($activityPerm['can_view'])) {
                     </div>
                 </div>
             </div>
-            <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 border-l-4 border-l-emerald-500">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-500 text-sm">Login วันนี้</p>
-                        <p class="text-3xl font-bold text-gray-900 mt-1" id="stat-logins-today">-</p>
+                        <p class="text-gray-500 text-sm">Login สำเร็จ (วันนี้)</p>
+                        <p class="text-3xl font-bold text-emerald-600 mt-1" id="stat-logins-today">-</p>
                     </div>
-                    <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
-                        <i class="ri-login-box-line text-2xl text-amber-600"></i>
+                    <div class="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center">
+                        <i class="ri-checkbox-circle-line text-2xl text-emerald-600"></i>
                     </div>
                 </div>
             </div>
-            <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 border-l-4 border-l-red-500">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-500 text-sm">กิจกรรม 7 วัน</p>
-                        <p class="text-3xl font-bold text-gray-900 mt-1" id="stat-activities-week">-</p>
+                        <p class="text-gray-500 text-sm">Login ล้มเหลว (วันนี้)</p>
+                        <div class="flex items-baseline gap-2">
+                            <p class="text-3xl font-bold text-red-600 mt-1" id="stat-failed-logins">-</p>
+                            <span class="text-xs text-red-400 font-medium">attempts</span>
+                        </div>
                     </div>
-                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                        <i class="ri-calendar-line text-2xl text-purple-600"></i>
+                    <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center">
+                        <i class="ri-error-warning-line text-2xl text-red-600"></i>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Charts Row -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 items-stretch">
             <!-- Activity Trend Chart -->
-            <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div class="lg:col-span-2 bg-white rounded-xl p-6 shadow-sm border border-gray-100 flex flex-col h-full">
                 <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <i class="ri-line-chart-line text-primary"></i>
                     แนวโน้มกิจกรรม 7 วันล่าสุด
                 </h3>
-                <div class="h-64">
+                <div class="flex-1 min-h-[300px] w-full relative">
                     <canvas id="trendChart"></canvas>
                 </div>
             </div>
 
-            <!-- Top Actions Chart -->
-            <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <!-- Device Distribution Chart -->
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 flex flex-col h-full">
                 <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <i class="ri-pie-chart-line text-primary"></i>
-                    กิจกรรมที่ทำบ่อยที่สุด
+                    สัดส่วนอุปกรณ์ (30 วัน)
                 </h3>
-                <div class="h-64">
-                    <canvas id="actionsChart"></canvas>
+                <div class="flex-1 flex flex-col justify-center">
+                    <div class="h-64 relative w-full">
+                        <canvas id="deviceChart"></canvas>
+                    </div>
                 </div>
+                <!-- Custom Legend -->
+                <div id="device-legend" class="mt-4 grid grid-cols-2 gap-3"></div>
             </div>
         </div>
 
@@ -174,7 +211,7 @@ if (empty($activityPerm['can_view'])) {
                 <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                     <h3 class="font-semibold text-gray-900 flex items-center gap-2">
                         <i class="ri-trophy-line text-amber-500"></i>
-                        ผู้ใช้งานมากที่สุด (7 วัน)
+                        ผู้ใช้งานที่มีกิจกรรมสูงสุด (7 วัน)
                     </h3>
                 </div>
                 <div class="p-4" id="top-users-container">
@@ -184,15 +221,15 @@ if (empty($activityPerm['can_view'])) {
                 </div>
             </div>
 
-            <!-- Login History -->
+            <!-- System Activity Feed (Audit Log) -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                     <h3 class="font-semibold text-gray-900 flex items-center gap-2">
-                        <i class="ri-time-line text-blue-500"></i>
-                        ประวัติ Login/Logout ล่าสุด
+                        <i class="ri-history-line text-blue-500"></i>
+                        รายการแจ้งเตือนกิจกรรมระบบ (System Feed)
                     </h3>
                 </div>
-                <div class="divide-y divide-gray-100 max-h-[400px] overflow-y-auto" id="login-history-container">
+                <div class="p-4 max-h-[400px] overflow-y-auto" id="system-feed-container">
                     <div class="text-center py-8 text-gray-400">
                         <div class="w-8 h-8 border-4 border-gray-200 border-t-primary rounded-full animate-spin mx-auto"></div>
                     </div>
@@ -200,12 +237,12 @@ if (empty($activityPerm['can_view'])) {
             </div>
         </div>
 
-        <!-- Activity Timeline -->
+        <!-- Login Timeline -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h3 class="font-semibold text-gray-900 flex items-center gap-2">
-                    <i class="ri-history-line text-primary"></i>
-                    Activity Timeline
+                    <i class="ri-login-box-line text-primary"></i>
+                    Login Timeline
                 </h3>
                 <button onclick="loadTimeline()" class="text-primary hover:underline text-sm">
                     <i class="ri-refresh-line"></i> รีเฟรช
@@ -218,8 +255,7 @@ if (empty($activityPerm['can_view'])) {
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">เวลา</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ผู้ใช้</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ประเภท</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Address</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Address / Device / Location</th>
                         </tr>
                     </thead>
                     <tbody id="timeline-tbody" class="divide-y divide-gray-100">
@@ -238,12 +274,50 @@ if (empty($activityPerm['can_view'])) {
         </div>
     </div>
 
+    <!-- Device Details Modal -->
+    <div id="deviceModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
+        <div class="fixed inset-0 modal-overlay" onclick="closeDeviceModal()"></div>
+        <div class="relative w-full max-w-sm rounded-2xl modal-content border border-white p-6 animate-fade-in">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-3">
+                    <div id="modalDeviceIcon" class="w-12 h-12 flex items-center justify-center rounded-xl shadow-sm"></div>
+                    <div>
+                        <h4 class="text-lg font-bold text-gray-900" id="modalDeviceTitle">Device Details</h4>
+                        <p class="text-xs text-gray-500" id="modalDeviceSub">Detailed technical information</p>
+                    </div>
+                </div>
+                <button onclick="closeDeviceModal()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 transition-colors">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Brand & Model</p>
+                    <p class="text-sm text-gray-800 font-medium" id="modalValueDevice">-</p>
+                </div>
+                <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Operating System</p>
+                    <p class="text-sm text-gray-800 font-medium" id="modalValueOS">-</p>
+                </div>
+                <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Browser / Client</p>
+                    <p class="text-sm text-gray-800 font-medium" id="modalValueClient">-</p>
+                </div>
+            </div>
+
+            <button onclick="closeDeviceModal()" class="w-full mt-6 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-all active:scale-[0.98] shadow-lg shadow-primary/20">
+                ตกลง
+            </button>
+        </div>
+    </div>
+
     <script>
         const BASE_PATH = (window.APP_BASE_PATH || '').replace(/\/$/, '');
         const API_BASE_URL = BASE_PATH + '/routes.php/activity';
 
         let trendChart = null;
-        let actionsChart = null;
+        let deviceChart = null;
         let currentPage = 1;
 
         // Load dashboard data
@@ -259,7 +333,7 @@ if (empty($activityPerm['can_view'])) {
                     document.getElementById('stat-activities-today').textContent = s.activities_today?.toLocaleString() || '0';
                     document.getElementById('stat-active-users').textContent = s.active_users_today?.toLocaleString() || '0';
                     document.getElementById('stat-logins-today').textContent = s.logins_today?.toLocaleString() || '0';
-                    document.getElementById('stat-activities-week').textContent = s.activities_week?.toLocaleString() || '0';
+                    document.getElementById('stat-failed-logins').textContent = s.failed_logins_today?.toLocaleString() || '0';
 
                     // Render trend chart
                     renderTrendChart(s.activity_trend || []);
@@ -309,43 +383,100 @@ if (empty($activityPerm['can_view'])) {
             });
         }
 
-        async function loadTopActions() {
+        async function loadDeviceStats() {
             try {
-                const res = await fetch(`${API_BASE_URL}?action=top-actions&days=7&limit=6`, {
+                const res = await fetch(`${API_BASE_URL}?action=device-stats&days=30`, {
                     credentials: 'include'
                 });
                 const data = await res.json();
 
                 if (data.success) {
-                    const ctx = document.getElementById('actionsChart').getContext('2d');
-                    if (actionsChart) actionsChart.destroy();
+                    const ctx = document.getElementById('deviceChart').getContext('2d');
+                    if (deviceChart) deviceChart.destroy();
 
-                    const colors = ['#A21D21', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+                    // Modern muted color palette (Pastel/Soft to match legend backgrounds)
+                    const colorMap = {
+                        'desktop': '#bfdbfe', // Blue-200
+                        'smartphone': '#fecaca', // Red-200
+                        'tablet': '#fde68a', // Amber-200
+                        'bot': '#e5e7eb', // Gray-200
+                        'unknown': '#e5e7eb' // Gray-200
+                    };
 
-                    actionsChart = new Chart(ctx, {
+                    const iconMap = {
+                        'desktop': 'ri-computer-fill',
+                        'smartphone': 'ri-smartphone-fill',
+                        'tablet': 'ri-tablet-fill',
+                        'bot': 'ri-robot-fill',
+                        'unknown': 'ri-question-fill'
+                    };
+
+                    const styleMap = {
+                        'desktop': 'bg-blue-50 text-[#3b82f6] border-blue-100',
+                        'smartphone': 'bg-red-50 text-[#A21D21] border-red-100',
+                        'tablet': 'bg-amber-50 text-[#f59e0b] border-amber-100',
+                        'bot': 'bg-gray-50 text-[#6b7280] border-gray-200',
+                        'unknown': 'bg-gray-50 text-[#9ca3af] border-gray-200'
+                    };
+
+                    const labels = data.data.map(d => d.device_type);
+                    const bgColors = labels.map(l => colorMap[l] || colorMap['unknown']);
+
+                    deviceChart = new Chart(ctx, {
                         type: 'doughnut',
                         data: {
-                            labels: data.data.map(d => getActionLabel(d.action)),
+                            labels: labels,
                             datasets: [{
                                 data: data.data.map(d => d.count),
-                                backgroundColor: colors,
-                                borderWidth: 0
+                                backgroundColor: bgColors,
+                                borderWidth: 2,
+                                borderColor: '#ffffff',
+                                hoverOffset: 4
                             }]
                         },
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
+                            cutout: '70%',
                             plugins: {
                                 legend: {
-                                    position: 'right'
+                                    display: false // Hide default legend
                                 }
                             }
                         }
                     });
+
+                    // Render Custom Legend
+                    renderDeviceLegend(data.data, styleMap, iconMap);
                 }
             } catch (e) {
-                console.error('Top actions error:', e);
+                console.error('Device stats error:', e);
             }
+        }
+
+        function renderDeviceLegend(data, styleMap, iconMap) {
+            const container = document.getElementById('device-legend');
+            const total = data.reduce((sum, item) => sum + item.count, 0);
+
+            container.innerHTML = data.map(item => {
+                const type = item.device_type;
+                const style = styleMap[type] || styleMap['unknown'];
+                const icon = iconMap[type] || iconMap['unknown'];
+                const percent = Math.round((item.count / total) * 100);
+                const label = type.charAt(0).toUpperCase() + type.slice(1);
+
+                return `
+                    <div class="flex items-center gap-3 p-2 rounded-lg bg-gray-50 border border-gray-100">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center border shadow-sm ${style}">
+                            <i class="${icon}"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-gray-500">${label}</p>
+                            <p class="text-sm font-bold text-gray-900">${percent}% <span class="text-xs font-normal text-gray-400">(${item.count})</span></p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         async function loadTopUsers() {
@@ -380,36 +511,44 @@ if (empty($activityPerm['can_view'])) {
             }
         }
 
-        async function loadLoginHistory() {
-            const container = document.getElementById('login-history-container');
+        async function loadSystemFeed() {
+            const container = document.getElementById('system-feed-container');
             try {
-                const res = await fetch(`${API_BASE_URL}?action=login-history&limit=10`, {
+                const res = await fetch(`${API_BASE_URL}?action=system-audit-summary&limit=10`, {
                     credentials: 'include'
                 });
                 const data = await res.json();
 
                 if (data.success && data.data.length > 0) {
-                    container.innerHTML = data.data.map(l => `
-                        <div class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50">
-                            <div class="w-8 h-8 ${l.action === 'login' ? 'bg-green-100' : 'bg-gray-100'} rounded-full flex items-center justify-center">
-                                <i class="${l.action === 'login' ? 'ri-login-box-line text-green-600' : 'ri-logout-box-r-line text-gray-500'}"></i>
-                            </div>
-                            <div class="flex-1">
-                                <div class="text-sm font-medium text-gray-900">${escapeHtml(l.user_name || 'Unknown')}</div>
-                                <div class="text-xs text-gray-500">${l.ip_address || '-'}</div>
-                            </div>
-                            <div class="text-right">
-                                <span class="px-2 py-0.5 rounded text-xs font-medium ${l.action === 'login' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">${l.action}</span>
-                                <div class="text-xs text-gray-400 mt-1">${formatDateTime(l.created_at)}</div>
-                            </div>
+                    container.innerHTML = `
+                        <div class="relative pl-4 space-y-6 before:absolute before:left-[21px] before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-100">
+                            ${data.data.map(item => `
+                                <div class="flex gap-4 relative">
+                                    <div class="mt-1.5 w-3 h-3 rounded-full bg-white border-2 ${getAuditColor(item.action)} flex-shrink-0 z-10"></div>
+                                    <div class="flex-1 space-y-1">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="text-sm font-semibold text-gray-900 capitalize">${item.action.replace('_', ' ')}: ${item.entity_type}</span>
+                                            <span class="text-[10px] text-gray-400 font-medium whitespace-nowrap">${formatDateTime(item.performed_at)}</span>
+                                        </div>
+                                        <p class="text-xs text-gray-500 line-clamp-1">Performed by <span class="text-gray-700 font-medium">${item.performed_by || 'System'}</span></p>
+                                    </div>
+                                </div>
+                            `).join('')}
                         </div>
-                    `).join('');
+                    `;
                 } else {
-                    container.innerHTML = '<div class="text-center py-8 text-gray-400">ไม่มีข้อมูล</div>';
+                    container.innerHTML = '<div class="text-center py-8 text-gray-400">ไม่มีความเคลื่อนไหวในระบบ</div>';
                 }
             } catch (e) {
-                container.innerHTML = '<div class="text-center py-8 text-red-400">เกิดข้อผิดพลาด</div>';
+                container.innerHTML = '<div class="text-center py-8 text-red-400">เกิดข้อผิดพลาดในการโหลดข้อมูล</div>';
             }
+        }
+
+        function getAuditColor(action) {
+            if (action.includes('delete') || action.includes('remove')) return 'border-red-500';
+            if (action.includes('update') || action.includes('edit')) return 'border-blue-500';
+            if (action.includes('create') || action.includes('add')) return 'border-emerald-500';
+            return 'border-gray-400';
         }
 
         async function loadTimeline(page = 1) {
@@ -427,12 +566,21 @@ if (empty($activityPerm['can_view'])) {
                     tbody.innerHTML = data.data.map(a => `
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-3 text-sm text-gray-600">${formatDateTime(a.created_at)}</td>
-                            <td class="px-4 py-3 font-medium text-gray-900">${escapeHtml(a.user_name)}</td>
+                            <td class="px-4 py-3 font-medium text-gray-900">
+                                <span>${escapeHtml(a.user_name)}</span>
+                            </td>
                             <td class="px-4 py-3">
                                 <span class="px-2 py-1 rounded-full text-xs font-medium ${getActionClass(a.action)}">${getActionLabel(a.action)}</span>
                             </td>
-                            <td class="px-4 py-3 text-sm text-gray-500">${escapeHtml(a.entity_type || '-')}</td>
-                            <td class="px-4 py-3 text-sm text-gray-500">${a.ip_address || '-'}</td>
+                            <td class="px-4 py-3 text-sm text-gray-500">
+                                <div class="flex items-center gap-4">
+                                    <span class="inline-block w-[110px] font-mono text-gray-600 font-medium">${a.ip_address || '-'}</span>
+                                    <div class="flex items-center gap-1.5">
+                                        <div class="w-7 h-7 flex items-center justify-center">${getDeviceIcon(a)}</div>
+                                        <div class="w-7 h-7 flex items-center justify-center">${getLocationLink(a.latitude, a.longitude)}</div>
+                                    </div>
+                                </div>
+                            </td>
                         </tr>
                     `).join('');
 
@@ -460,12 +608,122 @@ if (empty($activityPerm['can_view'])) {
         // Helpers
         function formatDateTime(dateStr) {
             if (!dateStr) return '-';
-            return new Date(dateStr).toLocaleString('th-TH', {
-                day: 'numeric',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
+            try {
+                const d = new Date(dateStr.replace(/-/g, '/'));
+                return d.toLocaleString('th-TH', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                return dateStr;
+            }
+        }
+
+        function getDeviceIcon(a) {
+            const deviceType = a.device_type;
+            if (!deviceType) return '<div class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-50 text-gray-300 border border-gray-100"><i class="ri-question-fill text-xs"></i></div>';
+
+            const type = deviceType.toLowerCase();
+            let icon = 'ri-device-fill';
+            let colorClass = 'bg-gray-50 text-gray-500 border-gray-100';
+            let label = deviceType;
+
+            if (type.includes('smartphone') || type.includes('mobile')) {
+                icon = 'ri-smartphone-fill';
+                // smartphone: #A21D21 (Red)
+                colorClass = 'bg-red-50 text-[#A21D21] border-red-100';
+                label = 'Mobile';
+            } else if (type.includes('tablet')) {
+                icon = 'ri-tablet-fill';
+                // tablet: #f59e0b (Amber)
+                colorClass = 'bg-amber-50 text-[#f59e0b] border-amber-100';
+                label = 'Tablet';
+            } else if (type.includes('desktop') || type.includes('pc')) {
+                icon = 'ri-computer-fill';
+                // desktop: #3b82f6 (Blue)
+                colorClass = 'bg-blue-50 text-[#3b82f6] border-blue-100';
+                label = 'Desktop';
+            } else if (type.includes('bot')) {
+                icon = 'ri-robot-fill';
+                // bot: #6b7280 (Gray)
+                colorClass = 'bg-gray-50 text-[#6b7280] border-gray-200';
+                label = 'Bot';
+            } else {
+                // unknown: #9ca3af (Light Gray)
+                colorClass = 'bg-gray-50 text-[#9ca3af] border-gray-200';
+                label = 'Unknown';
+            }
+
+            const details = {
+                brand: a.device_brand || '',
+                model: a.device_model || '',
+                os_name: a.os_name || '',
+                os_version: a.os_version || '',
+                client_name: a.client_name || '',
+                client_version: a.client_version || '',
+                icon: icon,
+                colorClass: colorClass
+            };
+
+            const detailsStr = JSON.stringify(details).replace(/"/g, '&quot;');
+
+            return `
+                <div class="w-7 h-7 flex items-center justify-center rounded-lg ${colorClass} border transition-all shadow-sm hover:scale-110 active:scale-95 device-details-trigger" 
+                     title="Click for details" 
+                     data-details="${detailsStr}"
+                     style="cursor: pointer;">
+                    <i class="${icon} text-sm"></i>
+                </div>
+            `;
+        }
+
+        // Delegate click for device details
+        document.addEventListener('click', function(e) {
+            const trigger = e.target.closest('.device-details-trigger');
+            if (trigger) {
+                const detailsJson = trigger.getAttribute('data-details');
+                showDeviceDetails(detailsJson);
+            }
+        });
+
+        window.showDeviceDetails = function(detailsJson) {
+            const d = JSON.parse(detailsJson);
+
+            const modal = document.getElementById('deviceModal');
+            const iconContainer = document.getElementById('modalDeviceIcon');
+
+            iconContainer.className = `w-12 h-12 flex items-center justify-center rounded-xl shadow-sm ${d.colorClass}`;
+            iconContainer.innerHTML = `<i class="${d.icon} text-2xl"></i>`;
+
+            document.getElementById('modalDeviceTitle').textContent = d.brand || 'Unknown Device';
+            document.getElementById('modalValueDevice').textContent = (d.brand + ' ' + d.model).trim() || '-';
+            document.getElementById('modalValueOS').textContent = (d.os_name + ' ' + d.os_version).trim() || '-';
+            document.getElementById('modalValueClient').textContent = (d.client_name + ' ' + d.client_version).trim() || '-';
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        };
+
+        window.closeDeviceModal = function() {
+            const modal = document.getElementById('deviceModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.style.overflow = '';
+        };
+
+        function getLocationLink(lat, lng) {
+            if (!lat || !lng) return '<div class="w-7 h-7"></div>'; // Empty track for alignment
+            return `
+                <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" 
+                   class="w-7 h-7 flex items-center justify-center rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-all hover:scale-110 shadow-sm border border-emerald-500"
+                   title="ดูตำแหน่งใน Google Maps">
+                    <i class="ri-map-pin-2-fill text-xs"></i>
+                </a>
+            `;
         }
 
         function escapeHtml(text) {
@@ -475,7 +733,8 @@ if (empty($activityPerm['can_view'])) {
 
         function getActionLabel(action) {
             const map = {
-                'login': 'เข้าสู่ระบบ',
+                'login': 'เข้าสู่ระบบ (สำเร็จ)',
+                'login_failed': 'เข้าสู่ระบบ (ล้มเหลว)',
                 'logout': 'ออกจากระบบ',
                 'create_booking': 'สร้างคำขอ',
                 'approve_request': 'อนุมัติ',
@@ -491,6 +750,7 @@ if (empty($activityPerm['can_view'])) {
 
         function getActionClass(action) {
             if (action === 'login') return 'bg-green-100 text-green-700';
+            if (action === 'login_failed') return 'bg-red-100 text-red-700';
             if (action === 'logout') return 'bg-gray-100 text-gray-600';
             if (action.includes('create') || action.includes('check_in')) return 'bg-emerald-100 text-emerald-700';
             if (action.includes('update') || action.includes('approve')) return 'bg-blue-100 text-blue-700';
@@ -501,9 +761,9 @@ if (empty($activityPerm['can_view'])) {
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             loadDashboard();
-            loadTopActions();
+            loadDeviceStats();
             loadTopUsers();
-            loadLoginHistory();
+            loadSystemFeed();
             loadTimeline();
         });
     </script>

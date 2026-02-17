@@ -61,6 +61,9 @@ class Database
                 }
                 $this->conn = new PDO($dsn, $this->username, $this->password);
                 $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+                // Set database session timezone to match PHP timezone
+                $this->conn->exec("SET time_zone = '" . date('P') . "'");
             }
         } catch (PDOException $exception) {
             error_log("Connection error: " . $exception->getMessage());

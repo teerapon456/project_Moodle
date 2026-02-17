@@ -173,8 +173,8 @@
                 const response = await fetch(`${API_BASE}?controller=bookings&action=searchManager&query=${encodeURIComponent(query)}`);
                 const data = await response.json();
 
-                if (data.success && data.employees.length > 0) {
-                    resultsDiv.innerHTML = data.employees.map(emp => `
+                if (data.success && data.users && data.users.length > 0) {
+                    resultsDiv.innerHTML = data.users.map(emp => `
                         <div class="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0" onclick='selectSupervisor(${JSON.stringify(emp)})'>
                             <div class="w-8 h-8 bg-gradient-to-br from-primary to-red-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">${(emp.name || '?').charAt(0)}</div>
                             <div class="flex-1">
@@ -247,8 +247,8 @@
                 const response = await fetch(`${API_BASE}?controller=bookings&action=searchManager&query=${encodeURIComponent(query)}`);
                 const data = await response.json();
 
-                if (data.success && data.employees.length > 0) {
-                    resultsDiv.innerHTML = data.employees.map(emp => `
+                if (data.success && data.users && data.users.length > 0) {
+                    resultsDiv.innerHTML = data.users.map(emp => `
                         <div class="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0" onclick='selectDriver(${JSON.stringify(emp)})'>
                             <div class="w-8 h-8 bg-gradient-to-br from-primary to-red-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">${(emp.name || '?').charAt(0)}</div>
                             <div class="flex-1">
@@ -303,8 +303,8 @@
                 const response = await fetch(`${API_BASE}?controller=bookings&action=searchManager&query=${encodeURIComponent(query)}`);
                 const data = await response.json();
 
-                if (data.success && data.employees.length > 0) {
-                    const filtered = data.employees.filter(emp => !selectedPassengers.some(p => p.email === emp.email));
+                if (data.success && data.users && data.users.length > 0) {
+                    const filtered = data.users.filter(emp => !selectedPassengers.some(p => p.email === emp.email));
                     if (filtered.length > 0) {
                         resultsDiv.innerHTML = filtered.map(emp => `
                             <div class="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0" onclick='addPassenger(${JSON.stringify(emp)})'>

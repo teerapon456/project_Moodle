@@ -242,4 +242,48 @@ class PermissionController extends BaseController
             throw new Exception('สร้างผู้ใช้ไม่สำเร็จ');
         }
     }
+
+    public function get_settings()
+    {
+        $this->requireAuth();
+        $moduleId = isset($_GET['module_id']) ? intval($_GET['module_id']) : 0;
+        return $this->model->getSystemSettings($moduleId);
+    }
+
+    public function save_setting($data = [])
+    {
+        $this->requireAuth();
+        if (!$this->model->canManageAnyModule($this->currentRoleId)) {
+            http_response_code(403);
+            throw new Exception('ไม่มีสิทธิจัดการ System Settings');
+        }
+
+        $key = $data['setting_key'] ?? '';
+        $value = $data['setting_value'] ?? '';
+        $moduleId = intval($data['module_id'] ?? 0);
+
+        if ($key === '') {
+            throw new Exception('setting_key required');
+        }
+
+        if ($this->model->saveSystemSetting($key, $value, $moduleId)) {
+            return ['message' => 'บันทึกสำเร็จ'];
+        } else {
+            throw new Exception('บันทึกไม่สำเร็จ');
+        }
+    }
+
+    public function get_audit_logs()
+    {
+        $this->requireAuth();
+        if (!$this->model->canManageAnyModule($this->currentRoleId)) {
+            http_response_code(403);
+            throw new Exception('ไม่มีสิทธิจัดการ System Settings');
+        }
+
+        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+
+        return $this->model->getAuditLogs($limit, $page);
+    }
 }

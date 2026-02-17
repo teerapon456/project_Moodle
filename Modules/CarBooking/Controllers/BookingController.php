@@ -1177,6 +1177,22 @@ class BookingController extends CBBaseController
             "Modules/CarBooking/?page=in-use"
         );
 
+        // Notify requester that we received their return report
+        if (!empty($booking['user_id'])) {
+            try {
+                NotificationService::create(
+                    $booking['user_id'],
+                    'info',
+                    'รับการแจ้งคืนรถแล้ว',
+                    "คำขอ #{$bookingId} ระบบรับการแจ้งคืนรถแล้ว รอ IPCD ยืนยัน",
+                    ['booking_id' => $bookingId],
+                    'Modules/CarBooking/?page=request_history'
+                );
+            } catch (\Exception $e) {
+                error_log("Notification failed (report_return): " . $e->getMessage());
+            }
+        }
+
         return ['success' => true, 'message' => 'แจ้งคืนรถสำเร็จ รอ IPCD ยืนยัน'];
     }
 
@@ -1284,6 +1300,14 @@ class BookingController extends CBBaseController
                     "Modules/CarBooking/?page=request_history"
                 );
             }
+
+            // Notify admins that requester cancelled (สอดคล้องกับ Dormitory)
+            $this->sendNotificationToAdmins(
+                'warning',
+                'มีผู้ยกเลิกคำขอจองรถ',
+                "คำขอ #{$id} ถูกยกเลิกโดยผู้ขอ" . ($reason ? ": " . mb_substr($reason, 0, 50) : ""),
+                "Modules/CarBooking/?page=pending"
+            );
         }
         return ['success' => true];
     }

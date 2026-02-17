@@ -116,6 +116,9 @@ if (!$canView) {
 
 $userPerms = userHasModuleAccess('HR_SERVICES', (int)$roleId);
 $hrNewsPerm = userHasModuleAccess('HR_NEWS', (int)$roleId);
+$activityPerm = userHasModuleAccess('ACTIVITY_DASHBOARD', (int)$roleId);
+$emailLogPerm = userHasModuleAccess('EMAIL_LOGS', (int)$roleId);
+$scheduledPerm = userHasModuleAccess('SCHEDULED_REPORTS', (int)$roleId);
 $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
 ?>
 <!DOCTYPE html>
@@ -134,6 +137,8 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
 
     <!-- Tailwind CSS (Local) -->
     <link rel="stylesheet" href="<?php echo $assetBase; ?>assets/css/tailwind.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="<?php echo $assetBase; ?>assets/js/global-notifications.js"></script>
     <style type="text/tailwindcss">
         @layer utilities {
             .btn-icon {
@@ -238,18 +243,18 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                         <div class="absolute bottom-0 left-0 w-full h-0.5 bg-primary transform scale-x-0 transition-transform duration-200 origin-left group-hover:scale-x-100 opacity-50"></div>
                     </button>
 
-                    <button class="nav-tab group relative pb-4 px-4 min-w-[120px] text-center" data-tab="sync-users">
+                    <button class="nav-tab group relative pb-4 px-4 min-w-[120px] text-center" data-tab="system-security">
                         <div class="flex items-center justify-center gap-2 text-sm font-semibold transition-colors duration-200 text-gray-500 hover:text-gray-700">
-                            <i class="ri-refresh-line text-lg"></i>
-                            <span>Sync Users</span>
+                            <i class="ri-settings-4-line text-lg"></i>
+                            <span>System & Security</span>
                         </div>
                         <div class="absolute bottom-0 left-0 w-full h-0.5 bg-primary transform scale-x-0 transition-transform duration-200 origin-left group-hover:scale-x-100 opacity-50"></div>
                     </button>
 
-                    <button class="nav-tab group relative pb-4 px-4 min-w-[120px] text-center" data-tab="sync-settings">
+                    <button class="nav-tab group relative pb-4 px-4 min-w-[120px] text-center" data-tab="audit-log">
                         <div class="flex items-center justify-center gap-2 text-sm font-semibold transition-colors duration-200 text-gray-500 hover:text-gray-700">
-                            <i class="ri-settings-4-line text-lg"></i>
-                            <span>ตั้งค่า Sync</span>
+                            <i class="ri-history-line text-lg"></i>
+                            <span>ประวัติการแก้ไข</span>
                         </div>
                         <div class="absolute bottom-0 left-0 w-full h-0.5 bg-primary transform scale-x-0 transition-transform duration-200 origin-left group-hover:scale-x-100 opacity-50"></div>
                     </button>
@@ -431,222 +436,92 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                     <?php endif; ?>
                 </div>
 
-                <!-- Sync Settings Tab -->
-                <div id="tab-sync-settings" class="tab-panel hidden animate-fade-in" data-tab="sync-settings">
+                <!-- System & Security Tab -->
+                <div id="tab-system-security" class="tab-panel hidden animate-fade-in" data-tab="system-security">
                     <?php if (!empty($canManage)): ?>
-                        <div class="max-w-5xl mx-auto mt-10 px-4">
+                        <div class="max-w-5xl mx-auto py-8 px-6 space-y-10">
 
-                            <!-- Header & Toggle -->
-                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 pb-6 border-b border-gray-100">
-                                <div>
-                                    <h3 class="text-xl font-bold text-gray-900">Auto Sync Settings</h3>
-                                    <p class="text-gray-500 mt-1">Configure daily automatic synchronization schedule.</p>
+                            <!-- Unified System & Security Settings -->
+                            <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+                                <!-- Geolocation Section -->
+                                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-100 pb-6 mb-6">
+                                    <div class="flex-1">
+                                        <h4 class="font-bold text-gray-800 text-lg">บังคับระบุตำแหน่งก่อน Login</h4>
+                                        <p class="text-gray-500 text-sm mt-1">ผู้ใช้ต้องอนุญาตตำแหน่งที่ตั้งเพื่อเข้าใช้งานระบบ (สำหรับ Standard & Microsoft Login)</p>
+                                        <div class="flex items-center gap-4 mt-3">
+                                            <p class="text-[10px] text-gray-400 font-medium uppercase tracking-wider flex items-center gap-1.5">
+                                                <i class="ri-time-line"></i> <span id="geo-last-update">Last update: -</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="flex-shrink-0">
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" id="geo-toggle" class="sr-only peer" onchange="toggleGeoSetting(this)">
+                                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-500"></div>
+                                        </label>
+                                    </div>
                                 </div>
-                                <div class="flex items-center gap-3">
-                                    <span class="text-sm font-medium text-gray-700">Enable Auto Sync</span>
-                                    <label class="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" name="auto_sync_enabled" id="auto_sync_enabled" class="sr-only peer">
-                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                    </label>
+                                <div id="security-loading" class="hidden text-center py-2 mb-4">
+                                    <i class="ri-loader-4-line animate-spin text-primary"></i> <span class="text-xs text-gray-400">Saving...</span>
                                 </div>
-                            </div>
 
-                            <form id="sync-settings-form" class="space-y-8">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <!-- Time Picker -->
+                                <!-- User Sync Section -->
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Sync Time</label>
-                                        <div class="relative">
-                                            <input type="time" name="auto_sync_time" id="auto_sync_time" class="block w-full pl-11 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 shadow-sm transition-colors text-gray-900 bg-white" value="02:00">
-                                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                                                <i class="ri-time-line text-lg"></i>
-                                            </div>
-                                        </div>
-                                        <p class="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
-                                            <i class="ri-information-line"></i> Daily execution time (Server Time)
-                                        </p>
+                                        <h4 class="font-bold text-gray-800 text-lg">Automatic Schedule</h4>
+                                        <p class="text-gray-500 text-sm mt-1">Configure daily automatic synchronization from HRIS (SQL Server)</p>
                                     </div>
-
-                                    <!-- Email Notification -->
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Notification Email <span class="text-gray-400 font-normal">(Optional)</span></label>
-                                        <div class="relative">
-                                            <input type="email" name="notification_email" id="notification_email" class="block w-full pl-11 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 shadow-sm transition-colors text-gray-900 bg-white" placeholder="admin@example.com">
-                                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                                                <i class="ri-mail-line text-lg"></i>
-                                            </div>
-                                        </div>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-sm font-medium text-gray-700">Enable Auto Sync</span>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" name="auto_sync_enabled" id="auto_sync_enabled" class="sr-only peer">
+                                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-500"></div>
+                                        </label>
                                     </div>
                                 </div>
 
-                                <div class="pt-4 flex justify-end">
-                                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all font-medium">
-                                        <i class="ri-save-line"></i> Save Configuration
-                                    </button>
-                                </div>
-                            </form>
-
-                            <hr class="my-10 border-gray-100">
-
-                            <!-- Cron Info -->
-                            <div>
-                                <h4 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                    <i class="ri-terminal-box-line text-gray-500"></i>
-                                    Server Cron Config
-                                </h4>
-                                <div class="bg-slate-900 rounded-xl p-6 shadow-md relative overflow-hidden group">
-                                    <div class="absolute top-0 right-0 p-4 opacity-10">
-                                        <i class="ri-command-line text-6xl text-white"></i>
-                                    </div>
-                                    <p class="text-slate-400 text-sm mb-4">If auto sync is not running, please check your server cron job:</p>
-                                    <div class="bg-black/50 p-4 rounded-lg border border-slate-700 flex items-start gap-4">
-                                        <code class="font-mono text-emerald-400 text-sm break-all flex-1">
-                                            * * * * * docker exec myhr-portal-dev php /var/www/html/Modules/PermissionManagement/public/sync_users.php action=auto_run >> /dev/null 2>&1
-                                        </code>
-                                        <button onclick="navigator.clipboard.writeText(this.previousElementSibling.innerText.trim()); Swal.fire({icon: 'success', title: 'Copied', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000});" class="text-slate-400 hover:text-white transition-colors" title="Copy">
-                                            <i class="ri-file-copy-line"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                    <?php else: ?>
-                        <div class="p-12 text-center text-gray-500">Access Denied</div>
-                    <?php endif; ?>
-                </div>
-
-                <!-- Sync Users Tab -->
-                <div class="tab-panel hidden animate-fade-in" data-tab="sync-users">
-                    <?php if ($canManage): ?>
-                        <div class="px-6 py-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div class="flex items-center gap-4">
-                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
-                                    <i class="ri-information-line text-blue-600"></i>
-                                    <div class="text-sm text-blue-800">
-                                        <strong>Sync Users:</strong> ซิงค์ข้อมูลพนักงานจาก SQL Server (HRIS) ไปยัง MySQL
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="p-6">
-                            <div class="max-w-2xl mx-auto">
-                                <!-- Sync Control Panel -->
-                                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                                    <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                                        <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                                            <i class="ri-database-2-line text-primary"></i>
-                                            Sync Users (SQL Server ➜ MySQL)
-                                        </h3>
-                                    </div>
-
-                                    <div class="p-6">
-                                        <!-- Sync Button -->
-                                        <div class="mb-6 flex items-center gap-4">
-                                            <button id="sync-users-btn" class="btn-primary flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium shadow-sm shadow-red-200 hover:shadow-red-300 transition-all transform active:scale-95">
-                                                <i class="ri-refresh-line" id="sync-icon"></i>
-                                                <span id="sync-btn-text">เริ่ม Sync</span>
-                                            </button>
-
-                                            <button id="view-sync-log-btn" class="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm">
-                                                <i class="ri-file-list-3-line"></i>
-                                                <span>ดู Log</span>
-                                            </button>
-                                        </div>
-
-                                        <!-- Status -->
-                                        <div class="mb-4">
-                                            <div class="flex items-center gap-4 text-sm text-gray-600">
-                                                <div class="flex items-center gap-2">
-                                                    <span>สถานะ:</span>
-                                                    <span id="sync-status" class="font-semibold text-gray-800">พร้อม</span>
-                                                </div>
-                                                <div class="flex items-center gap-2" id="last-sync-container">
+                                <form id="sync-settings-form" class="space-y-6">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Sync Time (Daily)</label>
+                                            <div class="relative">
+                                                <input type="time" name="auto_sync_time" id="auto_sync_time" class="block w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 shadow-sm text-gray-900 bg-white" value="02:00">
+                                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                                     <i class="ri-time-line"></i>
-                                                    <span>Sync ล่าสุด:</span>
-                                                    <span id="last-sync-time" class="font-semibold text-gray-800">-</span>
                                                 </div>
                                             </div>
                                         </div>
-
-                                        <!-- Progress Bar -->
-                                        <div class="mb-4">
-                                            <div class="h-4 bg-gray-100 rounded-full overflow-hidden">
-                                                <div id="sync-progress-bar" class="h-full bg-emerald-500 transition-all duration-200 rounded-full" style="width: 0%"></div>
-                                            </div>
-                                            <div class="flex justify-between items-center mt-2 text-sm text-gray-500">
-                                                <span id="sync-progress-pct">0%</span>
-                                                <span id="sync-progress-cnt">0/0</span>
-                                            </div>
-                                        </div>
-
-                                        <!-- Message -->
-                                        <div id="sync-message" class="text-sm text-gray-600 mb-4"></div>
-
-                                        <!-- Results Box (hidden by default) -->
-                                        <div id="sync-results" class="hidden bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                                            <h4 class="font-semibold text-emerald-800 mb-2 flex items-center gap-2">
-                                                <i class="ri-checkbox-circle-line"></i>
-                                                ผลลัพธ์
-                                            </h4>
-                                            <div class="grid grid-cols-4 gap-4 text-sm">
-                                                <div class="bg-white rounded-lg p-3 border border-emerald-100">
-                                                    <div class="text-emerald-600 font-semibold" id="sync-insert-count">0</div>
-                                                    <div class="text-gray-500">เพิ่มข้อมูลใหม่</div>
-                                                </div>
-                                                <div class="bg-white rounded-lg p-3 border border-emerald-100">
-                                                    <div class="text-blue-600 font-semibold" id="sync-update-count">0</div>
-                                                    <div class="text-gray-500">อัปเดตข้อมูล</div>
-                                                </div>
-                                                <div class="bg-white rounded-lg p-3 border border-emerald-100">
-                                                    <div class="text-gray-600 font-semibold" id="sync-unchanged-count">0</div>
-                                                    <div class="text-gray-500">ไม่เปลี่ยนแปลง</div>
-                                                </div>
-                                                <div class="bg-white rounded-lg p-3 border border-red-100" id="sync-error-box">
-                                                    <div class="text-red-600 font-semibold" id="sync-error-count">0</div>
-                                                    <div class="text-gray-500">ข้อผิดพลาด</div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Notification Email</label>
+                                            <div class="relative">
+                                                <input type="email" name="notification_email" id="notification_email" class="block w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 shadow-sm text-gray-900 bg-white" placeholder="admin@example.com">
+                                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                                    <i class="ri-mail-line"></i>
                                                 </div>
                                             </div>
-                                            <!-- View Log Button -->
-                                            <div id="sync-log-section" class="hidden mt-4 pt-4 border-t border-emerald-200">
-                                                <button id="view-sync-log-btn" class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors">
-                                                    <i class="ri-file-list-3-line"></i>
-                                                    ดู Log ข้อผิดพลาด
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <!-- Error Box (hidden by default) -->
-                                        <div id="sync-error" class="hidden bg-red-50 border border-red-200 rounded-lg p-4">
-                                            <h4 class="font-semibold text-red-800 mb-1 flex items-center gap-2">
-                                                <i class="ri-error-warning-line"></i>
-                                                เกิดข้อผิดพลาด
-                                            </h4>
-                                            <div class="text-sm text-red-600" id="sync-error-message"></div>
                                         </div>
                                     </div>
-                                </div>
                             </div>
                         </div>
-                    <?php else: ?>
-                        <div class="p-12 text-center">
-                            <div class="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
-                                <i class="ri-lock-line text-red-600 text-3xl mb-3"></i>
-                                <h3 class="text-lg font-semibold text-red-800 mb-2">Access Denied</h3>
-                                <p class="text-red-600 text-sm">
-                                    You need <strong>Manage</strong> permissions to access User Sync.
-                                    Please contact your administrator for access.
-                                </p>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-
-
-                    <!-- End Tab Content -->
                 </div>
+                <div id="sync-loading" class="hidden text-center py-2">
+                    <i class="ri-loader-4-line animate-spin text-primary"></i> <span class="text-xs text-gray-400">Saving changes...</span>
+                </div>
+                </form>
             </div>
         </div>
+    <?php else: ?>
+        <div class="p-12 text-center text-gray-500">
+            <i class="ri-lock-line text-4xl mb-4 block text-red-200"></i>
+            Access Denied: You need permission to manage system settings.
+        </div>
+    <?php endif; ?>
+    </div>
+
+    <!-- End Tab Content -->
+    </div>
+    </div>
+    </div>
     </div>
 
     <style>
@@ -670,6 +545,19 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
             right: calc(100% - 1.5rem);
             /* 1.5rem = w-6 */
         }
+
+        /* Specific Toggle Colors - Enforce Teal for Consistency */
+        #geo-toggle:checked+div,
+        #auto_sync_enabled:checked+div {
+            background-color: #14b8a6;
+            /* Teal-500 */
+        }
+
+        #geo-toggle:focus+div,
+        #auto_sync_enabled:focus+div {
+            box-shadow: 0 0 0 4px #ccfbf1;
+            /* Teal-100 ring */
+        }
     </style>
 
     <script>
@@ -678,20 +566,161 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
         const CAN_EDIT = <?= !empty($canEdit) ? 'true' : 'false' ?>;
         const CAN_MANAGE = <?= !empty($canManage) ? 'true' : 'false' ?>;
         const LOGIN_URL = '<?= $linkBase ?>'; // Go to root
+        window.currentModuleId = 3; // Permission Management Module ID
 
-        // Polyfill notify
-        if (!window.notify) {
-            window.notify = function(msg, type = 'info') {
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: type,
-                    title: msg,
-                    showConfirmButton: false,
-                    timer: 3000
+        // --- Security Settings Logic (Global) ---
+        window.loadSecuritySettings = async function() {
+            const loader = document.getElementById('security-loading');
+            if (loader) loader.classList.remove('hidden');
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/permissions/get_settings?module_id=3`, {
+                    credentials: 'include'
                 });
-            };
-        }
+                if (!res.ok) throw new Error('Failed to load settings');
+                const settings = await res.json();
+
+                const geoSetting = settings.find(s => s.setting_key === 'mandatory_geolocation');
+                if (geoSetting) {
+                    const toggle = document.getElementById('geo-toggle');
+                    if (toggle) toggle.checked = (geoSetting.setting_value === '1');
+                    const updateLabel = document.getElementById('geo-last-update');
+                    if (updateLabel) updateLabel.textContent = 'Last update: ' + (geoSetting.updated_at || '-');
+                }
+            } catch (e) {
+                console.error(e);
+                if (window.notify) window.notify('Could not load security settings', 'error');
+            } finally {
+                if (loader) loader.classList.add('hidden');
+            }
+        };
+
+        window.toggleGeoSetting = async function(checkbox) {
+            const loader = document.getElementById('security-loading');
+            if (loader) loader.classList.remove('hidden');
+
+            const newValue = checkbox.checked ? '1' : '0';
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/permissions/save_setting`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        _csrf_token: window.CSRF_TOKEN,
+                        setting_key: 'mandatory_geolocation',
+                        setting_value: newValue,
+                        module_id: 3
+                    })
+                });
+
+                if (!res.ok) throw new Error('Failed to save');
+                const data = await res.json();
+
+                if (window.notify) window.notify('Security setting updated', 'success');
+
+                // Refresh last update time
+                loadSecuritySettings();
+            } catch (e) {
+                console.error(e);
+                checkbox.checked = !checkbox.checked; // Revert
+                if (window.notify) window.notify('Error saving setting: ' + e.message, 'error');
+            } finally {
+                if (loader) loader.classList.add('hidden');
+            }
+        };
+
+        // --- Sync Settings Logic (Global) ---
+        window.loadSyncSettings = async function() {
+            const autoSyncUrl = window.location.pathname.replace(/\/index\.php$/, '') + '/sync_users.php';
+            try {
+                let url = autoSyncUrl + '?action=get_settings';
+                if (window.currentModuleId) {
+                    url += '&module_id=' + window.currentModuleId;
+                }
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const syncToggle = document.getElementById('auto_sync_enabled');
+                if (syncToggle) syncToggle.checked = (data.auto_sync_enabled === '1');
+
+                const syncTime = document.getElementById('auto_sync_time');
+                if (syncTime) syncTime.value = data.auto_sync_time || '02:00';
+
+                const notifEmail = document.getElementById('notification_email');
+                if (notifEmail) notifEmail.value = data.notification_email || '';
+            } catch (e) {
+                console.error('Failed to load settings', e);
+            }
+        };
+
+        // Initialize Sync Settings Form Listener
+        document.addEventListener('DOMContentLoaded', () => {
+            const settingsForm = document.getElementById('sync-settings-form');
+            if (settingsForm) {
+                const autoSyncUrl = window.location.pathname.replace(/\/index\.php$/, '') + '/sync_users.php';
+                const syncParams = ['auto_sync_enabled', 'auto_sync_time', 'notification_email'];
+
+                async function saveSyncSettings() {
+                    const loader = document.getElementById('sync-loading');
+                    if (loader) loader.classList.remove('hidden');
+
+                    try {
+                        const formData = new FormData(settingsForm);
+                        formData.append('action', 'save_settings');
+                        if (window.currentModuleId) {
+                            formData.append('module_id', window.currentModuleId);
+                        }
+
+                        // Handle checkbox specifically if unchecked (FormData doesn't include it)
+                        if (!document.getElementById('auto_sync_enabled').checked) {
+                            formData.set('auto_sync_enabled', '0');
+                        } else {
+                            formData.set('auto_sync_enabled', '1');
+                        }
+
+                        const res = await fetch(autoSyncUrl, {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        const result = await res.json();
+                        if (result.success) {
+                            if (window.notify) window.notify('บันทึกการตั้งค่าเรียบร้อยแล้ว', 'success');
+                        } else {
+                            throw new Error(result.error || 'Unknown error');
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        if (window.notify) window.notify('บันทึกไม่สำเร็จ: ' + e.message, 'error');
+                    } finally {
+                        if (loader) loader.classList.add('hidden');
+                    }
+                }
+
+                // Attach Auto-Save Listeners
+                const toggle = document.getElementById('auto_sync_enabled');
+                const timeInput = document.getElementById('auto_sync_time');
+                const emailInput = document.getElementById('notification_email');
+
+                if (toggle) toggle.addEventListener('change', saveSyncSettings);
+                if (timeInput) {
+                    timeInput.addEventListener('change', saveSyncSettings);
+                    timeInput.addEventListener('blur', saveSyncSettings);
+                }
+                if (emailInput) {
+                    emailInput.addEventListener('change', saveSyncSettings);
+                    emailInput.addEventListener('blur', saveSyncSettings);
+                }
+            }
+            // Initial load
+            loadSyncSettings();
+        });
+
+        // Global window.notify is now defined in global-notifications.js
 
         async function logout() {
             try {
@@ -1217,6 +1246,19 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                             p.classList.add('hidden');
                         }
                     });
+
+                    // Load Security Settings & Sync Settings if needed
+                    if (tab === 'system-security') {
+                        loadSecuritySettings();
+                        if (typeof loadSyncSettings === 'function') {
+                            loadSyncSettings();
+                        }
+                    }
+
+                    // Load Audit Logs if needed
+                    if (tab === 'audit-log') {
+                        loadAuditLogs();
+                    }
                 });
             });
         });
@@ -2176,67 +2218,112 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                 };
             });
 
-            // Sync Settings Logic
-            const settingsForm = document.getElementById('sync-settings-form');
-            if (settingsForm) {
-                const autoSyncUrl = window.location.pathname.replace(/\/index\.php$/, '') + '/sync_users.php';
 
-                // Load settings function
-                async function loadSyncSettings() {
-                    try {
-                        let url = autoSyncUrl + '?action=get_settings';
-                        if (window.currentModuleId) {
-                            url += '&module_id=' + window.currentModuleId;
-                        }
-                        const res = await fetch(url);
-                        if (!res.ok) return;
-                        const data = await res.json();
 
-                        document.getElementById('auto_sync_enabled').checked = (data.auto_sync_enabled === '1');
-                        document.getElementById('auto_sync_time').value = data.auto_sync_time || '02:00';
-                        document.getElementById('notification_email').value = data.notification_email || '';
-                    } catch (e) {
-                        console.error('Failed to load settings', e);
-                    }
+
+
+            function escapeHtml(text) {
+                if (!text) return '';
+                return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            }
+
+            function formatDateTime(dateStr) {
+                if (!dateStr) return '-';
+                try {
+                    const d = new Date(dateStr.replace(/-/g, '/'));
+                    return d.toLocaleString('th-TH', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                } catch (e) {
+                    return dateStr;
+                }
+            }
+
+            // --- Audit Log Logic ---
+            window.loadAuditLogs = async function(page = 1) {
+                const tbody = document.querySelector('#audit-log-table tbody');
+                if (!tbody) return;
+
+                try {
+                    const res = await fetch(`${API_BASE_URL}/permissions/get_audit_logs?page=${page}&limit=20`, {
+                        credentials: 'include'
+                    });
+                    if (!res.ok) throw new Error('Failed to load audit logs');
+                    const data = await res.json();
+
+                    renderAuditLogs(data.logs || []);
+                    renderAuditLogPagination(data);
+                } catch (e) {
+                    console.error(e);
+                    tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-red-500">เกิดข้อผิดพลาด: ${e.message}</td></tr>`;
+                }
+            };
+
+            function renderAuditLogs(logs) {
+                const tbody = document.querySelector('#audit-log-table tbody');
+                if (logs.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-20 text-center text-gray-400">ไม่พบประวัติการแก้ไข</td></tr>`;
+                    return;
                 }
 
-                // Load settings immediately
-                loadSyncSettings();
+                tbody.innerHTML = logs.map(log => `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 text-xs text-gray-600 whitespace-nowrap">
+                            ${formatDateTime(log.performed_at)}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-[10px] font-bold">
+                                    ${log.performed_by.charAt(0).toUpperCase()}
+                                </div>
+                                <span class="text-sm font-medium text-gray-900">${escapeHtml(log.performed_by)}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="text-sm text-gray-700 font-mono bg-gray-100 px-1.5 py-0.5 rounded">${escapeHtml(log.column_name)}</span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-500">
+                            ${formatValue(log.old_value)}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900 font-medium">
+                            ${formatValue(log.new_value)}
+                        </td>
+                    </tr>
+                `).join('');
+            }
 
-                // Save settings
-                settingsForm.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    const btn = this.querySelector('button[type="submit"]');
-                    const originalText = btn.innerHTML;
+            function formatValue(val) {
+                if (val === '1' || val === 'true') return '<span class="text-emerald-600 flex items-center gap-1"><i class="ri-checkbox-circle-line"></i> Enabled</span>';
+                if (val === '0' || val === 'false') return '<span class="text-gray-400 flex items-center gap-1"><i class="ri-close-circle-line"></i> Disabled</span>';
+                if (val === null || val === '') return '<span class="text-gray-300">empty</span>';
+                return escapeHtml(val);
+            }
 
-                    try {
-                        btn.disabled = true;
-                        btn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> บันทึก...';
+            function renderAuditLogPagination(data) {
+                const info = document.getElementById('audit-log-info');
+                const nav = document.getElementById('audit-log-pagination');
+                if (!info || !nav) return;
 
-                        const formData = new FormData(this);
-                        formData.append('action', 'save_settings');
-                        if (window.currentModuleId) {
-                            formData.append('module_id', window.currentModuleId);
-                        }
+                info.textContent = `หน้า ${data.page} จาก ${data.total_pages} (ทั้งหมด ${data.total} รายการ)`;
 
-                        const res = await fetch(autoSyncUrl, {
-                            method: 'POST',
-                            body: formData
-                        });
-
-                        const result = await res.json();
-                        if (result.success) {
-                            if (window.notify) window.notify('บันทึกการตั้งค่าเรียบร้อยแล้ว', 'success');
-                        } else {
-                            throw new Error(result.error || 'Unknown error');
-                        }
-                    } catch (e) {
-                        if (window.notify) window.notify('บันทึกไม่สำเร็จ: ' + e.message, 'error');
-                    } finally {
-                        btn.disabled = false;
-                        btn.innerHTML = originalText;
-                    }
-                });
+                let html = '';
+                if (data.page > 1) {
+                    html += `
+                        <button onclick="loadAuditLogs(${data.page - 1})" class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors">
+                            <i class="ri-arrow-left-s-line"></i>
+                        </button>`;
+                }
+                if (data.page < data.total_pages) {
+                    html += `
+                        <button onclick="loadAuditLogs(${data.page + 1})" class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors">
+                            <i class="ri-arrow-right-s-line"></i>
+                        </button>`;
+                }
+                nav.innerHTML = html;
             }
         });
     </script>

@@ -40,6 +40,8 @@ require_once __DIR__ . '/../../../core/Helpers/PermissionHelper.php';
 $userPerms = userHasModuleAccess('HR_SERVICES', (int)$user['role_id']);
 $hrNewsPerm = userHasModuleAccess('HR_NEWS', (int)$user['role_id']);
 $permManage = userHasModuleAccess('PERMISSION_MANAGEMENT', (int)$user['role_id']);
+$activityPerm = userHasModuleAccess('ACTIVITY_DASHBOARD', (int)$user['role_id']);
+$emailLogPerm = userHasModuleAccess('EMAIL_LOGS', (int)$user['role_id']);
 $scheduledPerm = userHasModuleAccess('SCHEDULED_REPORTS', (int)$user['role_id']);
 
 if (empty($scheduledPerm['can_view'])) {

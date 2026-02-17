@@ -58,7 +58,40 @@ $default = 'lang:description_default';
 $setting = new admin_setting_configtextarea($name, $title, $description, $default);
 $temp->add($setting);
 
-// Promoted courses.
+// แหล่งหลักสูตรแนะนำ: รหัสหลักสูตร / จากหมวดหมู่ / ใหม่ล่าสุด
+$name = 'theme_academi/promotedcoursesource';
+$title = get_string('promotedcoursesource', 'theme_academi');
+$description = get_string('promotedcoursesourcedesc', 'theme_academi');
+$default = 'ids';
+$choices = [
+    'ids' => get_string('promotedcoursesource_ids', 'theme_academi'),
+    'category' => get_string('promotedcoursesource_category', 'theme_academi'),
+    'latest' => get_string('promotedcoursesource_latest', 'theme_academi'),
+];
+$setting = new admin_setting_configselect($name, $title, $description, $default, $choices);
+$temp->add($setting);
+
+// หมวดหมู่สำหรับหลักสูตรแนะนำ (เมื่อเลือก "จากหมวดหมู่")
+$name = 'theme_academi/promotedcoursecategory';
+$title = get_string('promotedcoursecategory', 'theme_academi');
+$description = get_string('promotedcoursecategorydesc', 'theme_academi');
+$default = 0;
+$choices = [0 => get_string('none', 'core')];
+try {
+    $root = \core_course_category::get(0);
+    $cats = $root->get_children();
+    foreach ($cats as $cat) {
+        if ($cat->is_uservisible()) {
+            $choices[$cat->id] = $cat->get_formatted_name();
+        }
+    }
+} catch (Exception $e) {
+    // Ignore.
+}
+$setting = new admin_setting_configselect($name, $title, $description, $default, $choices);
+$temp->add($setting);
+
+// Promoted courses (ใช้เมื่อเลือก "รหัสหลักสูตร").
 $name = 'theme_academi/promotedcourses';
 $title = get_string('pcourses', 'theme_academi');
 $description = get_string('pcoursesdesc', 'theme_academi');

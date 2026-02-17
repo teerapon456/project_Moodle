@@ -25,6 +25,7 @@
 
 /**
  * Theme_academi install function.
+ * สร้างไฟล์ default เฉพาะเมื่อไฟล์ต้นทางมีอยู่และอ่านได้ (ป้องกัน file_exception ตอนติดตั้ง)
  *
  * @return void
  */
@@ -36,53 +37,50 @@ function xmldb_theme_academi_install() {
     }
 
     $fs = get_file_storage();
+    $contextid = context_system::instance()->id;
+    $userid = get_admin()->id;
+    $basedir = $CFG->dirroot . '/theme/academi/pix/home/';
 
-        // Slider images.
-        $i = 1;
-        $fs = get_file_storage();
+    $defaults = [
+        [
+            'filearea' => 'slide1',
+            'filename' => 'slide1.jpg',
+            'path' => 'slide1.jpg',
+        ],
+        [
+            'filearea' => 'logo',
+            'filename' => 'white-logo.png',
+            'path' => 'logo.png',
+        ],
+        [
+            'filearea' => 'footerlogo',
+            'filename' => 'footerlogo.png',
+            'path' => 'footerlogo.png',
+        ],
+        [
+            'filearea' => 'safe_7',
+            'filename' => 'safe_7.png',
+            'path' => 'safe_7.png',
+        ],
+    ];
+
+    foreach ($defaults as $def) {
+        $pathname = $basedir . $def['path'];
+        if (!is_file($pathname) || !is_readable($pathname)) {
+            continue;
+        }
         $filerecord = new stdClass();
         $filerecord->component = 'theme_academi';
-        $filerecord->contextid = context_system::instance()->id;
-        $filerecord->userid = get_admin()->id;
-        $filerecord->filearea = 'slide1image';
+        $filerecord->contextid = $contextid;
+        $filerecord->userid = $userid;
+        $filerecord->filearea = $def['filearea'];
         $filerecord->filepath = '/';
         $filerecord->itemid = 0;
-        $filerecord->filename = 'slide1image.jpg';
-        $fs->create_file_from_pathname($filerecord, $CFG->dirroot . '/theme/academi/pix/home/slide1.jpg');
-
-        // Logo image.
-        $fs = get_file_storage();
-        $filerecord = new stdClass();
-        $filerecord->component = 'theme_academi';
-        $filerecord->contextid = context_system::instance()->id;
-        $filerecord->userid = get_admin()->id;
-        $filerecord->filearea = 'logo';
-        $filerecord->filepath = '/';
-        $filerecord->itemid = 0;
-        $filerecord->filename = 'logo.png';
-        $fs->create_file_from_pathname($filerecord, $CFG->dirroot . '/theme/academi/pix/home/logo.png');
-
-        // Footer logo image.
-        $fs = get_file_storage();
-        $filerecord = new stdClass();
-        $filerecord->component = 'theme_academi';
-        $filerecord->contextid = context_system::instance()->id;
-        $filerecord->userid = get_admin()->id;
-        $filerecord->filearea = 'footerlogo';
-        $filerecord->filepath = '/';
-        $filerecord->itemid = 0;
-        $filerecord->filename = 'footerlogo.png';
-        $fs->create_file_from_pathname($filerecord, $CFG->dirroot . '/theme/academi/pix/home/footerlogo.png');
-
-        // Marketing spot image.
-        $fs = get_file_storage();
-        $filerecord = new stdClass();
-        $filerecord->component = 'theme_academi';
-        $filerecord->contextid = context_system::instance()->id;
-        $filerecord->userid = get_admin()->id;
-        $filerecord->filearea = 'mspotmedia';
-        $filerecord->filepath = '/';
-        $filerecord->itemid = 0;
-        $filerecord->filename = 'mspotmedia.png';
-        $fs->create_file_from_pathname($filerecord, $CFG->dirroot . '/theme/academi/pix/home/mspotmedia.png');
+        $filerecord->filename = $def['filename'];
+        try {
+            $fs->create_file_from_pathname($filerecord, $pathname);
+        } catch (Exception $e) {
+            // ข้ามไฟล์ที่อัปโหลดไม่สำเร็จ ไม่ให้ติดตั้งธีมล้ม
+        }
+    }
 }

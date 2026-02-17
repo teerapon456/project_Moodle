@@ -35,6 +35,9 @@ $assetBase = UrlHelper::getAssetBase();
 // Remove trailing slash for compatibility
 $publicUrl = rtrim($assetBase, '/');
 
+// Link base for navigation links (used by sidebar)
+$linkBase = UrlHelper::getLinkBase();
+
 // Load database for permission check
 require_once __DIR__ . '/../../core/Database/Database.php';
 require_once __DIR__ . '/../../core/Helpers/PermissionHelper.php';

@@ -68,21 +68,31 @@ class helper {
         $slideopacity = (!empty($slideoverlayval)) ? $this->get_hexa('#000000', $slideoverlayval) : 0.4;
         $footerbgoverlayval = theme_academi_get_setting('footerbgOverlay');
 
+        $colorpreset = theme_academi_get_setting('colorpreset', false);
         if (empty($primary)) {
-            switch (theme_academi_get_setting('preset')) {
-                case 'eguru':
-                    $primary = '#a55ba5';
-                    break;
-                case 'klass':
-                    $primary = '#009fe5';
-                    break;
-                case 'enlightlite':
-                    $primary = '#39b3e6';
-                    break;
-                default:
-                    $primary = '#88b77b';
-                    break;
+            if ($colorpreset === 'inteqc_maroon') {
+                $primary = '#C02D2E';
+                $secondary = $secondary ?: $primary;
+            } else {
+                switch (theme_academi_get_setting('preset')) {
+                    case 'eguru':
+                        $primary = '#a55ba5';
+                        break;
+                    case 'klass':
+                        $primary = '#009fe5';
+                        break;
+                    case 'enlightlite':
+                        $primary = '#39b3e6';
+                        break;
+                    default:
+                        // ค่าเริ่มต้นเป็นโทนมารูน INTEQC (#C02D2E) แทนสีเขียว
+                        $primary = '#C02D2E';
+                        break;
+                }
             }
+        }
+        if (empty($secondary)) {
+            $secondary = $primary;
         }
 
         $footerbgopacity = (!empty($footerbgoverlayval)) ? $this->get_hexa($primary, $footerbgoverlayval) : 0.4;
@@ -109,6 +119,33 @@ class helper {
             $scss .= $secondary30 ? '$secondary_30:'.$secondary30.";\n" : "";
             $scss .= $secondary70 ? '$secondary_70:'.$secondary70.";\n" : "";
         }
+
+        // Font families from settings.
+        $headingfont = theme_academi_get_setting('headingfont', false);
+        $bodyfont = theme_academi_get_setting('bodyfont', false);
+        $fontheading = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+        $fontbody = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+        if ($headingfont === 'noto_thai') {
+            $fontheading = '"Noto Sans Thai", "Source Sans Pro", sans-serif';
+        } else if ($headingfont === 'noto_myanmar') {
+            $fontheading = '"Noto Sans Myanmar", sans-serif';
+        }
+        if ($bodyfont === 'noto_thai') {
+            $fontbody = '"Noto Sans Thai", "Source Sans Pro", sans-serif';
+        } else if ($bodyfont === 'noto_myanmar') {
+            $fontbody = '"Noto Sans Myanmar", sans-serif';
+        }
+        $scss .= '$font-family-heading: '.$fontheading.";\n";
+        $scss .= '$font-family-body: '.$fontbody.";\n";
+
+        // Responsive course card columns.
+        $coldesktop = theme_academi_get_setting('coursecardcolumns_desktop', false) ?: 3;
+        $coltablet = theme_academi_get_setting('coursecardcolumns_tablet', false) ?: 2;
+        $colmobile = theme_academi_get_setting('coursecardcolumns_mobile', false) ?: 1;
+        $scss .= '$coursecard-col-desktop: '.$coldesktop.";\n";
+        $scss .= '$coursecard-col-tablet: '.$coltablet.";\n";
+        $scss .= '$coursecard-col-mobile: '.$colmobile.";\n";
+
         return $scss;
     }
 

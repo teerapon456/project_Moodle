@@ -51,7 +51,7 @@
 }}
 {{> theme_boost/head }}
 
-<body {{{ bodyattributes }}}>
+<body {{{ bodyattributes }}} data-darkmode="{{darkmode}}">
     {{> core/local/toast/wrapper}}
     <div id="page-wrapper" class="d-print-block">
         {{{ output.standard_top_of_body_html }}}
@@ -108,7 +108,7 @@
                         </div>
                     {{/courseindex}}
                     {{#hasblocks}}
-                        <div class="drawer-toggler drawer-right-toggle ml-auto d-print-none">
+                        <div class="drawer-toggler drawer-right-toggle ms-auto d-print-none">
                             <button
                                 class="btn icon-no-margin"
                                 data-toggler="drawers"
@@ -154,7 +154,17 @@
                                     </div>
                                 </div>
                             {{/overflow}}
-                            {{{ output.main_content }}}
+                            <div id="frontpage-main-content" class="course-catalog-wrap" data-course-catalog-per-page="{{coursecatalogperpage}}">
+                                {{#use_multicategory}}
+                                {{> theme_academi/frontpage_multicategory multicategory_context}}
+                                {{/use_multicategory}}
+                                {{^use_multicategory}}
+                                {{{ output.main_content }}}
+                                {{/use_multicategory}}
+                            </div>
+                            {{#category_strip.show}}
+                            {{> theme_academi/category_strip category_strip}}
+                            {{/category_strip.show}}
                             {{{ output.activity_navigation }}}
                             {{{ output.course_content_footer }}}
 

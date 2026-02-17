@@ -31,7 +31,7 @@
 }}
 {{> theme_boost/head }}
 
-<body {{{ bodyattributes }}}>
+<body {{{ bodyattributes }}} data-darkmode="{{darkmode}}">
     {{> core/local/toast/wrapper}}
     <div id="page-wrapper">
         {{{ output.standard_top_of_body_html }}}
@@ -40,9 +40,29 @@
             <div id="page-content" class="row">
                 <div id="region-main-box" class="col-12">
                     <section id="region-main" class="col-12 h-100" aria-label="{{#str}}content{{/str}}">
-                    <div class="login-wrapper">
+                    <div class="login-wrapper login-layout-{{loginlayout}}">
                         <div class="login-container">
-                        {{{ output.main_content }}}
+                            <div class="card login-card-with-logo">
+                                <div class="card-body">
+                                    {{#logourl}}
+                                    <div class="login-card-logo">
+                                        <a href="{{login_homeurl}}"><img src="{{logourl}}" alt="{{sitename}}" class="login-logo-img" /></a>
+                                    </div>
+                                    {{/logourl}}
+                                    {{#showmicrosoft}}
+                                    <div class="login-microsoft-wrap">
+                                        <a href="{{microsofturl}}" class="btn btn-login-microsoft" role="button">
+                                            <span class="login-microsoft-icon" aria-hidden="true"><i class="fa-brands fa-microsoft"></i></span>
+                                            <span>{{#str}}login_microsoft_btn, theme_academi{{/str}}</span>
+                                        </a>
+                                    </div>
+                                    <div class="login-divider-or">{{#str}}login_or, theme_academi{{/str}}</div>
+                                    {{/showmicrosoft}}
+                                    <div class="login-main-content">
+                                        {{{ output.main_content }}}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     </section>

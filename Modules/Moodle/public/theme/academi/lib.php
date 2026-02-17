@@ -51,13 +51,31 @@ define('SITENAME', 1);
 define('LOGOANDSITENAME', 2);
 
 /**
- * Load the Jquery and migration files
+ * Load the Jquery and migration files.
+ * โหลดฟอนต์ Noto Sans Myanmar เมื่อเลือกภาษาพม่า
+ *
  * @param moodle_page $page
  * @return void
  */
 function theme_academi_page_init(moodle_page $page) {
     global $CFG;
     $page->requires->js_call_amd('theme_academi/theme', 'init');
+    // โหลดฟอนต์รองรับอักษรพม่าเมื่อใช้ภาษาพม่า
+    if (current_language() === 'my') {
+        $page->requires->css(
+            new moodle_url('https://fonts.googleapis.com/css2?family=Noto+Sans+Myanmar:wght@400;600;700&display=swap'),
+            true
+        );
+    }
+    // โหลด Noto Sans Thai เมื่อเลือกฟอนต์ไทย
+    $hf = theme_academi_get_setting('headingfont', false);
+    $bf = theme_academi_get_setting('bodyfont', false);
+    if ($hf === 'noto_thai' || $bf === 'noto_thai') {
+        $page->requires->css(
+            new moodle_url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap'),
+            true
+        );
+    }
 }
 
 /**
@@ -241,6 +259,175 @@ function theme_academi_lang($key='') {
 }
 
 /**
+ * Get category strip data for front page (แถบปุ่มจากชื่อ category ของหลักสูตรจริงใน Moodle).
+ * ดึงหมวดหมู่หลักสูตรระดับบน (top-level) มาแสดง ไม่เกิน 4 ปุ่ม (หรือตามที่ตั้งค่า).
+ *
+ * @return array ['show' => bool, 'items' => [['title' => ..., 'icon' => ..., 'url' => ...], ...]]
+ */
+function theme_academi_get_category_strip() {
+    $status = theme_academi_get_setting('categorystripstatus', false);
+    if (empty($status)) {
+        return ['show' => false, 'items' => []];
+    }
+
+    $max = (int) theme_academi_get_setting('categorystripcount', false);
+    if ($max <= 0 || $max > 8) {
+        $max = 4;
+    }
+
+    $sort = theme_academi_get_setting('categorystripsort', false) ?: 'name';
+    $filterids = trim(theme_academi_get_setting('categorystripids', false) ?: '');
+    $items = [];
+    $defaulticons = ['laptop', 'book-open', 'gears', 'shield-halved'];
+
+    try {
+        $root = \core_course_category::get(0);
+        $children = $root->get_children();
+
+        if ($filterids !== '') {
+            $ids = array_map('intval', array_filter(explode(',', $filterids)));
+            $allowed = array_flip($ids);
+            $children = array_filter($children, function($cat) use ($allowed) {
+                return isset($allowed[(int) $cat->id]);
+            });
+        }
+
+        $list = [];
+        foreach ($children as $cat) {
+            if (!$cat->is_uservisible()) {
+                continue;
+            }
+            // สร้าง URL ดูหลักสูตรในหมวด (รองรับทุกเวอร์ชัน Moodle ที่ไม่มี get_url()).
+            $categoryurl = new moodle_url('/course/index.php', ['categoryid' => $cat->id]);
+            $list[] = [
+                'id' => $cat->id,
+                'title' => $cat->get_formatted_name(),
+                'url' => $categoryurl->out(false),
+                'coursecount' => $cat->get_courses_count(),
+            ];
+        }
+
+        if ($sort === 'coursecount') {
+            usort($list, function($a, $b) {
+                return $b['coursecount'] - $a['coursecount'];
+            });
+        } else {
+            usort($list, function($a, $b) {
+                return strcmp($a['title'], $b['title']);
+            });
+        }
+
+        $list = array_slice($list, 0, $max);
+        foreach ($list as $i => $row) {
+            $items[] = [
+                'title' => $row['title'],
+                'url' => $row['url'],
+                'icon' => $defaulticons[$i % 4],
+            ];
+        }
+    } catch (Exception $e) {
+        $items = [];
+    }
+
+    return [
+        'show' => !empty($items),
+        'items' => $items,
+    ];
+}
+
+/**
+ * Get sections for front page multi-category layout (Phase 2 - CMU style).
+ * Each section = one category with name, url, and list of courses (id, name, url, imgurl, summary).
+ *
+ * @return array [ ['id' => int, 'name' => string, 'url' => string, 'coursecount' => int, 'courses' => [...] ], ... ]
+ */
+function theme_academi_get_multicategory_sections() {
+    global $CFG, $OUTPUT;
+
+    $layout = theme_academi_get_setting('frontpage_layout', false);
+    if ($layout !== 'multicategory') {
+        return [];
+    }
+
+    $ids = trim(theme_academi_get_setting('multicategory_categoryids', false) ?: '');
+    if ($ids === '') {
+        return [];
+    }
+
+    $persection = (int) (theme_academi_get_setting('multicategory_per_section', false) ?: 8);
+    $persection = max(4, min(20, $persection));
+
+    $catids = array_map('intval', array_filter(explode(',', $ids)));
+    $sections = [];
+    $noimgurl = $OUTPUT->image_url('no-image', 'theme')->out(false);
+
+    foreach ($catids as $catid) {
+        try {
+            $cat = \core_course_category::get($catid);
+        } catch (Exception $e) {
+            continue;
+        }
+        if (!$cat->is_uservisible()) {
+            continue;
+        }
+
+        $categoryurl = new \moodle_url('/course/index.php', ['categoryid' => $cat->id]);
+        $courses = $cat->get_courses(['recursive' => false, 'sort' => ['sortorder' => 1]]);
+        $list = [];
+        $count = 0;
+        foreach ($courses as $course) {
+            if ($course->id == SITEID || !$course->visible) {
+                continue;
+            }
+            if ($count >= $persection) {
+                break;
+            }
+            $courseurl = new \moodle_url('/course/view.php', ['id' => $course->id]);
+            $imgurl = $noimgurl;
+            foreach ($course->get_course_overviewfiles() as $file) {
+                $isimage = $file->is_valid_image();
+                $imgurl = \file_encode_url(
+                    $CFG->wwwroot . '/pluginfile.php',
+                    '/' . $file->get_contextid() . '/' . $file->get_component() . '/' .
+                    $file->get_filearea() . $file->get_filepath() . $file->get_filename(),
+                    !$isimage
+                );
+                if (!$isimage) {
+                    $imgurl = $noimgurl;
+                }
+                break;
+            }
+            $summary = '';
+            if (!empty($course->summary)) {
+                $raw = strip_tags($course->summary);
+                $summary = \core_text::substr($raw, 0, 100);
+                if (\core_text::strlen($raw) > 100) {
+                    $summary .= '…';
+                }
+            }
+            $list[] = [
+                'id' => $course->id,
+                'name' => $course->get_formatted_name(),
+                'url' => $courseurl->out(false),
+                'imgurl' => $imgurl,
+                'summary' => $summary,
+            ];
+            $count++;
+        }
+
+        $sections[] = [
+            'id' => $cat->id,
+            'name' => $cat->get_formatted_name(),
+            'url' => $categoryurl->out(false),
+            'coursecount' => $cat->get_courses_count(),
+            'courses' => $list,
+        ];
+    }
+
+    return $sections;
+}
+
+/**
  * Returns the main SCSS content.
  *
  * @param theme_config $theme The theme config object.
@@ -295,5 +482,56 @@ function theme_academi_get_extra_scss($theme) {
     // Load the settings from the parent.
     $theme = theme_config::load('boost');
     // Call the parent themes get_extra_scss function.
-    return theme_boost_get_extra_scss($theme);
+    $scss = theme_boost_get_extra_scss($theme);
+    // ซ่อนข้อความ "Deprecated style in use (.ml)" เพื่อไม่ให้ผู้ใช้เห็น (มาจาก Boost/core ยังใช้ class .ml)
+    $scss .= '
+[class*="ml-auto"],
+[class*="ml-"],
+.ml-auto,
+.ml-1, .ml-2, .ml-3, .ml-4, .ml-5 {
+    background: transparent !important;
+}
+[class*="ml-auto"]::before,
+[class*="ml-"]::before,
+.ml-auto::before,
+.ml-1::before, .ml-2::before, .ml-3::before, .ml-4::before, .ml-5::before {
+    display: none !important;
+}
+';
+    // Dark mode overrides.
+    $scss .= '
+body.theme-academi-dark {
+    background-color: #1a1d21;
+    color: #e4e6eb;
+}
+body.theme-academi-dark #page,
+body.theme-academi-dark .drawers,
+body.theme-academi-dark .main-inner {
+    background-color: #1a1d21;
+}
+body.theme-academi-dark .card,
+body.theme-academi-dark .coursebox,
+body.theme-academi-dark .bg-white {
+    background-color: #25282c;
+    border-color: #3a3f45;
+    color: #e4e6eb;
+}
+body.theme-academi-dark .card a,
+body.theme-academi-dark .coursebox a,
+body.theme-academi-dark h1, body.theme-academi-dark h2,
+body.theme-academi-dark h3, body.theme-academi-dark h4,
+body.theme-academi-dark h5, body.theme-academi-dark h6 {
+    color: #e4e6eb;
+}
+body.theme-academi-dark .text-muted,
+body.theme-academi-dark .text-body {
+    color: #b0b3b8 !important;
+}
+body.theme-academi-dark #page-footer,
+body.theme-academi-dark .footer-dark {
+    background-color: #111314 !important;
+    color: #b0b3b8;
+}
+';
+    return $scss;
 }

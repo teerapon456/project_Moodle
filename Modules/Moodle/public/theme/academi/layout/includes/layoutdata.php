@@ -71,6 +71,12 @@ if (!$courseindex) {
 $themestyleheader = theme_academi_get_setting('themestyleheader');
 $extraclasses[] = ($themestyleheader) ? 'theme-based-header' : 'moodle-based-header';
 
+$darkmode = theme_academi_get_setting('darkmode', false) ?: 'off';
+if ($darkmode === 'on') {
+    $extraclasses[] = 'theme-academi-dark';
+}
+$templatecontext['darkmode'] = $darkmode;
+
 $forceblockdraweropen = $OUTPUT->firstview_fakeblocks();
 
 $secondarynavigation = false;

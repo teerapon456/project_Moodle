@@ -24,12 +24,29 @@
  */
 defined('MOODLE_INTERNAL') || die();
 
-$bodyattributes = $OUTPUT->body_attributes();
+$loginlayout = theme_academi_get_setting('loginlayout', false) ?: 'centered';
+$darkmode = theme_academi_get_setting('darkmode', false) ?: 'off';
+$logourl = theme_academi_get_logo_url('header');
+$microsofturl = trim(theme_academi_get_setting('login_microsoft_url', false) ?: '');
+$showmicrosoft = !empty($microsofturl);
+
+$extraclasses = ['login-layout-' . $loginlayout];
+if ($darkmode === 'on') {
+    $extraclasses[] = 'theme-academi-dark';
+}
+$bodyattributes = $OUTPUT->body_attributes($extraclasses);
 require_once(dirname(__FILE__) .'/includes/layoutdata.php');
 
+global $CFG;
 $templatecontext += [
     'sitename' => format_string($SITE->shortname, true, ['context' => context_course::instance(SITEID), "escape" => false]),
     'output' => $OUTPUT,
     'bodyattributes' => $bodyattributes,
+    'loginlayout' => $loginlayout,
+    'darkmode' => $darkmode,
+    'logourl' => $logourl,
+    'showmicrosoft' => $showmicrosoft,
+    'microsofturl' => $microsofturl,
+    'login_homeurl' => $CFG->wwwroot,
 ];
 echo $OUTPUT->render_from_template('theme_academi/login', $templatecontext);

@@ -26,6 +26,7 @@ services:
       - ./:/var/www/html
     environment:
       - DB_HOST=${DB_HOST}
+      - TZ=Asia/Bangkok
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
@@ -42,6 +43,7 @@ services:
     container_name: myhr-db
     environment:
       - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - TZ=Asia/Bangkok
       - MYSQL_DATABASE=${DB_NAME}
       - MYSQL_USER=${DB_USER}
       - MYSQL_PASSWORD=${DB_PASS}
@@ -68,6 +70,7 @@ services:
       - ./docker/moodle/config.php:/var/www/html/config.php
       - moodledata:/var/www/moodledata
     environment:
+      - TZ=Asia/Bangkok
       - MOODLE_DB_HOST=${MOODLE_DB_HOST}
       - MOODLE_DB_NAME=${MOODLE_DB_NAME}
       - MOODLE_DB_USER=${MOODLE_DB_USER}
@@ -91,6 +94,7 @@ services:
     container_name: myhr-moodle-db
     environment:
       - MYSQL_ROOT_PASSWORD=${MOODLE_DB_ROOT_PASSWORD}
+      - TZ=Asia/Bangkok
       - MYSQL_DATABASE=${MOODLE_DB_NAME}
       - MYSQL_USER=${MOODLE_DB_USER}
       - MYSQL_PASSWORD=${MOODLE_DB_PASS}
@@ -130,6 +134,7 @@ services:
       - "3000"
     environment:
       - NODE_ENV=production
+      - TZ=Asia/Bangkok
       - NODE_TLS_REJECT_UNAUTHORIZED=0
       - MOODLE_INTERNAL_URL=${MOODLE_INTERNAL_URL}
       - MOODLE_PUBLIC_URL=${MOODLE_PUBLIC_URL}
@@ -153,6 +158,7 @@ services:
     restart: always
     environment:
       - REDIS_HOST=redis
+      - TZ=Asia/Bangkok
     volumes:
       - ./.env:/var/www/html/.env
       - ./Modules/CarBooking:/var/www/html/Modules/CarBooking
@@ -170,6 +176,7 @@ services:
     restart: always
     environment:
       - REDIS_HOST=redis
+      - TZ=Asia/Bangkok
     volumes:
       - ./.env:/var/www/html/.env
       - ./Modules/Dormitory:/var/www/html/Modules/Dormitory

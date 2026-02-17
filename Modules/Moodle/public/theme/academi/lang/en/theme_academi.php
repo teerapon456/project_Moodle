@@ -263,3 +263,81 @@ $string['topRight'] = 'TopRight';
 $string['url'] = 'URL';
 $string['urldesc'] = 'Enter the URL to set the link for the title of this site feature {$a->block}';
 $string['viewallcourses'] = 'View all courses';
+
+// Category strip (แถบปุ่มจาก course categories จริง).
+$string['categorystripheading'] = 'Category strip';
+$string['categorystripstatus'] = 'Show category strip on front page';
+$string['categorystripstatusdesc'] = 'When enabled, a strip of buttons is shown below the main content. Each button uses a top-level course category name and links to that category.';
+$string['categorystripcount'] = 'Number of categories to show';
+$string['categorystripcountdesc'] = 'Maximum number of top-level course categories to display in the strip (2–8). Categories are taken from Site administration → Courses → Manage courses and categories.';
+
+// Course catalog pagination & Phase 2 multi-category.
+$string['frontpage_layout'] = 'Front page layout';
+$string['frontpage_layoutdesc'] = 'Default: standard Moodle front page content. Multi-category (CMU style): show multiple sections, each with a category name and its course cards.';
+$string['frontpage_layout_default'] = 'Default';
+$string['frontpage_layout_multicategory'] = 'Multi-category (CMU style)';
+$string['multicategory_categoryids'] = 'Multi-category: Category IDs';
+$string['multicategory_categoryidsdesc'] = 'Comma-separated category IDs to show as sections (e.g. 1,2,5). Order of display follows this list. Only used when Front page layout is Multi-category.';
+$string['multicategory_per_section'] = 'Multi-category: Courses per section';
+$string['multicategory_per_sectiondesc'] = 'Maximum number of courses to show in each category section.';
+$string['viewall'] = 'View all';
+
+$string['coursecatalogheading'] = 'Course catalog';
+$string['coursecatalogperpage'] = 'Courses per page';
+$string['coursecatalogperpagedesc'] = 'Number of courses to show per page in the front page course catalog. Pagination is shown when there are more courses than this limit.';
+$string['coursecardcolumns_desktop'] = 'Course cards per row (desktop)';
+$string['coursecardcolumns_desktopdesc'] = 'Number of course card columns on large screens.';
+$string['coursecardcolumns_tablet'] = 'Course cards per row (tablet)';
+$string['coursecardcolumns_tabletdesc'] = 'Number of course card columns on medium screens.';
+$string['coursecardcolumns_mobile'] = 'Course cards per row (mobile)';
+$string['coursecardcolumns_mobiledesc'] = 'Number of course card columns on small screens.';
+
+// Color preset & fonts.
+$string['colorpreset'] = 'Color preset';
+$string['colorpreset_desc'] = 'Use a predefined colour scheme. "INTEQC maroon" uses dark red/maroon (#C02D2E) when no custom primary colour is set.';
+$string['colorpreset_default'] = 'Default (use primary/secondary colour picker)';
+$string['colorpreset_inteqc_maroon'] = 'INTEQC maroon';
+$string['headingfont'] = 'Heading font';
+$string['headingfont_desc'] = 'Font family for headings.';
+$string['bodyfont'] = 'Body font';
+$string['bodyfont_desc'] = 'Font family for body text.';
+$string['font_default'] = 'Default (system)';
+$string['font_noto_thai'] = 'Noto Sans Thai';
+$string['font_noto_myanmar'] = 'Noto Sans Myanmar';
+
+// Login layout.
+$string['loginlayout'] = 'Login page layout';
+$string['loginlayout_desc'] = 'Centered: login box in the middle. Full: full width.';
+$string['loginlayout_centered'] = 'Centered box';
+$string['loginlayout_full'] = 'Full width';
+$string['login_microsoft_url'] = 'Microsoft sign-in URL (login card)';
+$string['login_microsoft_urldesc'] = 'If set, the login card shows a "Sign in with Microsoft" button linking to this URL. Leave empty to hide the button.';
+$string['login_microsoft_btn'] = 'Sign in with Microsoft';
+$string['login_or'] = 'Or sign in with username and password';
+
+// Dark mode.
+$string['darkmode'] = 'Dark mode';
+$string['darkmode_desc'] = 'Off: light only. On: always dark. Auto: follow device preference.';
+$string['darkmode_off'] = 'Off';
+$string['darkmode_on'] = 'On';
+$string['darkmode_auto'] = 'Auto (follow system)';
+
+// Category strip sort & filter.
+$string['categorystripsort'] = 'Sort categories by';
+$string['categorystripsortdesc'] = 'Order of categories in the strip.';
+$string['categorystripsort_name'] = 'Name';
+$string['categorystripsort_coursecount'] = 'Number of courses';
+$string['categorystripids'] = 'Show only these category IDs';
+$string['categorystripidsdesc'] = 'Leave empty to show all top-level categories. To show specific categories, enter their IDs separated by commas (e.g. 2,5,7).';
+
+// Promoted courses source.
+$string['promotedcoursesource'] = 'Promoted courses source';
+$string['promotedcoursesourcedesc'] = 'Where to get the list of promoted courses.';
+$string['promotedcoursesource_ids'] = 'Course IDs (comma-separated)';
+$string['promotedcoursesource_category'] = 'From a category';
+$string['promotedcoursesource_latest'] = 'Latest courses';
+$string['promotedcoursecategory'] = 'Category for promoted courses';
+$string['promotedcoursecategorydesc'] = 'Used when source is "From a category".';
+
+// Footer extra blocks.
+$string['footerblock_extradesc'] = 'Optional extra footer block (title + HTML content).';

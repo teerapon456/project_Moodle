@@ -52,15 +52,31 @@ legend {
         margin: 0;
     }
 }
+/* Activity navigation - ปุ่มก่อน/ถัดไปในการเรียน (โทนมารูน) */
 .activity-navigation {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 2px solid $primary;
     #prev-activity-link,
     #next-activity-link {
         text-align: left;
     }
     a.btn.btn-link {
         color: $primary;
+        font-weight: 600;
+        &:hover,
+        &:focus {
+            color: darken($primary, 8%);
+            text-decoration: underline;
+        }
+    }
+    .btn-secondary {
+        border-color: $primary;
+        color: $primary;
         &:hover {
-            color: $primary;
+            background: $primary;
+            color: $white;
+            border-color: $primary;
         }
     }
 }
@@ -253,6 +269,7 @@ legend {
         }
     }
 }
+/* Tertiary navigation - เมนูเลือก Section/Topic ในหลักสูตร */
 .tertiary-navigation {
     border: 0;
     .navitem-divider {
@@ -260,18 +277,27 @@ legend {
     }
     .tertiary-navigation-selector .dropdown-toggle {
         padding: 0 15px;
+        color: $primary;
+        &:hover,
+        &:focus {
+            color: darken($primary, 8%);
+        }
     }
     .navitem {
         a.btn-link {
             display: flex;
             align-items: center;
+            color: $primary;
+            &:hover {
+                color: darken($primary, 8%);
+            }
         }
         .extrafilters {
             .dropdown-toggle {
                 &:hover,
                 &:focus,
                 &:active {
-                    color: $gray-900;
+                    color: $primary;
                     background: none;
                 }
             }
@@ -301,6 +327,26 @@ legend {
         }
         &:hover {
             color: $white;
+        }
+    }
+    .stickyfooter {
+        border-top: 2px solid $primary;
+        .btn-primary,
+        .actions .btn-primary {
+            background-color: $primary;
+            border-color: $primary;
+            &:hover {
+                background-color: darken($primary, 8%);
+                border-color: darken($primary, 8%);
+                color: $white;
+            }
+        }
+        .btn-link,
+        .actions .btn-link {
+            color: $primary;
+            &:hover {
+                color: darken($primary, 8%);
+            }
         }
     }
     .stickyfooter .ms-auto .btn {
@@ -1762,11 +1808,11 @@ body:not(.pagelayout-frontpage) {
                 box-shadow: none;
             }
             &:active + .custom-control-label:before {
-                background-color: rgba(136, 183, 123, .25);
+                background-color: $primary_30;
             }
             &:checked:focus + .custom-control-label:before {
                 background-color: $primary;
-                box-shadow: 0 0 0 1px $white, 0 0 0 0.2rem rgba(136, 183, 123, .25);
+                box-shadow: 0 0 0 1px $white, 0 0 0 0.2rem $primary_30;
             }
             &:not(:disabled):active ~ .custom-control-label:before {
                 border-color: $primary;
@@ -1799,10 +1845,10 @@ body:not(.pagelayout-frontpage) {
     background-color: $primary;
 }
 .switch input:focus + label:before {
-    box-shadow: 0 0 0 1px $white, 0 0 0 0.2rem rgba(136, 183, 123, .25);
+    box-shadow: 0 0 0 1px $white, 0 0 0 0.2rem $primary_30;
 }
 .switch input:checked:focus + label:before {
-    box-shadow: 0 0 0 1px $white, 0 0 0 0.2rem rgba(136, 183, 123, .25);
+    box-shadow: 0 0 0 1px $white, 0 0 0 0.2rem $primary_30;
 }
 /* End of Custom Control Switch & Radio toggle button*/
 

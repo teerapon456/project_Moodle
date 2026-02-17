@@ -297,10 +297,12 @@ $profilePic = $user['profile_picture'] ?? null;
         } catch (e) {
             console.error('Logout error', e);
         } finally {
+            // Redirect to base path (root) for a cleaner URL
             if (basePath === '' || basePath === '/') {
-                window.location.href = '/index.php';
+                window.location.href = '/';
             } else {
-                window.location.href = `${basePath}/public/index.php`;
+                // If in subfolder, redirect to that folder
+                window.location.href = basePath.endsWith('/') ? basePath : `${basePath}/`;
             }
         }
     }

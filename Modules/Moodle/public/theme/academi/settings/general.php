@@ -57,6 +57,19 @@ $setting = new admin_setting_configstoredfile($name, $title, $description, 'favi
 $setting->set_updatedcallback('theme_reset_all_caches');
 $temp->add($setting);
 
+// Color preset (โทนสีสำเร็จรูป).
+$name = 'theme_academi/colorpreset';
+$title = get_string('colorpreset', 'theme_academi');
+$description = get_string('colorpreset_desc', 'theme_academi');
+$default = 'default';
+$choices = [
+    'default' => get_string('colorpreset_default', 'theme_academi'),
+    'inteqc_maroon' => get_string('colorpreset_inteqc_maroon', 'theme_academi'),
+];
+$setting = new admin_setting_configselect($name, $title, $description, $default, $choices);
+$setting->set_updatedcallback('theme_reset_all_caches');
+$temp->add($setting);
+
 // Primary pattern color select option.
 $name = 'theme_academi/primarycolor';
 $title = get_string('primarycolor', 'theme_academi');
@@ -107,6 +120,34 @@ $title = get_string('pagesizecustomval', 'theme_academi');
 $description = get_string('pagesizecustomval_desc', 'theme_academi');
 $default = '';
 $setting = new admin_setting_configtext($name, $title, $description, $default, PARAM_INT);
+$setting->set_updatedcallback('theme_reset_all_caches');
+$temp->add($setting);
+
+// Font family for headings.
+$name = 'theme_academi/headingfont';
+$title = get_string('headingfont', 'theme_academi');
+$description = get_string('headingfont_desc', 'theme_academi');
+$default = 'default';
+$choices = [
+    'default' => get_string('font_default', 'theme_academi'),
+    'noto_thai' => get_string('font_noto_thai', 'theme_academi'),
+    'noto_myanmar' => get_string('font_noto_myanmar', 'theme_academi'),
+];
+$setting = new admin_setting_configselect($name, $title, $description, $default, $choices);
+$setting->set_updatedcallback('theme_reset_all_caches');
+$temp->add($setting);
+
+// Font family for body.
+$name = 'theme_academi/bodyfont';
+$title = get_string('bodyfont', 'theme_academi');
+$description = get_string('bodyfont_desc', 'theme_academi');
+$default = 'default';
+$choices = [
+    'default' => get_string('font_default', 'theme_academi'),
+    'noto_thai' => get_string('font_noto_thai', 'theme_academi'),
+    'noto_myanmar' => get_string('font_noto_myanmar', 'theme_academi'),
+];
+$setting = new admin_setting_configselect($name, $title, $description, $default, $choices);
 $setting->set_updatedcallback('theme_reset_all_caches');
 $temp->add($setting);
 
@@ -165,6 +206,25 @@ $setting = new admin_setting_configstoredfile($name, $title, $description, 'logi
 $setting->set_updatedcallback('theme_reset_all_caches');
 $temp->add($setting);
 
+// Login page layout.
+$name = 'theme_academi/loginlayout';
+$title = get_string('loginlayout', 'theme_academi');
+$description = get_string('loginlayout_desc', 'theme_academi');
+$default = 'centered';
+$choices = [
+    'centered' => get_string('loginlayout_centered', 'theme_academi'),
+    'full' => get_string('loginlayout_full', 'theme_academi'),
+];
+$setting = new admin_setting_configselect($name, $title, $description, $default, $choices);
+$temp->add($setting);
+
+// Login card: Microsoft sign-in URL (แสดงปุ่ม Sign in with Microsoft ถ้าใส่ URL).
+$name = 'theme_academi/login_microsoft_url';
+$title = get_string('login_microsoft_url', 'theme_academi');
+$description = get_string('login_microsoft_urldesc', 'theme_academi');
+$setting = new admin_setting_configtext($name, $title, $description, '', PARAM_URL);
+$temp->add($setting);
+
 // Enable or disable option for "Back to top" option.
 $name = 'theme_academi/backToTop_status';
 $title = get_string('backToTop_status', 'theme_academi');
@@ -175,6 +235,20 @@ $choices = [
     NO => get_string('no'),
 ];
 $setting = new admin_setting_configselect($name, $title, $description, $default, $choices);
+$temp->add($setting);
+
+// Dark mode.
+$name = 'theme_academi/darkmode';
+$title = get_string('darkmode', 'theme_academi');
+$description = get_string('darkmode_desc', 'theme_academi');
+$default = 'off';
+$choices = [
+    'off' => get_string('darkmode_off', 'theme_academi'),
+    'on' => get_string('darkmode_on', 'theme_academi'),
+    'auto' => get_string('darkmode_auto', 'theme_academi'),
+];
+$setting = new admin_setting_configselect($name, $title, $description, $default, $choices);
+$setting->set_updatedcallback('theme_reset_all_caches');
 $temp->add($setting);
 
 // Custom CSS file.

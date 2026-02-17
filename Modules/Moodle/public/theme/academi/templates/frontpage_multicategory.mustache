@@ -1,0 +1,29 @@
+{{!
+    Phase 2: หลายหมวดบนหน้าเดียว (แบบ CMU MOOC)
+    Context: sections (array of { id, name, url, coursecount, courses }), viewallstr
+}}
+<div class="frontpage-multicategory">
+    {{#sections}}
+    <section class="frontpage-multicategory-section" data-category-id="{{id}}">
+        <div class="frontpage-multicategory-section-header">
+            <h2 class="frontpage-multicategory-title">{{name}}</h2>
+            <a href="{{url}}" class="frontpage-multicategory-viewall btn btn-outline-primary">{{viewallstr}}</a>
+        </div>
+        <div class="frontpage-multicategory-cards">
+            {{#courses}}
+            <a href="{{url}}" class="frontpage-multicategory-card" data-course-id="{{id}}">
+                <div class="frontpage-multicategory-card-image">
+                    <img src="{{imgurl}}" alt="" loading="lazy" />
+                </div>
+                <div class="frontpage-multicategory-card-body">
+                    <h3 class="frontpage-multicategory-card-title">{{name}}</h3>
+                    {{#summary}}
+                    <p class="frontpage-multicategory-card-summary">{{summary}}</p>
+                    {{/summary}}
+                </div>
+            </a>
+            {{/courses}}
+        </div>
+    </section>
+    {{/sections}}
+</div>

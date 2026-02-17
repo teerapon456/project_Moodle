@@ -32,6 +32,8 @@ Thumbs.db
 
 # Large backups
 backup/
+backups/
+*.sql.gz
 
 # Large binaries
 tailwindcss.exe

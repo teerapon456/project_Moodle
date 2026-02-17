@@ -1,0 +1,179 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Burmese (Myanmar) language pack - မြန်မာဘာသာ
+ * Compatible with Moodle Boost UI (Moodle 4.x).
+ * @package    theme_academi
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+$string['about'] = 'ကျွန်ုပ်တို့အကြောင်း';
+$string['aboutus'] = 'ကျွန်ုပ်တို့အကြောင်း';
+$string['address'] = 'လိပ်စာ';
+$string['autoslideshow'] = 'အလိုအလျောက်ဖွင့်ပြခြင်း';
+$string['availablecoursetype'] = 'သင်တန်းများ ပြသပုံ';
+$string['backToTop_status'] = 'အပေါ်သို့ ပြန်တက်ခလုတ် ထည့်ပါ';
+$string['blockemptymessage'] = '<p><i class="fa fa-info-circle"></i> ဤချိန်ညှိချက်ကို ဖွင့်ထားသော်လည်း မမှန်ကန်ပါ။ ချိန်ညှိပါ။</p>';
+$string['configtitle'] = 'Academi';
+$string['contact'] = 'ဆက်သွယ်ရန်';
+$string['contact_us'] = 'ဆက်သွယ်ရန်';
+$string['container'] = 'ထည့်သွင်းစရာ';
+$string['content'] = 'အကြောင်းအရာ';
+$string['copyright_footer'] = 'မူပိုင်ခွင့်';
+$string['custom'] = 'စိတ်ကြိုက်';
+$string['customcss'] = 'စိတ်ကြိုက် CSS';
+$string['description'] = 'ဖော်ပြချက်';
+$string['disable'] = 'ပိတ်ပါ';
+$string['email'] = '<span>အီးမေးလ်</span>';
+$string['emailid'] = 'အီးမေးလ်';
+$string['enable'] = 'ဖွင့်ပါ';
+$string['expand'] = 'ချဲ့ထွင်ပြပါ';
+$string['collapse'] = 'ခေါက်ပြပါ';
+$string['footerheading'] = 'အောက်ခြေ';
+$string['footerbtitle1default'] = 'ကျွန်ုပ်တို့အကြောင်း';
+$string['footerbtitle2default'] = 'အချက်အလက်';
+$string['footerbtitle3default'] = 'ဆက်သွယ်ရန်';
+$string['footerbtitle4default'] = 'လိုက်နာပါ';
+$string['headerheading'] = 'အထွေထွေ';
+$string['home'] = 'ပင်မစာမျက်နှာ';
+$string['icon'] = 'အိုင်ကွန်';
+$string['image'] = 'ပုံ';
+$string['info'] = 'အချက်အလက်';
+$string['knowmore'] = 'ပိုသိပါ';
+$string['large'] = 'ကြီး';
+$string['learnanytime'] = 'အချိန်မရွေး နေရာမရွေး သင်ယူပါ';
+$string['learnanytimedesc'] = 'အွန်လိုင်းသင်တန်းများကို မိုဘိုင်း၊ တက်ဘလက် သို့မဟုတ် ကွန်ပျူတာမှ ကြည့်ပါ။';
+$string['logo'] = 'လိုဂို';
+$string['logoandsitename'] = 'လိုဂို နှင့် ဆိုက်အမည်';
+$string['medium'] = 'အလတ်စား';
+$string['moodlebased'] = 'Moodle အခြေပြု';
+$string['moodledefault'] = 'Moodle ပုံမှန်';
+$string['newWindow'] = 'ပြတင်းပေါက် အသစ်';
+$string['numberofslides'] = 'ဆလိုက်အရေအတွက်';
+$string['pcourses'] = 'ပြသထားသော သင်တန်းများ';
+$string['phone'] = 'ဖုန်း';
+$string['phoneno'] = 'ဖုန်းနံပါတ်';
+$string['pluginname'] = 'Academi';
+$string['presetheading'] = 'အပြင်အဆင်';
+$string['primarycolor'] = 'အရောင်အဓိက';
+$string['promotedcoursesheading'] = 'ပြသထားသော သင်တန်းများ';
+$string['promotedtitledefault'] = 'ပြသထားသော သင်တန်းများ';
+$string['readmore'] = 'ဆက်ဖတ်ပါ';
+$string['region-side-post'] = 'ညာ';
+$string['region-side-pre'] = 'ဘယ်';
+$string['sameWindow'] = 'ပြတင်းပေါက် တူ';
+$string['sb1_default_title'] = 'ဘာသာစကားမျိုးစုံ';
+$string['sb2_default_title'] = 'အွန်လိုင်းသင်ယူခြင်း';
+$string['sb3_default_title'] = 'အသိုင်းအဝိုင်းပံ့ပိုးမှု';
+$string['sb4_default_title'] = 'တုံ့ပြန်မှုဒီဇိုင်း';
+$string['secondarycolor'] = 'အရောင်ဒုတိယ';
+$string['sitefeatures'] = 'ဆိုက်အင်္ဂါရပ်များ';
+$string['sitefeaturesdefault'] = 'ကျွန်ုပ်တို့ဆိုက် အင်္ဂါရပ်များ';
+$string['sitename'] = 'ဆိုက်အမည်';
+$string['small'] = 'သေး';
+$string['slideshowheading'] = 'ပင်မစာမျက်နှာ ဆလိုက်ပြခြင်း';
+$string['slideshowheadingsub'] = 'ပင်မစာမျက်နှာ ဆလိုက်ပြခြင်း။';
+$string['socialmediadesc'] = '<strong>ဤဘလော့ကတွင် လူမှုမီဒီယာ ပါဝင်သည်။</strong>';
+$string['status'] = 'ဘလော့ကို ဖွင့်ပါ';
+$string['themebased'] = 'အပြင်အဆင်အခြေပြု';
+$string['title'] = 'ခေါင်းစဉ်';
+$string['toggleslideshow'] = 'ဆလိုက်ပြခြင်းြသမှု';
+$string['url'] = 'URL';
+$string['viewallcourses'] = 'သင်တန်းအားလုံး ကြည့်ပါ';
+
+$string['categorystripheading'] = 'အမျိုးအစားတန်းပြင်';
+$string['categorystripstatus'] = 'ပင်မစာမျက်နှာတွင် အမျိုးအစားတြသပါ';
+$string['categorystripstatusdesc'] = 'ဖွင့်ပါက သင်တန်းအမျိုးအစား (course category) များမှ ခလုတ်မျသပြီး ထိုအမျိုးအစားသို့ လင့်ခ်ချိတ်ပါမည်။';
+$string['categorystripcount'] = 'ြသမည့် အမျိုးအစားအရေအတွက်';
+$string['categorystripcountdesc'] = 'တန်းတွင်ြသမည့် အဆင့်မြင့် သင်တန်းအမျိုးအစား အများဆုံး (၂–၈)။';
+
+// Course catalog pagination
+$string['coursecatalogheading'] = 'သင်တန်းစာရင်း';
+$string['coursecatalogperpage'] = 'တစ်မျက်နှြသမည့် သင်တန်းအရေအတွက်';
+$string['coursecatalogperpagedesc'] = 'ပင်မစာမျက်နှာရှိ သင်တန်းစာရင်းတွင် တစ်မျက်နှြသမည့် သင်တန်းအရေအတွက်။ ဤအရေအတွက်ထက် ပိုများပါက စာမျက်နှာခွဲြသမည်။';
+
+// Simple UI & Boost UI
+$string['simpleui'] = 'Simple UI (ရိုးရှင်း သုံးလွယ်)';
+$string['simpleui_desc'] = 'ဖွင့်ပါက ပင်မစာမျက်နှာတွင် ဆလိုက်ပြခြင်း/ Jumbotron မပြဘဲ ပါဝင်သည်ကို ဦးစားပေးပြသည်။ Moodle Boost UI နှင့် ကိုက်ညီသည်။';
+
+// Front page layout & multi-category (CMU style)
+$string['frontpage_layout'] = 'ပင်မစာမျက်နှာ ပြင်ဆင်မှု';
+$string['frontpage_layoutdesc'] = 'ပုံမှန်: Moodle ပင်မစာမျက်နှာ။ မျိုးကွဲများ (CMU ပုံစံ): အမျိုးအစားအလိုက် အပိုင်းများ နှင့် သင်တန်းကတ်များ ပြသည်။';
+$string['frontpage_layout_default'] = 'ပုံမှန်';
+$string['frontpage_layout_multicategory'] = 'မျိုးကွဲများ (CMU ပုံစံ)';
+$string['multicategory_categoryids'] = 'မျိုးကွဲများ: အမျိုးအစား ID များ';
+$string['multicategory_categoryidsdesc'] = 'အပိုင်းအဖြစ် ပြမည့် အမျိုးအစား ID များ ကော်မာခြားထား (ဥပမာ 1,2,5)။ ပြင်ဆင်မှု မျိုးကွဲများ ဖြစ်မှသာ သုံးသည်။';
+$string['multicategory_per_section'] = 'မျိုးကွဲ: အပိုင်းတစ်ခုလျှင် သင်တန်းအရေအတွက်';
+$string['multicategory_per_sectiondesc'] = 'အမျိုးအစားတစ်ခုစီတွင် ပြမည့် သင်တန်းအများဆုံး အရေအတွက်။';
+$string['viewall'] = 'အားလုံးကြည့်ပါ';
+
+$string['coursecardcolumns_desktop'] = 'တစ်တန်းလျှင် သင်တန်းကတ် (ဒက်စ်တော့)';
+$string['coursecardcolumns_desktopdesc'] = 'ဖန်သားပြင်ကြီးတွင် ကော်လံအရေအတွက်။';
+$string['coursecardcolumns_tablet'] = 'တစ်တန်းလျှင် သင်တန်းကတ် (တက်ဘလက်)';
+$string['coursecardcolumns_tabletdesc'] = 'ဖန်သားပြင်အလတ်တွင် ကော်လံအရေအတွက်။';
+$string['coursecardcolumns_mobile'] = 'တစ်တန်းလျှင် သင်တန်းကတ် (မိုဘိုင်း)';
+$string['coursecardcolumns_mobiledesc'] = 'ဖန်သားပြင်ငယ်တွင် ကော်လံအရေအတွက်။';
+
+// Color preset & fonts (Boost UI)
+$string['colorpreset'] = 'အရောင်အစီအစဉ်';
+$string['colorpreset_desc'] = 'ကြိုသတ်မှတ်ထားသော အရောင်အစီအစဉ် သုံးပါ။ "INTEQC maroon" သည် အရောင်မရွေးပါက အနီရင့် (#C02D2E) သုံးသည်။';
+$string['colorpreset_default'] = 'ပုံမှန် (အဓိက/ဒုတိယ အရောင်ရွေးပါ)';
+$string['colorpreset_inteqc_maroon'] = 'INTEQC အနီရင့်';
+$string['headingfont'] = 'ခေါင်းစဉ် ဖောင့်';
+$string['headingfont_desc'] = 'ခေါင်းစဉ်များအတွက် ဖောင့်။';
+$string['bodyfont'] = 'ကိုယ်ထည် ဖောင့်';
+$string['bodyfont_desc'] = 'ကိုယ်ထည်စာသားအတွက် ဖောင့်။';
+$string['font_default'] = 'ပုံမှန် (စနစ်)';
+$string['font_noto_thai'] = 'Noto Sans Thai';
+$string['font_noto_myanmar'] = 'Noto Sans Myanmar';
+
+// Login (Boost UI)
+$string['loginlayout'] = 'အကောင့်ဝင်စာမျက်နှာ ပြင်ဆင်မှု';
+$string['loginlayout_desc'] = 'အလယ်ဗဟို: အကောင့်ဝင်ကတ် အလယ်တွင်။ အပြည့်: အကျယ်အပြည့်။';
+$string['loginlayout_centered'] = 'အလယ်ဗဟိုကတ်';
+$string['loginlayout_full'] = 'အကျယ်အပြည့်';
+$string['login_microsoft_url'] = 'Microsoft အကောင့်ဝင် URL (အကောင့်ဝင်ကတ်)';
+$string['login_microsoft_urldesc'] = 'သတ်မှတ်ပါက အကောင့်ဝင်ကတ်တွင် "Microsoft ဖြင့် ဝင်ပါ" ခလုတ် ပြမည်။ ခလုတ် မပြလိုပါက ဗလာထားပါ။';
+$string['login_microsoft_btn'] = 'Microsoft ဖြင့် ဝင်ပါ';
+$string['login_or'] = 'သို့မဟုတ် သင့်အမည် နှင့် စကားဝှက်ဖြင့် ဝင်ပါ';
+
+// Dark mode (Boost UI)
+$string['darkmode'] = 'အမှောင်မုဒ်';
+$string['darkmode_desc'] = 'ပိတ်: အလင်းသာ။ ဖွင့်: အမှောင်အစဉ်။ အလို: ကိရိယာအလိုက်။';
+$string['darkmode_off'] = 'ပိတ်';
+$string['darkmode_on'] = 'ဖွင့်';
+$string['darkmode_auto'] = 'အလို (စနစ်အတိုင်း)';
+
+// Category strip sort & filter
+$string['categorystripsort'] = 'အမျိုးအစားများ စီပါ';
+$string['categorystripsortdesc'] = 'တန်းတွင် အမျိုးအစားများ စီရာတွင်။';
+$string['categorystripsort_name'] = 'အမည်';
+$string['categorystripsort_coursecount'] = 'သင်တန်းအရေအတွက်';
+$string['categorystripids'] = 'ဤအမျိုးအစား ID များကိုသာ ပြပါ';
+$string['categorystripidsdesc'] = 'အဆင့်မြင့် အမျိုးအစားအားလုံး ပြရန် ဗလာထားပါ။ သီးသန့်အမျိုးအစားများ ပြရန် ID များ ကော်မာခြား ထည့်ပါ (ဥပမာ 2,5,7)။';
+
+// Promoted courses
+$string['promotedcoursesource'] = 'ပြသထားသော သင်တန်းများ ရင်းမြစ်';
+$string['promotedcoursesourcedesc'] = 'ပြသထားသော သင်တန်းစာရင်း ယူမည့်နေရာ။';
+$string['promotedcoursesource_ids'] = 'သင်တန်း ID များ (ကော်မာခြား)';
+$string['promotedcoursesource_category'] = 'အမျိုးအစားတစ်ခုမှ';
+$string['promotedcoursesource_latest'] = 'နောက်ဆုံး သင်တန်းများ';
+$string['promotedcoursecategory'] = 'ပြသထားသော သင်တန်းများအတွက် အမျိုးအစား';
+$string['promotedcoursecategorydesc'] = 'ရင်းမြစ်က "အမျိုးအစားတစ်ခုမှ" ဖြစ်သည့်အခါ သုံးသည်။';
+
+// Footer
+$string['footerblock_extradesc'] = 'ရွေးချယ်နိုင်သော အောက်ခြေ ဘလော့ခ် အပို (ခေါင်းစဉ် + HTML ပါဝင်သည်များ)။';

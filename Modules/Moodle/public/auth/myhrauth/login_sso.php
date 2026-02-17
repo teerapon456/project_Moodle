@@ -48,9 +48,10 @@ try {
 
     // Fetch full user data from users table (JOIN with iga_orgunit for OrgCode)
     $stmtDetails = $pdo->prepare("
-        SELECT u.fullname, u.email, u.Level3Name, u.password_hash, o.OrgCode
+        SELECT u.fullname, u.email, u.Level3Name, u.password_hash, o.OrgCode, e.level_code
         FROM users u
         LEFT JOIN iga_orgunit o ON u.OrgID = o.OrgID
+        LEFT JOIN emplevelcode e ON u.emplevel_id = e.level_id
         WHERE u.username = ?
     ");
     $stmtDetails->execute([$username]);
@@ -64,6 +65,7 @@ try {
         $email = $details['email'];
         $department = $details['Level3Name'] ?? ''; // Changed from Level3Code
         $institution = $details['OrgCode'] ?? '';
+        $idnumber = $details['level_code'] ?? '';
         $passwordHash = $details['password_hash'] ?? '';
 
         // Check if user exists in Moodle
@@ -78,6 +80,7 @@ try {
             $updateUser->email = $email;
             $updateUser->department = $department;
             $updateUser->institution = $institution;
+            $updateUser->idnumber = $idnumber;
 
             // Perform update
             user_update_user($updateUser);
@@ -95,6 +98,7 @@ try {
             $newUser->email = $email;
             $newUser->department = $department;
             $newUser->institution = $institution;
+            $newUser->idnumber = $idnumber;
             $newUser->auth = 'db';
             $newUser->mnethostid = $CFG->mnet_localhost_id;
             $newUser->confirmed = 1;

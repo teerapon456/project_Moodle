@@ -1,33 +1,208 @@
-/* Login */
+/* ========== Login Page - Modern layout ========== */
 #page-login-index #header button.btn {
     display: none;
 }
+
 .path-login {
     background-image: none;
     #page-wrapper {
-        height: auto;
+        min-height: calc(100vh - 120px);
         margin-bottom: 0;
+        display: flex;
+        flex-direction: column;
     }
     #page {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
         background-image: url($loginbg);
         background-size: cover;
-        background-position: top;
+        background-position: center;
         background-repeat: no-repeat;
+        &::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0.2) 100%);
+            pointer-events: none;
+        }
+    }
+    #page-content {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+    }
+    #region-main {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 400px;
     }
 }
+
 .login-wrapper {
-    padding: 50px 0;
+    padding: 2rem 1rem;
+    width: 100%;
+    &.login-layout-centered .login-container {
+        max-width: 420px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    &.login-layout-full .login-container {
+        max-width: 440px;
+        margin-left: auto;
+        margin-right: auto;
+    }
     .login-form .login-form-submit .btn {
         height: auto;
+        padding: 0.6rem 1.25rem;
     }
 }
+
+/* Login card - การ์ดมีโลโก้ + Microsoft */
+.path-login .login-container .login-card-with-logo.card,
+.path-login .login-container .card {
+    border: 0;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(12px);
+}
+
+.path-login .login-container .login-card-logo {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid $mercury;
+}
+
+.path-login .login-container .login-logo-img {
+    max-height: 56px;
+    width: auto;
+    max-width: 100%;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* ปุ่ม Sign in with Microsoft */
+.path-login .login-container .login-microsoft-wrap {
+    margin-bottom: 0.75rem;
+}
+
+.path-login .login-container .login-divider-or {
+    text-align: center;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    color: $color_storm_dust_approx;
+}
+
+.path-login .login-container .btn-login-microsoft {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.65rem 1.25rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1rem;
+    background: #2f2f2f;
+    color: $white;
+    border: 0;
+    transition: background 0.2s ease, transform 0.05s ease;
+    text-decoration: none;
+    &:hover {
+        background: #1f1f1f;
+        color: $white;
+        transform: translateY(-1px);
+    }
+    .login-microsoft-icon {
+        font-size: 1.25rem;
+    }
+}
+
+.path-login .login-container .login-main-content {
+    margin-top: 0;
+}
+
+.path-login .login-container .card-body {
+    padding: 2rem 1.75rem;
+}
+
+.path-login .login-container .card-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: $color_mine_shaft_approx;
+}
+
+.path-login .login-container .card-text {
+    color: $color_storm_dust_approx;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+}
+
+/* ช่องกรอกและปุ่ม */
+.path-login .login-container .form-control {
+    border-radius: 10px;
+    border: 1px solid $mercury;
+    padding: 0.65rem 1rem;
+    font-size: 1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    &:focus {
+        border-color: $primary;
+        box-shadow: 0 0 0 3px $primary_30;
+    }
+}
+
+.path-login .login-container .btn-primary {
+    border-radius: 10px;
+    padding: 0.65rem 1.5rem;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: background-color 0.2s ease, transform 0.05s ease;
+    &:hover {
+        transform: translateY(-1px);
+    }
+}
+
+.path-login .login-container a {
+    color: $primary;
+    font-weight: 500;
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+/* ปุ่ม Identity providers */
 .login-container .login-identityproviders .login-identityprovider-btn {
-    border-color: $color_gallery_approx;
+    border-radius: 10px;
+    border: 1px solid $mercury;
     margin-top: 10px;
+    padding: 0.5rem 1rem;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    &:hover {
+        border-color: $primary;
+        background: rgba($primary, 0.06);
+    }
+}
+
+/* ปุ่มลืมรหัส / ลงทะเบียน ฯลฯ */
+.path-login .login-container .login-divider,
+.path-login .login-container .login-options {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid $mercury;
 }
 
 @media (max-width: 575px) {
+    .path-login .login-container .card-body {
+        padding: 1.5rem 1.25rem;
+    }
     #page-login-index .card {
-        margin-top: 50px;
+        margin-top: 0;
     }
 }

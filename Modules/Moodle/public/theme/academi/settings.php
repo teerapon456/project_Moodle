@@ -40,6 +40,10 @@ if ($ADMIN->fulltree) {
     include(dirname(__FILE__) . '/settings/marketingspot.php');
     // Jumbotron Settings.
     include(dirname(__FILE__) . '/settings/jumbotron.php');
+    // Category strip (แถบปุ่มหมวดหมู่ 4 ปุ่ม).
+    include(dirname(__FILE__) . '/settings/categorystrip.php');
+    // Course catalog pagination (จำนวนหลักสูตรต่อหน้า).
+    include(dirname(__FILE__) . '/settings/coursecatalog.php');
     // Footer Settings.
     include(dirname(__FILE__) . '/settings/footer.php');
 }

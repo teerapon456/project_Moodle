@@ -26,6 +26,7 @@ if (!$isCli) {
 }
 
 require_once __DIR__ . '/../../core/Database/Database.php';
+require_once __DIR__ . '/../../core/Services/NotificationService.php';
 
 try {
     $db = new Database();
@@ -34,7 +35,15 @@ try {
     $now = date('Y-m-d H:i:s');
     $updated = 0;
 
-    // 1. Change approved -> in_use when start_time is reached
+    // 1. Get bookings that will become in_use (before update) for notifications
+    $stmtSelect = $pdo->prepare("
+        SELECT id, user_id FROM cb_bookings
+        WHERE status = 'approved' AND start_time <= :now
+    ");
+    $stmtSelect->execute([':now' => $now]);
+    $toNotify = $stmtSelect->fetchAll(PDO::FETCH_ASSOC);
+
+    // 2. Change approved -> in_use when start_time is reached
     $stmt = $pdo->prepare("
         UPDATE cb_bookings 
         SET status = 'in_use', 
@@ -44,6 +53,26 @@ try {
     ");
     $stmt->execute([':now' => $now]);
     $updated = $stmt->rowCount();
+
+    // 3. Send in-app notification to each requester
+    foreach ($toNotify as $row) {
+        $bookingId = (int)$row['id'];
+        $userId = (int)$row['user_id'];
+        if ($userId > 0) {
+            try {
+                NotificationService::create(
+                    $userId,
+                    'info',
+                    'เริ่มใช้งานจองรถได้แล้ว',
+                    "คำขอจองรถ #{$bookingId} ถึงเวลาแล้ว สามารถเริ่มใช้งานได้",
+                    ['booking_id' => $bookingId],
+                    'Modules/CarBooking/?page=request_history'
+                );
+            } catch (Exception $e) {
+                error_log("Cron in_use notification failed (booking #{$bookingId}): " . $e->getMessage());
+            }
+        }
+    }
 
     $result = [
         'success' => true,

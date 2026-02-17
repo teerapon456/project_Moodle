@@ -52,6 +52,9 @@ if (empty($newsPerm['can_view'])) {
 
 $userPerms = userHasModuleAccess('HR_SERVICES', (int)$user['role_id']);
 $hrNewsPerm = $newsPerm;
+$activityPerm = userHasModuleAccess('ACTIVITY_DASHBOARD', (int)$user['role_id']);
+$emailLogPerm = userHasModuleAccess('EMAIL_LOGS', (int)$user['role_id']);
+$scheduledPerm = userHasModuleAccess('SCHEDULED_REPORTS', (int)$user['role_id']);
 require_once __DIR__ . '/../../../core/Config/Env.php';
 function getPermissionModuleCode()
 {

@@ -47,7 +47,7 @@
         }
     }
     .footer-main {
-        background-color: $night_rider;
+        background-color: $primary;
         padding: 30px 0 54px;
         position: relative;
         z-index: 0;
@@ -93,7 +93,7 @@
                     color: $white;
                     line-height: 32px;
                     &:hover {
-                        color: $primary;
+                        color: $secondary;
                         text-decoration: none;
                     }
                 }
@@ -175,7 +175,7 @@
             a {
                 &:hover,
                 &:focus {
-                    color: $light_blue;
+                    color: $secondary;
                 }
             }
         }
@@ -183,22 +183,22 @@
 }
 #footer {
     .footer-bottom {
-        background: $dark_grey;
+        background: darken($primary, 15%);
         padding: 10px 0;
         text-align: center;
         p {
             padding-bottom: 5px;
             margin-bottom: 0;
             a {
-                color: $primary;
+                color: $white;
             }
         }
         a {
-            color: $primary;
+            color: rgba(255, 255, 255, 0.9);
             &:hover,
             &:focus,
             &:active {
-                color: $secondary;
+                color: $white;
             }
         }
     }
@@ -207,7 +207,7 @@
     button.btn-footer-popover:focus,
     button.btn-footer-popover:active {
         color: $white;
-        background: $primary;
+        background: $secondary;
     }
 }
 

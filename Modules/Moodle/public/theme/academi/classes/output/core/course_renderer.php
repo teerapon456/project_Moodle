@@ -149,48 +149,80 @@ class course_renderer extends \core_course_renderer {
         $promotedtitle = theme_academi_get_setting('promotedtitle', 'format_html');
         $promotedtitle = theme_academi_lang($promotedtitle);
         $promotedcoursedesc = theme_academi_lang(theme_academi_get_setting('promotedcoursedesc'));
-        $featuredids = theme_academi_get_setting('promotedcourses');
+        $source = theme_academi_get_setting('promotedcoursesource', false) ?: 'ids';
         $promotedcontent = empty($promotedtitle) && empty($promotedcoursedesc) ? false : true;
-        $blockisempty = empty($promotedtitle) && empty($promotedcoursedesc) && empty($featuredids) ? false : $pcoursestatus;
-        $blocks = [];
-        if (!empty($featuredids)) {
-            /* Get Featured courses id from DB */
-            $rcourseids = (!empty($featuredids)) ? explode(",", $featuredids) : [];
+
+        $fcourseids = [];
+        if ($source === 'ids') {
+            $featuredids = theme_academi_get_setting('promotedcourses');
+            if (!empty($featuredids)) {
+                $rcourseids = array_map('intval', array_filter(explode(",", $featuredids)));
+                $helperobj = new \theme_academi\helper();
+                $hcourseids = $helperobj->hidden_courses_ids();
+                if (!empty($hcourseids)) {
+                    $rcourseids = array_diff($rcourseids, $hcourseids);
+                }
+                foreach ($rcourseids as $val) {
+                    $ccourse = $DB->get_record('course', ['id' => $val]);
+                    if (!empty($ccourse) && $ccourse->visible && $ccourse->id != SITEID) {
+                        $fcourseids[] = $val;
+                    }
+                }
+            }
+        } else if ($source === 'category') {
+            $catid = (int) theme_academi_get_setting('promotedcoursecategory', false);
+            if ($catid > 0) {
+                $numshow = 8;
+                $helperobj = new \theme_academi\helper();
+                $hcourseids = $helperobj->hidden_courses_ids();
+                $recs = $DB->get_records('course', ['category' => $catid, 'visible' => 1], 'sortorder ASC', 'id', 0, $numshow + count($hcourseids));
+                foreach ($recs as $r) {
+                    if ($r->id == SITEID || in_array($r->id, $hcourseids)) {
+                        continue;
+                    }
+                    $fcourseids[] = $r->id;
+                    if (count($fcourseids) >= $numshow) {
+                        break;
+                    }
+                }
+            }
+        } else if ($source === 'latest') {
+            $numshow = 8;
             $helperobj = new \theme_academi\helper();
             $hcourseids = $helperobj->hidden_courses_ids();
-
-            if (!empty($hcourseids)) {
-                foreach ($rcourseids as $key => $val) {
-                    if (in_array($val, $hcourseids)) {
-                        unset($rcourseids[$key]);
-                    }
-                }
-            }
-
-            foreach ($rcourseids as $key => $val) {
-                $ccourse = $DB->get_record('course', ['id' => $val]);
-                if (empty($ccourse)) {
-                    unset($rcourseids[$key]);
+            $sql = "SELECT id FROM {course} WHERE visible = 1 AND id != ? ORDER BY timecreated DESC";
+            $params = [SITEID];
+            $recs = $DB->get_records_sql($sql . " LIMIT " . ($numshow + count($hcourseids)), $params);
+            foreach ($recs as $r) {
+                if (in_array($r->id, $hcourseids)) {
                     continue;
                 }
+                $fcourseids[] = $r->id;
+                if (count($fcourseids) >= $numshow) {
+                    break;
+                }
             }
+        }
 
-            $fcourseids = $rcourseids;
+        $featuredids = implode(',', $fcourseids);
+        $blockisempty = empty($promotedtitle) && empty($promotedcoursedesc) && empty($fcourseids) ? false : $pcoursestatus;
+        $blocks = [];
+        $helperobj = new \theme_academi\helper();
+        if (!empty($fcourseids)) {
             $totalfcourse = count($fcourseids);
-            if (!empty($fcourseids)) {
-                $i = 0;
-                foreach ($fcourseids as $courseid) {
-                    $info = [];
-                    $course = get_course($courseid);
-                    $noimgurl = $this->output->image_url('no-image', 'theme');
-                    $courseurl = new moodle_url('/course/view.php', ['id' => $courseid]);
+            $i = 0;
+            foreach ($fcourseids as $courseid) {
+                $info = [];
+                $course = get_course($courseid);
+                $noimgurl = $this->output->image_url('no-image', 'theme');
+                $courseurl = new moodle_url('/course/view.php', ['id' => $courseid]);
 
-                    if ($course instanceof stdClass) {
-                        $course = new \core_course_list_element($course);
-                    }
+                if ($course instanceof stdClass) {
+                    $course = new \core_course_list_element($course);
+                }
 
-                    $imgurl = '';
-                    $summary = $helperobj->strip_html_tags($course->summary);
+                $imgurl = '';
+                $summary = $helperobj->strip_html_tags($course->summary);
                     $summary = $helperobj->course_trim_char($summary, 75);
                     foreach ($course->get_course_overviewfiles() as $file) {
                         $isimage = $file->is_valid_image();
@@ -208,9 +240,8 @@ class course_renderer extends \core_course_renderer {
                     $info['imgurl'] = $imgurl;
                     $info['coursename'] = $course->get_formatted_name();
                     $info['active'] = ($i == 1) ? true : false;
-                    $blocks[] = $info;
-                    $i++;
-                }
+                $blocks[] = $info;
+                $i++;
             }
             $template['totalfcourse'] = $totalfcourse;
         }

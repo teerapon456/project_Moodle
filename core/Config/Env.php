@@ -136,3 +136,6 @@ class Env
 
 // Auto-load environment variables
 Env::load();
+
+// Set default timezone to Asia/Bangkok
+date_default_timezone_set(Env::get('APP_TIMEZONE', 'Asia/Bangkok'));

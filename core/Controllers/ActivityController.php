@@ -61,6 +61,12 @@ class ActivityController
             case 'login-history':
                 $this->getLoginHistory();
                 break;
+            case 'device-stats':
+                $this->getDeviceStats();
+                break;
+            case 'system-audit-summary':
+                $this->getSystemAuditSummary();
+                break;
             default:
                 http_response_code(400);
                 echo json_encode(['success' => false, 'message' => 'Invalid action']);
@@ -139,6 +145,10 @@ class ActivityController
                 ORDER BY date
             ");
             $stats['activity_trend'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Failed logins today
+            $stmt = $this->conn->query("SELECT COUNT(*) FROM user_logins WHERE action = 'login_failed' AND DATE(created_at) = CURDATE()");
+            $stats['failed_logins_today'] = (int)$stmt->fetchColumn();
 
             echo json_encode(['success' => true, 'data' => $stats]);
         } catch (Exception $e) {
@@ -272,36 +282,35 @@ class ActivityController
     private function getActivityTimeline()
     {
         try {
-            $limit = (int)($_GET['limit'] ?? 20);
+            $limit = (int)($_GET['limit'] ?? 15);
             $page = (int)($_GET['page'] ?? 1);
             $offset = ($page - 1) * $limit;
 
-            // Get total count (Separate queries to avoid UNION overhead if possible, but count is simple)
-            $countStmt = $this->conn->query("
-                SELECT (
-                    (SELECT COUNT(*) FROM cb_audit_logs) + 
-                    (SELECT COUNT(*) FROM user_logins)
-                ) as total
-            ");
+            // Get total count (from user_logins only)
+            $countStmt = $this->conn->query("SELECT COUNT(*) FROM user_logins");
             $total = (int)$countStmt->fetchColumn();
 
-            // UNION Query with Explicit Casting
-            // Using CAST(NULL AS UNSIGNED) to match int(11) of entity_id
+            // Query specifically for user_logins timeline with device and location data
             $stmt = $this->conn->prepare("
                 SELECT 
                     a.id,
                     a.user_id,
                     COALESCE(u.fullname, a.user_name, 'System') as user_name,
                     a.action,
-                    a.entity_type,
-                    a.entity_id,
+                    'auth' as entity_type,
+                    NULL as entity_id,
                     a.ip_address,
+                    a.device_type,
+                    a.device_brand,
+                    a.device_model,
+                    a.os_name,
+                    a.os_version,
+                    a.client_name,
+                    a.client_version,
+                    a.latitude,
+                    a.longitude,
                     a.created_at
-                FROM (
-                    SELECT id, user_id, user_name, action, entity_type, entity_id, ip_address, created_at FROM cb_audit_logs
-                    UNION ALL
-                    SELECT id, user_id, user_name, action, 'auth' as entity_type, CAST(NULL AS UNSIGNED) as entity_id, ip_address, created_at FROM user_logins
-                ) a
+                FROM user_logins a
                 LEFT JOIN users u ON a.user_id = u.id
                 ORDER BY a.created_at DESC
                 LIMIT :limit OFFSET :offset
@@ -358,6 +367,54 @@ class ActivityController
             foreach ($params as $key => $val) {
                 $stmt->bindValue($key, $val);
             }
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->execute();
+
+            echo json_encode(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    private function getDeviceStats()
+    {
+        try {
+            $days = (int)($_GET['days'] ?? 30);
+            $stmt = $this->conn->prepare("
+                SELECT device_type, COUNT(*) as count 
+                FROM user_logins 
+                WHERE created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
+                  AND device_type IS NOT NULL
+                GROUP BY device_type 
+                ORDER BY count DESC
+            ");
+            $stmt->bindValue(':days', $days, PDO::PARAM_INT);
+            $stmt->execute();
+
+            echo json_encode(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    private function getSystemAuditSummary()
+    {
+        try {
+            $limit = (int)($_GET['limit'] ?? 10);
+            $stmt = $this->conn->prepare("
+                SELECT 
+                    a.id, 
+                    a.action, 
+                    a.entity_type, 
+                    COALESCE(u.fullname, a.user_name, 'System') as performed_by, 
+                    a.created_at as performed_at 
+                FROM cb_audit_logs a
+                LEFT JOIN users u ON a.user_id = u.id
+                ORDER BY a.created_at DESC 
+                LIMIT :limit
+            ");
             $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
             $stmt->execute();
 

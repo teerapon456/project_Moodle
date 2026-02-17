@@ -113,6 +113,22 @@
 
         drawerClass();
 
+        // Dark mode (auto): ตามระบบ prefers-color-scheme
+        var darkmode = document.body.getAttribute('data-darkmode');
+        if (darkmode === 'auto') {
+            var applyDark = function() {
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    document.body.classList.add('theme-academi-dark');
+                } else {
+                    document.body.classList.remove('theme-academi-dark');
+                }
+            };
+            applyDark();
+            if (window.matchMedia) {
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyDark);
+            }
+        }
+
     };
 
     return {

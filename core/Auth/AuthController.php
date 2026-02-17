@@ -101,6 +101,17 @@ class AuthController
             }
         };
 
+        $isGeoMandatory = function () {
+            try {
+                $stmt = $this->conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'mandatory_geolocation' LIMIT 1");
+                $stmt->execute();
+                $val = $stmt->fetchColumn();
+                return $val !== '0'; // Default to mandatory if not set or set to 1
+            } catch (Exception $e) {
+                return true;
+            }
+        };
+
         // Sanitize input
         $data = json_decode(file_get_contents("php://input"));
 
@@ -147,6 +158,18 @@ class AuthController
                     "message" => "Too many login attempts. Try again in " . ceil($lockoutTime / 60) . " minutes."
                 ]);
                 return;
+            }
+
+            // Check Geolocation Requirement
+            if ($isGeoMandatory()) {
+                if (empty($data->latitude) || empty($data->longitude)) {
+                    http_response_code(403);
+                    echo json_encode([
+                        "message" => "กรุณาระบุตำแหน่งที่ตั้งก่อนเข้าสู่ระบบ",
+                        "code" => "location_required"
+                    ]);
+                    return;
+                }
             }
 
 
@@ -212,7 +235,7 @@ class AuthController
                     $isProfileIncomplete = empty($row['fullname']) || empty($row['department']);
 
                     // Log login activity
-                    $this->logActivity('login', $row['id'], $row['fullname'] ?? $row['username']);
+                    $this->logActivity('login', $row['id'], $row['fullname'] ?? $row['username'], $data->latitude ?? null, $data->longitude ?? null);
 
                     // Handle Remember Me
                     if (!empty($data->{'remember-me'})) {
@@ -226,11 +249,17 @@ class AuthController
                         "is_profile_incomplete" => $isProfileIncomplete
                     ]);
                 } else {
+                    // Log failed login (invalid password)
+                    $this->logActivity('login_failed', $row['id'], $row['fullname'] ?? $row['username'], $data->latitude ?? null, $data->longitude ?? null);
+
                     // Unified error for invalid password
                     http_response_code(401);
                     echo json_encode(["code" => "invalid_credentials"]);
                 }
             } else {
+                // Log failed login (user not found)
+                $this->logActivity('login_failed', null, $username, $data->latitude ?? null, $data->longitude ?? null);
+
                 // Unified error for user not found
                 http_response_code(401);
                 echo json_encode(["code" => "invalid_credentials"]);
@@ -348,21 +377,47 @@ class AuthController
     /**
      * Log user activity to cb_audit_logs table
      */
-    private function logActivity($action, $userId = null, $userName = null)
+    protected function logActivity($action, $userId = null, $userName = null, $latitude = null, $longitude = null)
     {
+        // User requested to only log 'login' actions, not 'logout'
+        if ($action === 'logout') {
+            return;
+        }
+
         try {
             // Updated: Log to dedicated user_logins table instead of cb_audit_logs
+            require_once __DIR__ . '/../Services/DeviceDetector.php';
+            $detector = new \DeviceDetector($_SERVER['HTTP_USER_AGENT'] ?? '');
+
             $stmt = $this->conn->prepare("
                 INSERT INTO user_logins 
-                (user_id, user_name, action, ip_address, user_agent, created_at)
-                VALUES (?, ?, ?, ?, ?, NOW())
+                (user_id, user_name, action, ip_address, user_agent, 
+                 device_type, device_brand, device_model, os_name, os_version, 
+                 client_type, client_name, client_version, latitude, longitude, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
+
+            // Updated: Use passed parameters for geolocation
+            if ($latitude !== null && !is_numeric($latitude)) $latitude = null;
+            if ($longitude !== null && !is_numeric($longitude)) $longitude = null;
+
             $stmt->execute([
                 $userId,
                 $userName ?? 'Unknown',
                 $action,
                 $this->getClientIp(),
-                $_SERVER['HTTP_USER_AGENT'] ?? null
+                $_SERVER['HTTP_USER_AGENT'] ?? null,
+                $detector->getDeviceType(),
+                $detector->getDeviceBrand(),
+                $detector->getDeviceModel(),
+                $detector->getOSName(),
+                $detector->getOSVersion(),
+                'browser',
+                $detector->getClientName(),
+                $detector->getClientVersion(),
+                $latitude,
+                $longitude,
+                date('Y-m-d H:i:s')
             ]);
         } catch (Exception $e) {
             error_log("Failed to log activity: " . $e->getMessage());

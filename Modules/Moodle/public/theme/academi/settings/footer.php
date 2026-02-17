@@ -209,6 +209,60 @@ $default = 'lang:footerbtitle4default';
 $setting = new admin_setting_configtext($name, $title, $description, $default);
 $temp->add($setting);
 
+// Footer Block 5 heading.
+$name = 'theme_academi_footerblock5heading';
+$heading = get_string('footerblock', 'theme_academi').' 5 ';
+$information = get_string('footerblock_extradesc', 'theme_academi');
+$setting = new admin_setting_heading($name, $heading, $information);
+$temp->add($setting);
+
+$name = 'theme_academi/footerb5_status';
+$title = get_string('status', 'theme_academi');
+$description = get_string('fblock_statusdesc', 'theme_academi');
+$default = NO;
+$setting = new admin_setting_configcheckbox($name, $title, $description, $default);
+$temp->add($setting);
+
+$name = 'theme_academi/footerbtitle5';
+$title = get_string('title', 'theme_academi');
+$description = get_string('footerbtitledesc', 'theme_academi');
+$setting = new admin_setting_configtext($name, $title, $description, '');
+$temp->add($setting);
+
+$name = 'theme_academi/footnote5';
+$title = get_string('footnote', 'theme_academi');
+$description = get_string('footnotedesc', 'theme_academi');
+$setting = new admin_setting_confightmleditor($name, $title, $description, '');
+$setting->set_updatedcallback('theme_reset_all_caches');
+$temp->add($setting);
+
+// Footer Block 6 heading.
+$name = 'theme_academi_footerblock6heading';
+$heading = get_string('footerblock', 'theme_academi').' 6 ';
+$information = get_string('footerblock_extradesc', 'theme_academi');
+$setting = new admin_setting_heading($name, $heading, $information);
+$temp->add($setting);
+
+$name = 'theme_academi/footerb6_status';
+$title = get_string('status', 'theme_academi');
+$description = get_string('fblock_statusdesc', 'theme_academi');
+$default = NO;
+$setting = new admin_setting_configcheckbox($name, $title, $description, $default);
+$temp->add($setting);
+
+$name = 'theme_academi/footerbtitle6';
+$title = get_string('title', 'theme_academi');
+$description = get_string('footerbtitledesc', 'theme_academi');
+$setting = new admin_setting_configtext($name, $title, $description, '');
+$temp->add($setting);
+
+$name = 'theme_academi/footnote6';
+$title = get_string('footnote', 'theme_academi');
+$description = get_string('footnotedesc', 'theme_academi');
+$setting = new admin_setting_confightmleditor($name, $title, $description, '');
+$setting->set_updatedcallback('theme_reset_all_caches');
+$temp->add($setting);
+
 // Select the number of social media show on the footer.
 $name = 'theme_academi/numofsocialmedia';
 $title = get_string('numofsocialmedia', 'theme_academi');
@@ -219,6 +273,9 @@ $setting = new admin_setting_configselect($name, $title, $description, $default,
 $temp->add($setting);
 
 $numofsocialmedia = get_config('theme_academi', 'numofsocialmedia');
+if (!$numofsocialmedia) {
+    $numofsocialmedia = 4;
+}
 for ($f = 1; $f <= $numofsocialmedia; $f++) {
 
     // Social media heading.

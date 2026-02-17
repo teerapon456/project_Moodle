@@ -278,4 +278,92 @@ class PermissionModel
             return 'PERMISSION_MANAGEMENT';
         }
     }
+
+    public function getSystemSettings($moduleId = 0)
+    {
+        if (!$this->conn) throw new Exception('Database connection failed');
+
+        $sql = "SELECT id, module_id, setting_key, setting_value, created_at, updated_at FROM system_settings WHERE module_id = :module_id OR :module_id = 0 ORDER BY id ASC";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindValue(':module_id', $moduleId, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function saveSystemSetting($key, $value, $moduleId = 0)
+    {
+        if (!$this->conn) throw new Exception('Database connection failed');
+        $moduleId = (int)$moduleId;
+
+        // Fetch old value for audit logging
+        $oldValue = null;
+        try {
+            $stmt = $this->conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = :key AND module_id = :mid LIMIT 1");
+            $stmt->bindValue(':key', $key);
+            $stmt->bindValue(':mid', $moduleId, PDO::PARAM_INT);
+            $stmt->execute();
+            $oldValue = $stmt->fetchColumn();
+        } catch (Exception $e) { /* Ignore */
+        }
+
+        $sql = "INSERT INTO system_settings (module_id, setting_key, setting_value) 
+                VALUES (:module_id, :setting_key, :setting_value)
+                ON DUPLICATE KEY UPDATE 
+                    setting_value = VALUES(setting_value),
+                    updated_at = CURRENT_TIMESTAMP";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindValue(':module_id', $moduleId, PDO::PARAM_INT);
+        $stmt->bindValue(':setting_key', $key);
+        $stmt->bindValue(':setting_value', $value);
+        $result = $stmt->execute();
+
+        if ($result && (string)$oldValue !== (string)$value) {
+            // Log to audit_log
+            try {
+                if (session_status() === PHP_SESSION_NONE) session_start();
+                $user = $_SESSION['user']['username'] ?? $_SESSION['user']['fullname'] ?? 'system';
+                $logSql = "INSERT INTO audit_log (table_name, record_id, column_name, old_value, new_value, action_type, performed_by) 
+                          VALUES ('system_settings', :mid, :column, :old, :new, 'UPDATE', :user)";
+                $logStmt = $this->conn->prepare($logSql);
+                $logStmt->bindValue(':mid', $moduleId, PDO::PARAM_INT);
+                $logStmt->bindValue(':column', $key);
+                $logStmt->bindValue(':old', (string)$oldValue);
+                $logStmt->bindValue(':new', (string)$value);
+                $logStmt->bindValue(':user', $user);
+                $logStmt->execute();
+            } catch (Exception $e) { /* Ignore logging errors */
+            }
+        }
+
+        return $result;
+    }
+
+    public function getAuditLogs($limit = 50, $page = 1)
+    {
+        $limit = (int)$limit;
+        $offset = ((int)$page - 1) * $limit;
+
+        // Get total count
+        $countStmt = $this->conn->query("SELECT COUNT(*) FROM audit_log WHERE table_name = 'system_settings'");
+        $total = (int)$countStmt->fetchColumn();
+
+        // Get logs
+        $stmt = $this->conn->prepare("
+            SELECT * FROM audit_log 
+            WHERE table_name = 'system_settings' 
+            ORDER BY performed_at DESC 
+            LIMIT :limit OFFSET :offset
+        ");
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            'logs' => $logs,
+            'total' => $total,
+            'page' => $page,
+            'total_pages' => ceil($total / $limit)
+        ];
+    }
 }

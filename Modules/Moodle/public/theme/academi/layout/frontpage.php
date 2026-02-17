@@ -32,6 +32,17 @@ $PAGE->requires->js_call_amd('theme_academi/frontpage', 'init');
 $bodyattributes = $OUTPUT->body_attributes($extraclasses);
 // Jumbotron class.
 $jumbotronclass = (!empty(theme_academi_get_setting('jumbotronstatus'))) ? 'jumbotron-element' : '';
+// Category strip (แถบปุ่มหมวดหมู่).
+$templatecontext['category_strip'] = theme_academi_get_category_strip();
+// Course catalog pagination: จำนวนหลักสูตรต่อหน้า (ค่าเริ่มต้น 6).
+$templatecontext['coursecatalogperpage'] = (int) (theme_academi_get_setting('coursecatalogperpage', false) ?: 6);
+// Phase 2: หลายหมวดบนหน้าเดียว (แบบ CMU MOOC)
+$multicategorysections = theme_academi_get_multicategory_sections();
+$templatecontext['use_multicategory'] = !empty($multicategorysections);
+$templatecontext['multicategory_context'] = [
+    'sections' => $multicategorysections,
+    'viewallstr' => get_string('viewall', 'theme_academi'),
+];
 // Slide show contnet added in the templatecontext.
 $templatecontext += $sliderconfig;
 $templatecontext += [

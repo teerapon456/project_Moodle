@@ -42,7 +42,8 @@ class MicrosoftAuthController
                     $this->handleCallback();
                     break;
                 case 'search':
-                    $this->searchUsers();
+                    $query = $_GET['q'] ?? '';
+                    $this->searchUsers($query);
                     break;
                 case 'import':
                     $this->importUser();
@@ -114,6 +115,29 @@ class MicrosoftAuthController
             }
         } catch (Exception $e) {
             $this->logOauthDebug('initiateLogin: setcookie remember failed: ' . $e->getMessage());
+        }
+
+        // Store geolocation if provided
+        try {
+            if (isset($_GET['lat']) && isset($_GET['lon'])) {
+                $secure = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strpos($_SERVER['HTTP_X_FORWARDED_PROTO'], 'https') !== false));
+                setcookie('oauth_lat', $_GET['lat'], [
+                    'expires' => time() + 600,
+                    'path' => '/',
+                    'secure' => $secure,
+                    'httponly' => true,
+                    'samesite' => 'None'
+                ]);
+                setcookie('oauth_lon', $_GET['lon'], [
+                    'expires' => time() + 600,
+                    'path' => '/',
+                    'secure' => $secure,
+                    'httponly' => true,
+                    'samesite' => 'None'
+                ]);
+            }
+        } catch (Exception $e) {
+            $this->logOauthDebug('initiateLogin: setcookie geo failed: ' . $e->getMessage());
         }
 
         // Build authorization URL
@@ -229,6 +253,25 @@ class MicrosoftAuthController
             return;
         }
 
+        // Check Geolocation Requirement
+        try {
+            $stmt = $this->conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'mandatory_geolocation' LIMIT 1");
+            $stmt->execute();
+            $geoVal = $stmt->fetchColumn();
+            $isGeoMandatory = ($geoVal !== '0'); // Default to mandatory if not set or 1
+
+            if ($isGeoMandatory) {
+                $lat = $_COOKIE['oauth_lat'] ?? null;
+                $lon = $_COOKIE['oauth_lon'] ?? null;
+                if (empty($lat) || empty($lon)) {
+                    $this->redirectToFrontend('error', urlencode('กรุณาระบุตำแหน่งที่ตั้งก่อนเข้าสู่ระบบ (Location required)'));
+                    return;
+                }
+            }
+        } catch (Exception $e) {
+            // fallback to allowing login if setting check fails, or could be stricter
+        }
+
         // Find or create user in database
         $user = $this->findOrCreateUser($userInfo);
         if (!$user) {
@@ -268,7 +311,9 @@ class MicrosoftAuthController
         $_SESSION['access_token'] = $tokenData['access_token'];
 
         // Log Microsoft login activity
-        $this->logActivity('login', $user['id'], $user['fullname'] ?? $user['username']);
+        $lat = $_COOKIE['oauth_lat'] ?? null;
+        $lon = $_COOKIE['oauth_lon'] ?? null;
+        $this->logActivity('login', $user['id'], $user['fullname'] ?? $user['username'], $lat, $lon);
 
         // Clear oauth_state cookie (cleanup)
         try {
@@ -312,6 +357,27 @@ class MicrosoftAuthController
             }
         }
 
+        // Clear geolocation cookies
+        try {
+            $secure = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strpos($_SERVER['HTTP_X_FORWARDED_PROTO'], 'https') !== false));
+            setcookie('oauth_lat', '', [
+                'expires' => time() - 3600,
+                'path' => '/',
+                'secure' => $secure,
+                'httponly' => true,
+                'samesite' => 'None'
+            ]);
+            setcookie('oauth_lon', '', [
+                'expires' => time() - 3600,
+                'path' => '/',
+                'secure' => $secure,
+                'httponly' => true,
+                'samesite' => 'None'
+            ]);
+        } catch (Exception $e) {
+            // ignore
+        }
+
         // Redirect to frontend dashboard
         $this->redirectToFrontend('success', null, $user);
     }
@@ -319,89 +385,121 @@ class MicrosoftAuthController
     /**
      * Search users (Local DB + Microsoft Graph)
      */
-    private function searchUsers()
+    public function searchUsers($query)
     {
-        header('Content-Type: application/json');
-
-        $query = $_GET['query'] ?? '';
-        if (strlen($query) < 2) {
-            echo json_encode([]);
-            return;
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
         }
 
         $results = [];
 
-        // 1. Search Local DB
-        $sql = "SELECT id, fullname as displayName, email, 'local' as source FROM users 
-                WHERE fullname LIKE :query OR username LIKE :query OR email LIKE :query LIMIT 5";
-        $stmt = $this->conn->prepare($sql);
-        $searchTerm = "%$query%";
-        $stmt->bindParam(':query', $searchTerm);
-        $stmt->execute();
-
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $results[] = [
-                'id' => $row['id'],
-                'displayName' => $row['displayName'],
-                'email' => $row['email'],
-                'fullname' => $row['displayName'],
-                'mail' => $row['email'],
-                'source' => 'local'
-            ];
-        }
-
-        // 2. Search Microsoft Graph API
+        // 1. Search Microsoft Graph API
         if (isset($_SESSION['access_token'])) {
             $accessToken = $_SESSION['access_token'];
-            // Use search endpoint for better fuzzy matching
-            $searchQuery = urlencode("\"displayName:$query\" OR \"mail:$query\" OR \"userPrincipalName:$query\"");
-            $graphUrl = "https://graph.microsoft.com/v1.0/users?\$search=$searchQuery&\$select=id,displayName,mail,userPrincipalName&\$top=10";
+            $commonSelect = "id,displayName,mail,userPrincipalName,department";
 
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $graphUrl);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Authorization: Bearer ' . $accessToken,
-                'Content-Type: application/json',
-                'ConsistencyLevel: eventual'
-            ]);
+            // --- Strategy A: Fuzzy Search (Users) ---
+            $searchQuery = urlencode("\"$query\" OR \"displayName:$query\" OR \"mail:$query\" OR \"userPrincipalName:$query\"");
+            $graphUrl = "https://graph.microsoft.com/v1.0/users?\$search=$searchQuery&\$select=$commonSelect,proxyAddresses&\$top=15&\$count=true";
 
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            $graphResponse = $this->executeGraphRequest($graphUrl, $accessToken);
+            if ($graphResponse && !empty($graphResponse['value'])) {
+                foreach ($graphResponse['value'] as $graphUser) {
+                    $this->addUniqueGraphResult($results, $graphUser);
+                }
+            }
 
-            if ($httpCode === 200) {
-                $data = json_decode($response, true);
-                if (!empty($data['value'])) {
-                    foreach ($data['value'] as $graphUser) {
-                        $email = $graphUser['mail'] ?? $graphUser['userPrincipalName'];
+            // --- Strategy C: Fuzzy Search (Groups) ---
+            $groupsUrl = "https://graph.microsoft.com/v1.0/groups?\$search=$searchQuery&\$select=id,displayName,mail,description&\$top=10&\$count=true";
+            $groupsResponse = $this->executeGraphRequest($groupsUrl, $accessToken);
+            if ($groupsResponse && !empty($groupsResponse['value'])) {
+                foreach ($groupsResponse['value'] as $group) {
+                    if (empty($group['mail'])) continue;
+                    $this->addUniqueGraphResult($results, [
+                        'id' => $group['id'],
+                        'displayName' => "[Group] " . $group['displayName'],
+                        'mail' => $group['mail'],
+                        'userPrincipalName' => $group['mail'],
+                        'department' => $group['description'] ?? 'Group'
+                    ]);
+                }
+            }
 
-                        // Avoid duplicates if user is already in local results
-                        $exists = false;
-                        foreach ($results as $localUser) {
-                            if (strtolower($localUser['email']) === strtolower($email)) {
-                                $exists = true;
-                                break;
-                            }
-                        }
+            // --- Strategy C: Fuzzy Search (Contacts) ---
+            $contactsUrl = "https://graph.microsoft.com/v1.0/contacts?\$search=$searchQuery&\$select=id,displayName,mail&\$top=10&\$count=true";
+            $contactsResponse = $this->executeGraphRequest($contactsUrl, $accessToken);
+            if ($contactsResponse && !empty($contactsResponse['value'])) {
+                foreach ($contactsResponse['value'] as $contact) {
+                    if (empty($contact['mail'])) continue;
+                    $this->addUniqueGraphResult($results, [
+                        'id' => $contact['id'],
+                        'displayName' => "[Contact] " . $contact['displayName'],
+                        'mail' => $contact['mail'],
+                        'userPrincipalName' => $contact['mail']
+                    ]);
+                }
+            }
 
-                        if (!$exists) {
-                            $results[] = [
-                                'id' => $graphUser['id'],
-                                'displayName' => $graphUser['displayName'],
-                                'email' => $email,
-                                'fullname' => $graphUser['displayName'],
-                                'mail' => $email,
-                                'userPrincipalName' => $graphUser['userPrincipalName'] ?? '',
-                                'source' => 'microsoft'
-                            ];
-                        }
+            // --- Strategy D: Exact Email Fallback (Strict - crucial for Shared Mailboxes) ---
+            if (strpos($query, '@') !== false) {
+                $filter = urlencode("mail eq '$query' or userPrincipalName eq '$query' or proxyAddresses/any(a:a eq 'smtp:$query')");
+                $filterUrl = "https://graph.microsoft.com/v1.0/users?\$filter=$filter&\$select=$commonSelect,proxyAddresses&\$top=5";
+
+                $filterResponse = $this->executeGraphRequest($filterUrl, $accessToken);
+                if ($filterResponse && !empty($filterResponse['value'])) {
+                    foreach ($filterResponse['value'] as $graphUser) {
+                        $this->addUniqueGraphResult($results, $graphUser);
                     }
                 }
             }
         }
 
         echo json_encode($results);
+    }
+    /**
+     * Helper to add Graph user to results avoiding duplicates
+     */
+    private function addUniqueGraphResult(&$results, $graphUser)
+    {
+        $email = $graphUser['mail'] ?? $graphUser['userPrincipalName'];
+        if (empty($email)) return;
+
+        foreach ($results as $item) {
+            if (strtolower($item['email'] ?? '') === strtolower($email)) {
+                return;
+            }
+        }
+
+        $results[] = [
+            'id' => $graphUser['id'],
+            'displayName' => $graphUser['displayName'],
+            'email' => $email,
+            'fullname' => $graphUser['displayName'],
+            'mail' => $email,
+            'userPrincipalName' => $graphUser['userPrincipalName'] ?? '',
+            'source' => 'microsoft'
+        ];
+    }
+
+    /**
+     * Helper for Graph API calls
+     */
+    private function executeGraphRequest($url, $accessToken)
+    {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $accessToken,
+            'Content-Type: application/json',
+            'ConsistencyLevel: eventual'
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        return ($httpCode === 200) ? json_decode($response, true) : null;
     }
 
     /**
@@ -798,20 +896,46 @@ class MicrosoftAuthController
     /**
      * Log user activity to user_logins table
      */
-    private function logActivity($action, $userId = null, $userName = null)
+    private function logActivity($action, $userId = null, $userName = null, $latitude = null, $longitude = null)
     {
+        // User requested to only log 'login' actions
+        if ($action === 'logout') {
+            return;
+        }
+
         try {
+            require_once __DIR__ . '/../Services/DeviceDetector.php';
+            $detector = new \DeviceDetector($_SERVER['HTTP_USER_AGENT'] ?? '');
+
             $stmt = $this->conn->prepare("
                 INSERT INTO user_logins 
-                (user_id, user_name, action, ip_address, user_agent, created_at)
-                VALUES (?, ?, ?, ?, ?, NOW())
+                (user_id, user_name, action, ip_address, user_agent, 
+                 device_type, device_brand, device_model, os_name, os_version, 
+                 client_type, client_name, client_version, latitude, longitude, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
+
+            // Validate simple format if present
+            if ($latitude !== null && !is_numeric($latitude)) $latitude = null;
+            if ($longitude !== null && !is_numeric($longitude)) $longitude = null;
+
             $stmt->execute([
                 $userId,
                 $userName ?? 'Unknown',
                 $action,
                 $this->getClientIp(),
-                $_SERVER['HTTP_USER_AGENT'] ?? null
+                $_SERVER['HTTP_USER_AGENT'] ?? null,
+                $detector->getDeviceType(),
+                $detector->getDeviceBrand(),
+                $detector->getDeviceModel(),
+                $detector->getOSName(),
+                $detector->getOSVersion(),
+                'browser',
+                $detector->getClientName(),
+                $detector->getClientVersion(),
+                $latitude,
+                $longitude,
+                date('Y-m-d H:i:s')
             ]);
         } catch (Exception $e) {
             error_log("Failed to log Microsoft activity: " . $e->getMessage());

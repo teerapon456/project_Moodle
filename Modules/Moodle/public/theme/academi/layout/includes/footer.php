@@ -73,20 +73,32 @@ function footer() {
     $fstatus2 = theme_academi_get_setting('footerb2_status');
     $fstatus3 = theme_academi_get_setting('footerb3_status');
     $fstatus4 = theme_academi_get_setting('footerb4_status');
+    $fstatus5 = theme_academi_get_setting('footerb5_status');
+    $fstatus6 = theme_academi_get_setting('footerb6_status');
 
     $ftitle1 = theme_academi_get_setting('footerbtitle1');
     $ftitle2 = theme_academi_get_setting('footerbtitle2');
     $ftitle3 = theme_academi_get_setting('footerbtitle3');
     $ftitle4 = theme_academi_get_setting('footerbtitle4');
+    $ftitle5 = theme_academi_get_setting('footerbtitle5');
+    $ftitle6 = theme_academi_get_setting('footerbtitle6');
+    $footnote5 = theme_academi_lang(theme_academi_get_setting('footnote5', 'format_html'));
+    $footnote6 = theme_academi_lang(theme_academi_get_setting('footnote6', 'format_html'));
 
     $phone = get_string('phone', 'theme_academi');
     $email = get_string('emailid', 'theme_academi');
 
     $backtotopbtn = theme_academi_get_setting('backToTop_status');
 
-    $totalstatus = $fstatus1 + $fstatus2 + $fstatus3 + $fstatus4;
+    $totalstatus = $fstatus1 + $fstatus2 + $fstatus3 + $fstatus4 + $fstatus5 + $fstatus6;
 
     switch ($totalstatus) {
+        case 6:
+            $colclass = 'col-lg-2 col-md-4 col-6';
+            break;
+        case 5:
+            $colclass = 'col-lg col-md-4';
+            break;
         case 4:
             $colclass = 'col-lg-3 col-md-6';
             break;
@@ -124,10 +136,16 @@ function footer() {
         "fstatus2" => $fstatus2,
         "fstatus3" => $fstatus3,
         "fstatus4" => $fstatus4,
+        "fstatus5" => $fstatus5,
+        "fstatus6" => $fstatus6,
         "ftitle1" => $ftitle1,
         "ftitle2" => $ftitle2,
         "ftitle3" => $ftitle3,
         "ftitle4" => $ftitle4,
+        "ftitle5" => $ftitle5,
+        "ftitle6" => $ftitle6,
+        "footnote5" => $footnote5,
+        "footnote6" => $footnote6,
         "colclass" => $colclass,
         'footerbgimgclass' => $footerbgimgclass,
         'backtotopbtn' => $backtotopbtn,

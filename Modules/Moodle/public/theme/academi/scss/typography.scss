@@ -1,10 +1,21 @@
-/* Typography */
-/* Font and color style for the body */
+/* Typography - ตามภาพ Admin (sans-serif สะอาด หัวข้อตัวหนา โทนมืออาชีพ) */
+$font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", "Source Sans Pro", "Helvetica Neue", Arial, sans-serif !default;
+$font-family-body: $font-family-base !default;
+$font-family-heading: $font-family-base !default;
+$font-family-myanmar: "Noto Sans Myanmar", $font-family-base !default;
+
 body {
     font-size: $fontsize;
-    font-family: Century Gothic, Arial, Helvetica, sans-serif;
-    color: $color_storm_dust_approx;
+    font-family: $font-family-body;
+    color: $color_mine_shaft_approx;
     background-color: $white;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+/* ภาษาพม่า - ใช้ฟอนต์ที่รองรับอักษรพม่า */
+html[lang="my"] body,
+body.lang-my {
+    font-family: $font-family-myanmar;
 }
 /* End of page container size */
 
@@ -17,41 +28,46 @@ body {
     }
 }
 
-/* Headings */
+/* Headings - ตัวหนาชัดเจน สีดำ/เทาเข้ม ตาม mood ภาพ */
 h1,
 h2,
 h3,
 h4,
 h5,
 h6 {
-    font-weight: normal;
-    color: $secondary;
+    font-family: $font-family-heading;
+    font-weight: 700;
+    color: $color_mine_shaft_approx;
 }
 h1 {
-    font-size: 42px;
+    font-size: 2rem;
 }
 h2 {
-    font-size: 34px;
+    font-size: 1.75rem;
 }
 h3 {
-    font-size: 26px;
+    font-size: 1.5rem;
 }
 h4 {
-    font-size: 23px;
+    font-size: 1.25rem;
 }
 h5 {
-    font-size: 21px;
+    font-size: 1.125rem;
 }
 h6 {
-    font-size: 18px;
+    font-size: 1rem;
 }
 /* End of Headings */
 
 img {
     overflow-clip-margin: border-box;
 }
-.form-control:focus {
-    box-shadow: none;
+.form-control:focus,
+select.form-control:focus,
+.form-select:focus {
+    border-color: $primary;
+    box-shadow: 0 0 0 0.2rem rgba($primary, 0.25);
+    outline: 0;
 }
 
 /* Link tag */

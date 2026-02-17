@@ -21,33 +21,14 @@ class UserSearchService
         $results = [];
 
         // Search local database (active users only)
-        try {
-            $db = new Database();
-            $conn = $db->getConnection();
-
-            $stmt = $conn->prepare("
-                SELECT id, username as code, fullname, email, department 
-                FROM users 
-                WHERE is_active = 1 
-                AND (username LIKE ? OR fullname LIKE ? OR email LIKE ?)
-                LIMIT 15
-            ");
-
-            $searchTerm = "%$query%";
-            $stmt->execute([$searchTerm, $searchTerm, $searchTerm]);
-
-            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $results[] = [
-                    'id' => $row['id'],
-                    'name' => $row['fullname'],
-                    'email' => $row['email'],
-                    'department' => $row['department'] ?? '',
-                    'source' => 'local'
-                ];
-            }
-        } catch (Exception $e) {
-            error_log("UserSearchService::searchUsers DB Error: " . $e->getMessage());
-        }
+        // Search local database (active users only) - REMOVED as per user request (Microsoft Only)
+        // try {
+        //     $db = new Database();
+        //     $conn = $db->getConnection();
+        //     // ... code removed ...
+        // } catch (Exception $e) {
+        //     error_log("UserSearchService::searchUsers DB Error: " . $e->getMessage());
+        // }
 
         return [
             'success' => true,
@@ -75,11 +56,12 @@ class UserSearchService
             }
 
             if ($accessToken) {
-                // Prepare fuzzy search query
-                $searchQuery = urlencode("\"displayName:$query\" OR \"mail:$query\" OR \"userPrincipalName:$query\"");
+                // Prepare fuzzy search query and common select fields
+                $searchQuery = urlencode("\"$query\" OR \"displayName:$query\" OR \"mail:$query\" OR \"userPrincipalName:$query\"");
+                $commonSelect = "id,displayName,mail,userPrincipalName,department";
 
                 // --- Part A: Search Users (Includes Individual & Shared Mailboxes) ---
-                $usersUrl = "https://graph.microsoft.com/v1.0/users?\$search=$searchQuery&\$select=id,displayName,mail,userPrincipalName,department&\$top=15";
+                $usersUrl = "https://graph.microsoft.com/v1.0/users?\$search=$searchQuery&\$select=$commonSelect,proxyAddresses&\$top=30&\$count=true";
                 $usersResponse = self::executeGraphRequest($usersUrl, $accessToken);
 
                 if ($usersResponse && !empty($usersResponse['value'])) {
@@ -95,8 +77,51 @@ class UserSearchService
                     }
                 }
 
-                // --- Part B: Search Groups (Includes Distribution Lists & Security Groups) ---
-                $groupsUrl = "https://graph.microsoft.com/v1.0/groups?\$search=$searchQuery&\$select=id,displayName,mail,description&\$top=10";
+                // --- Part B: Search Organizational Contacts (Crucial for external or legacy entries) ---
+                $contactsUrl = "https://graph.microsoft.com/v1.0/contacts?\$search=$searchQuery&\$select=id,displayName,mail&\$top=15&\$count=true";
+                $contactsResponse = self::executeGraphRequest($contactsUrl, $accessToken);
+
+                if ($contactsResponse && !empty($contactsResponse['value'])) {
+                    foreach ($contactsResponse['value'] as $contact) {
+                        self::addUniqueResult($results, [
+                            'id' => $contact['id'],
+                            'name' => "[Contact] " . $contact['displayName'],
+                            'email' => $contact['mail'] ?? '',
+                            'department' => 'Contact',
+                            'source' => 'microsoft'
+                        ]);
+                    }
+                }
+
+                // --- Part C: Fallback / Exact Filter Search (Crucial for hidden/shared objects) ---
+                if (count($results) < 5 || strpos($query, '@') !== false) {
+                    $filter = "";
+                    if (strpos($query, '@') !== false) {
+                        $filter = urlencode("mail eq '$query' or userPrincipalName eq '$query' or proxyAddresses/any(a:a eq 'smtp:$query')");
+                    } else {
+                        $filter = urlencode("startswith(displayName,'$query') or startswith(mail,'$query')");
+                    }
+
+                    // Try User filtering
+                    $filterUrl = "https://graph.microsoft.com/v1.0/users?\$filter=$filter&\$select=$commonSelect,proxyAddresses&\$top=10";
+                    $filterResponse = self::executeGraphRequest($filterUrl, $accessToken);
+
+                    if ($filterResponse && !empty($filterResponse['value'])) {
+                        foreach ($filterResponse['value'] as $graphUser) {
+                            $email = $graphUser['mail'] ?? $graphUser['userPrincipalName'];
+                            self::addUniqueResult($results, [
+                                'id' => $graphUser['id'],
+                                'name' => $graphUser['displayName'],
+                                'email' => $email,
+                                'department' => $graphUser['department'] ?? '',
+                                'source' => 'microsoft'
+                            ]);
+                        }
+                    }
+                }
+
+                // --- Part D: Search Groups (Includes Distribution Lists & Security Groups) ---
+                $groupsUrl = "https://graph.microsoft.com/v1.0/groups?\$search=$searchQuery&\$select=id,displayName,mail,description&\$top=15&\$count=true";
                 $groupsResponse = self::executeGraphRequest($groupsUrl, $accessToken);
 
                 if ($groupsResponse && !empty($groupsResponse['value'])) {

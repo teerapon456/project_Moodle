@@ -1,4 +1,7 @@
 <?php
+// Force Request for Client Hints (Critical for Android 11+ and detailed Model detection)
+header("Accept-CH: Sec-CH-UA-Platform-Version, Sec-CH-UA-Model, Sec-CH-UA-Full-Version-List");
+
 // Login page only. If already authenticated (and allowed), go straight to HR services.
 require_once __DIR__ . '/../core/Config/SessionConfig.php';
 if (function_exists('startOptimizedSession')) {
@@ -77,6 +80,23 @@ if ($user && !empty($user['role_id']) && !isset($_GET['error'])) {
         exit;
     }
 }
+
+// Fetch System Settings for mandatory geolocation
+$mandatoryGeolocation = true; // Default to true for safety
+try {
+    $db = new Database();
+    $conn = $db->getConnection();
+    if ($conn) {
+        $stmt = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'mandatory_geolocation' LIMIT 1");
+        $stmt->execute();
+        $val = $stmt->fetchColumn();
+        if ($val === '0') {
+            $mandatoryGeolocation = false;
+        }
+    }
+} catch (Exception $e) {
+    // ignore
+}
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -91,11 +111,114 @@ if ($user && !empty($user['role_id']) && !isset($_GET['error'])) {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css">
     <link rel="icon" type="image/png" href="assets/images/brand/inteqc-logo.png">
 
     <!-- Security: Referrer Policy -->
     <meta name="referrer" content="strict-origin-when-cross-origin">
+
+    <!-- Force Request for Client Hints -->
+    <meta http-equiv="Accept-CH" content="Sec-CH-UA-Platform-Version, Sec-CH-UA-Model, Sec-CH-UA-Full-Version-List">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const loginBtn = document.getElementById('loginBtn');
+            const msLoginBtn = document.getElementById('msLoginBtn');
+            const locationStatus = document.getElementById('locationStatus');
+            const latInput = document.getElementById('latitude');
+            const lonInput = document.getElementById('longitude');
+            const loginForm = document.getElementById('loginForm');
+
+            const isGeoMandatory = <?= json_encode($mandatoryGeolocation) ?>;
+
+            if (isGeoMandatory) {
+                // Initially disable login
+                if (loginBtn) {
+                    loginBtn.disabled = true;
+                    loginBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+                if (msLoginBtn) {
+                    msLoginBtn.disabled = true;
+                    msLoginBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            } else {
+                if (locationStatus) locationStatus.style.display = 'none';
+            }
+
+            function showStatus(msg, isError = false) {
+                if (locationStatus) {
+                    locationStatus.innerHTML = isError ?
+                        `<span class="text-red-500"><i class="fas fa-exclamation-circle"></i> ${msg}</span>` :
+                        `<span class="text-blue-500"><i class="fas fa-spinner fa-spin"></i> ${msg}</span>`;
+                }
+            }
+
+            function unlockLogin() {
+                if (loginBtn) {
+                    loginBtn.disabled = false;
+                    loginBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+                if (msLoginBtn) {
+                    msLoginBtn.disabled = false;
+                    msLoginBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+                if (locationStatus) {
+                    locationStatus.innerHTML = `<span class="text-green-500"><i class="fas fa-check-circle"></i> Location verify success</span>`;
+                }
+            }
+
+            if (isGeoMandatory) {
+                if ("geolocation" in navigator) {
+                    showStatus("Verifying location...");
+                    navigator.geolocation.getCurrentPosition(
+                        function(position) {
+                            latInput.value = position.coords.latitude;
+                            lonInput.value = position.coords.longitude;
+                            unlockLogin();
+                        },
+                        function(error) {
+                            let msg = "Location access denied.";
+                            switch (error.code) {
+                                case error.PERMISSION_DENIED:
+                                    msg = "User denied the request for Geolocation.";
+                                    break;
+                                case error.POSITION_UNAVAILABLE:
+                                    msg = "Location information is unavailable.";
+                                    break;
+                                case error.TIMEOUT:
+                                    msg = "The request to get user location timed out.";
+                                    break;
+                                case error.UNKNOWN_ERROR:
+                                    msg = "An unknown error occurred.";
+                                    break;
+                            }
+                            showStatus(msg + " <br>Please allow location access to login.", true);
+                        }, {
+                            enableHighAccuracy: true,
+                            timeout: 10000,
+                            maximumAge: 0
+                        }
+                    );
+                } else {
+                    showStatus("Geolocation is not supported by this browser.", true);
+                }
+            }
+        });
+    </script>
 
     <!-- Tailwind CSS (Local) -->
     <link rel="stylesheet" href="assets/css/tailwind.css">
@@ -525,8 +648,11 @@ if ($user && !empty($user['role_id']) && !isset($_GET['error'])) {
             <div class="brand-mark">
                 <img class="brand-logo" src="assets/images/brand/inteqc-logo.png" alt="INTEQC logo">
             </div>
-            <form id="login-form" style="width: 100%; display: flex; flex-direction: column; gap: 14px;">
-                <button type="button" class="btn btn-ms" style="width: 100%;" onclick="loginWithMicrosoft()">
+            <form id="loginForm" style="width: 100%; display: flex; flex-direction: column; gap: 14px;">
+                <input type="hidden" id="latitude" name="latitude">
+                <input type="hidden" id="longitude" name="longitude">
+                <div id="locationStatus" style="text-align: center; font-size: 0.85rem; padding: 4px; min-height: 24px;"></div>
+                <button type="button" id="msLoginBtn" class="btn btn-ms" style="width: 100%;" onclick="loginWithMicrosoft()">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft logo">
                     <span data-i18n="login.microsoft">Sign in with Microsoft</span>
                 </button>
@@ -552,7 +678,7 @@ if ($user && !empty($user['role_id']) && !isset($_GET['error'])) {
                 </div>
 
                 <div class="button-row">
-                    <button type="submit" class="btn btn-primary" data-i18n="login.submit">Login</button>
+                    <button type="submit" id="loginBtn" class="btn btn-primary" data-i18n="login.submit">Login</button>
                     <button type="button" class="btn btn-outline" onclick="window.location.reload()" data-i18n="common.cancel">Cancel</button>
                 </div>
 
@@ -686,7 +812,9 @@ if ($user && !empty($user['role_id']) && !isset($_GET['error'])) {
 
         window.loginWithMicrosoft = function() {
             const remember = document.getElementById('remember').checked ? 1 : 0;
-            window.location.href = `${API_BASE_URL}/auth/microsoft/login?remember=${remember}`;
+            const lat = document.getElementById('latitude').value;
+            const lon = document.getElementById('longitude').value;
+            window.location.href = `${API_BASE_URL}/auth/microsoft/login?remember=${remember}&lat=${lat}&lon=${lon}`;
         };
 
         // Forgot Password Modal Functions
@@ -978,7 +1106,7 @@ if ($user && !empty($user['role_id']) && !isset($_GET['error'])) {
             }
         }
 
-        const loginForm = document.getElementById('login-form');
+        const loginForm = document.getElementById('loginForm');
         if (loginForm) {
             // Initialize i18n
             I18n.init('th', BASE_PATH).then(() => {
@@ -1102,7 +1230,9 @@ if ($user && !empty($user['role_id']) && !isset($_GET['error'])) {
                         body: JSON.stringify({
                             username,
                             password,
-                            'remember-me': rememberMe
+                            'remember-me': rememberMe,
+                            latitude: document.getElementById('latitude')?.value || null,
+                            longitude: document.getElementById('longitude')?.value || null
                         })
                     });
 

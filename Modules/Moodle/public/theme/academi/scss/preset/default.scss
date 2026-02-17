@@ -1,12 +1,20 @@
 @import "colors";
 
-$primary:       #88b77b !default;
-$secondary:     #f60 !default;
-$primary_30:       rgba(136, 183, 123, .3) !default;
-$primary_70:       rgba(136, 183, 123, .7) !default;
-$secondary_30:     rgba(255, 102, 0, .3) !default;
-$secondary_70:     rgba(255, 102, 0, .7) !default;
+// โทนสีตามภาพ Admin (มารูน/แดงเข้ม) - INTEQC mood
+$primary:       #C02D2E !default;   /* Dark red/maroon - แถบ header, ปุ่ม Select theme */
+$secondary:     #C02D2E !default;   /* เดียวกัน - ใช้เป็น accent แท็บ active, ปุ่ม */
+$primary_30:    rgba(192, 45, 46, .3) !default;
+$primary_70:    rgba(192, 45, 46, .7) !default;
+$secondary_30:  rgba(192, 45, 46, .3) !default;
+$secondary_70:  rgba(192, 45, 46, .7) !default;
 $footerbgopacity: $primary_70 !default;
+
+// ตัวแปรสำหรับการ์ดและ UI ทันสมัย
+$card-radius: 12px !default;
+$card-radius-lg: 16px !default;
+$card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !default;
+$card-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.12) !default;
+$transition-smooth: 0.25s ease !default;
 
 $success:       $green !default;
 $info:          $cyan !default;
@@ -21,7 +29,19 @@ $font_0: fontawesome;
 // Final Import.
 @import "includes";
 
-// Preset CSS
+// Preset CSS - โทนมารูนตามภาพ (ปุ่ม Select theme, แท็บ active)
+.btn-primary,
+input[type="submit"].btn-primary,
+.singlebutton input[type="submit"] {
+    background-color: $primary !important;
+    border-color: $primary !important;
+    &:hover,
+    &:focus,
+    &:active {
+        background-color: darken($primary, 8%) !important;
+        border-color: darken($primary, 8%) !important;
+    }
+}
 
 @keyframes morph {
     0% {
@@ -73,7 +93,7 @@ h6 {
     }
 }
 
-/* Secondary navigation menu */
+/* Secondary navigation menu - แท็บ active มารูนตามภาพ */
 .secondary-navigation .moremenu.navigation .nav-tabs .nav-item {
     background-color: $wild_sand;
     .nav-link {
@@ -84,6 +104,11 @@ h6 {
         &:focus,
         &:active {
             background-color: $primary;
+        }
+        &.active {
+            background-color: $primary;
+            border-color: $primary;
+            color: $white;
         }
     }
 }
@@ -113,8 +138,8 @@ h6 {
         }
         &:last-child {
             .site-feature-head .rcthumb {
-                color: $green;
-                background: $color_zanah_approx;
+                color: $primary;
+                background: $primary_30;
             }
         }
     }

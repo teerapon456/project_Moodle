@@ -225,7 +225,7 @@ class MicrosoftAuthController
         $displayName = $msIdentifier;
 
         // Try to find existing user by Microsoft ID or email
-        $userQuery = "SELECT u.id, u.username, u.email FROM users u 
+        $userQuery = "SELECT u.id, u.username, u.email, u.Level3Name FROM users u 
                       WHERE u.microsoft_id = :msId 
                          OR u.email = :email
                       LIMIT 1";
@@ -307,6 +307,9 @@ class MicrosoftAuthController
         }
 
         // Store user and access token in session
+        if ($user) {
+            $user['department'] = $user['Level3Name'] ?? $user['department'] ?? null;
+        }
         $_SESSION['user'] = $user;
         $_SESSION['access_token'] = $tokenData['access_token'];
 
@@ -648,7 +651,7 @@ class MicrosoftAuthController
         $lastName = $nameParts[1] ?? '';
 
         // Check if user exists by Microsoft ID
-        $query = "SELECT u.id, u.username, u.email, u.role_id, u.is_active, r.name as role, r.is_active as role_active, u.microsoft_id, u.default_supervisor_email, u.fullname, u.department FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.microsoft_id = :microsoft_id LIMIT 1";
+        $query = "SELECT u.id, u.username, u.email, u.role_id, u.is_active, r.name as role, r.is_active as role_active, u.microsoft_id, u.default_supervisor_email, u.fullname, u.department, u.Level3Name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.microsoft_id = :microsoft_id LIMIT 1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':microsoft_id', $microsoftId);
         $stmt->execute();
@@ -675,7 +678,7 @@ class MicrosoftAuthController
             $stmt->execute();
 
             // Fetch updated user
-            $query = "SELECT u.id, u.username, u.email, u.role_id, u.is_active, r.name as role, r.is_active as role_active, u.microsoft_id, u.default_supervisor_email, u.fullname, u.department FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = :id LIMIT 1";
+            $query = "SELECT u.id, u.username, u.email, u.role_id, u.is_active, r.name as role, r.is_active as role_active, u.microsoft_id, u.default_supervisor_email, u.fullname, u.department, u.Level3Name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = :id LIMIT 1";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':id', $existingUser['id']);
             $stmt->execute();
@@ -712,7 +715,7 @@ class MicrosoftAuthController
             $userId = $this->conn->lastInsertId();
 
             // Fetch the new user
-            $query = "SELECT u.id, u.username, u.email, u.role_id, u.is_active, r.name as role, r.is_active as role_active, u.microsoft_id, u.default_supervisor_email, u.fullname, u.department FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = :id LIMIT 1";
+            $query = "SELECT u.id, u.username, u.email, u.role_id, u.is_active, r.name as role, r.is_active as role_active, u.microsoft_id, u.default_supervisor_email, u.fullname, u.department, u.Level3Name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = :id LIMIT 1";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':id', $userId);
             $stmt->execute();
@@ -843,7 +846,7 @@ class MicrosoftAuthController
         if ($status === 'success' && $user) {
             // Store user data in localStorage via JavaScript
             $userData = json_encode($user);
-            $isProfileIncomplete = empty($user['fullname']) || empty($user['department']);
+            $isProfileIncomplete = empty($user['fullname']) || (empty($user['department']) && empty($user['Level3Name']));
             $isProfileIncompleteJson = json_encode($isProfileIncomplete);
 
             // Set Content-Type header so browser renders HTML instead of showing source

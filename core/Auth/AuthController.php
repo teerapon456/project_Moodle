@@ -175,7 +175,7 @@ class AuthController
 
 
             // Now do the actual authentication with password
-            $query = "SELECT u.id, u.username, u.password_hash, u.role_id, u.is_active as user_is_active, r.name as role, r.is_active as role_is_active, u.email, u.default_supervisor_email, u.fullname, u.department 
+            $query = "SELECT u.id, u.username, u.password_hash, u.role_id, u.is_active as user_is_active, r.name as role, r.is_active as role_is_active, u.email, u.default_supervisor_email, u.fullname, u.Level3Name 
                       FROM users u 
                       LEFT JOIN roles r ON u.role_id = r.id 
                       WHERE u.username = :username1 
@@ -220,7 +220,7 @@ class AuthController
                         "email" => $row['email'],
                         "default_supervisor_email" => $row['default_supervisor_email'],
                         "fullname" => $row['fullname'],
-                        "department" => $row['department']
+                        "department" => $row['Level3Name']
                     ];
 
                     // Use regular session for now
@@ -232,7 +232,7 @@ class AuthController
 
                     $_SESSION['user'] = $userData;
 
-                    $isProfileIncomplete = empty($row['fullname']) || empty($row['department']);
+                    $isProfileIncomplete = empty($row['fullname']) || empty($row['Level3Name']);
 
                     // Log login activity
                     $this->logActivity('login', $row['id'], $row['fullname'] ?? $row['username'], $data->latitude ?? null, $data->longitude ?? null);
@@ -913,7 +913,7 @@ class AuthController
             $stmt = $conn->prepare("
                 SELECT u.id, u.username, u.role_id, u.is_active as user_is_active, 
                        r.name as role, r.is_active as role_is_active, 
-                       u.email, u.fullname, u.department, u.default_supervisor_email
+                       u.email, u.fullname, u.Level3Name, u.default_supervisor_email
                 FROM user_remember_tokens urt
                 JOIN users u ON urt.user_id = u.id
                 LEFT JOIN roles r ON u.role_id = r.id
@@ -941,7 +941,7 @@ class AuthController
                     "email" => $row['email'],
                     "default_supervisor_email" => $row['default_supervisor_email'],
                     "fullname" => $row['fullname'],
-                    "department" => $row['department']
+                    "department" => $row['Level3Name']
                 ];
 
                 $_SESSION['user'] = $userData;

@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'fullname' => $user['fullname'],
                         'role_id' => $user['role_id'],
                         'role' => $user['role_name'],
-                        'department' => $user['department'],
+                        'department' => $user['Level3Name'], // Use Level3Name for department
                         'default_supervisor_email' => $user['default_supervisor_email']
                     ];
 

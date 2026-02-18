@@ -31,7 +31,7 @@ $profilePic = $user['profile_picture'] ?? null;
     window.USER = {
         id: '<?= htmlspecialchars($user['id'] ?? '') ?>',
         name: '<?= htmlspecialchars($user['fullname'] ?? $user['username'] ?? 'Guest') ?>',
-        department: '<?= htmlspecialchars($user['department'] ?? '') ?>',
+        department: '<?= htmlspecialchars($user['Level3Name'] ?? $user['department'] ?? '') ?>',
         permissions: {
             hrServices: <?= json_encode($userPerms ?? []) ?>,
             hrNews: <?= json_encode($hrNewsPerm ?? []) ?>,
@@ -150,7 +150,7 @@ $profilePic = $user['profile_picture'] ?? null;
             </div>
             <div>
                 <div class="font-semibold text-gray-900"><?= htmlspecialchars($user['fullname'] ?? $user['username']) ?></div>
-                <div class="text-sm text-gray-500"><?= htmlspecialchars($user['department'] ?? '-') ?></div>
+                <div class="text-sm text-gray-500"><?= htmlspecialchars($user['Level3Name'] ?? $user['department'] ?? '-') ?></div>
                 <div class="text-sm text-gray-400"><?= htmlspecialchars($user['email'] ?? '-') ?></div>
             </div>
         </div>

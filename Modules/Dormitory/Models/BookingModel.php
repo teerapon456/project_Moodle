@@ -94,7 +94,7 @@ class BookingModel
     public function getRequestsByStatus($status)
     {
         $sql = "
-            SELECT r.*, u.fullname, u.department, u.email, rt.name as room_type_name,
+            SELECT r.*, u.fullname, u.Level3Name as department, u.email, rt.name as room_type_name,
                    ar.room_number as assigned_room_number, ab.name as assigned_building_name
             FROM dorm_reservations r
             JOIN users u ON r.requester_id = u.id
@@ -145,7 +145,7 @@ class BookingModel
 
     public function getReservationWithUser($id)
     {
-        $sql = "SELECT r.*, u.email, u.fullname FROM dorm_reservations r JOIN users u ON r.requester_id = u.id WHERE r.id = ?";
+        $sql = "SELECT r.*, u.email, u.fullname, u.Level3Name as department FROM dorm_reservations r JOIN users u ON r.requester_id = u.id WHERE r.id = ?";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);

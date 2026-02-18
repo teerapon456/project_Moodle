@@ -108,7 +108,7 @@ class CalendarModel
      */
     public function getMembers($calendarId)
     {
-        $sql = "SELECT m.*, u.fullname, u.email, u.username, u.department 
+        $sql = "SELECT m.*, u.fullname, u.email, u.username, u.Level3Name as department 
                 FROM ya_calendar_members m
                 JOIN users u ON m.user_id = u.id
                 WHERE m.calendar_id = :calendar_id";

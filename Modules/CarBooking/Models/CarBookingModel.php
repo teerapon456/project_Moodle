@@ -73,7 +73,9 @@ class CarBookingModel
     {
         $stmt = $this->pdo->prepare("
             SELECT cb.*, 
-                   u.fullname, u.username, u.email AS user_email, u.department AS user_department, u.PersonnelEmail,
+                   u.fullname, u.username, u.email AS user_email, 
+                   u.Level3Name AS department, u.Level3Name AS user_department, 
+                   u.PersonnelEmail,
                    c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
                    fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
             FROM cb_bookings cb
@@ -103,7 +105,7 @@ class CarBookingModel
     public function listMine($userId)
     {
         $stmt = $this->pdo->prepare("
-            SELECT cb.*, u.username, u.fullname,
+            SELECT cb.*, u.username, u.fullname, u.Level3Name AS department,
                    c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
                    fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
             FROM cb_bookings cb
@@ -121,7 +123,7 @@ class CarBookingModel
     public function listAll()
     {
         $stmt = $this->pdo->query("
-            SELECT cb.*, u.username, u.fullname,
+            SELECT cb.*, u.username, u.fullname, u.Level3Name AS department,
                    c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
                    fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
             FROM cb_bookings cb 
@@ -136,7 +138,7 @@ class CarBookingModel
     public function listPendingSupervisor()
     {
         $stmt = $this->pdo->query("
-            SELECT cb.*, u.username, u.fullname,
+            SELECT cb.*, u.username, u.fullname, u.Level3Name AS department,
                    c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
                    fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
             FROM cb_bookings cb 
@@ -155,7 +157,7 @@ class CarBookingModel
     public function listPendingByApproverEmail($email)
     {
         $stmt = $this->pdo->prepare("
-            SELECT cb.*, u.username, u.fullname,
+            SELECT cb.*, u.username, u.fullname, u.Level3Name AS department,
                    c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
                    fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
             FROM cb_bookings cb 
@@ -174,7 +176,7 @@ class CarBookingModel
     public function listPendingManager()
     {
         $stmt = $this->pdo->query("
-            SELECT cb.*, u.username, u.fullname,
+            SELECT cb.*, u.username, u.fullname, u.Level3Name AS department,
                    c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
                    fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
             FROM cb_bookings cb 
@@ -190,7 +192,7 @@ class CarBookingModel
     public function listApproved()
     {
         $stmt = $this->pdo->query("
-            SELECT cb.*, u.username, u.fullname,
+            SELECT cb.*, u.username, u.fullname, u.Level3Name AS department,
                    c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
                    fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
             FROM cb_bookings cb 
@@ -368,7 +370,7 @@ class CarBookingModel
     public function listInUse()
     {
         $stmt = $this->pdo->query("
-            SELECT cb.*, u.username, u.fullname, u.email as user_email,
+            SELECT cb.*, u.username, u.fullname, u.email as user_email, u.Level3Name AS department,
                    c.name AS assigned_car_name, c.brand AS assigned_car_brand, 
                    c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
                    fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
@@ -385,7 +387,7 @@ class CarBookingModel
     public function listPendingReturn()
     {
         $stmt = $this->pdo->query("
-            SELECT cb.*, u.username, u.fullname, u.email as user_email,
+            SELECT cb.*, u.username, u.fullname, u.email as user_email, u.Level3Name AS department,
                    c.name AS assigned_car_name, c.brand AS assigned_car_brand, 
                    c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
                    fc.card_number AS fleet_card_number, fc.department AS fleet_card_department

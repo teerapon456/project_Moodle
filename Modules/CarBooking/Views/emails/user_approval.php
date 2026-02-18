@@ -73,9 +73,9 @@
             <?php if (!empty($car)): ?>
                 <div class="car-details" style="background: white; padding: 15px; margin: 15px 0; border-left: 4px solid #3498db;">
                     <h3>🚗 รายละเอียดรถที่อนุมัติ</h3>
-                    <p><strong>ยี่ห้อ:</strong> <?php echo htmlspecialchars($car['brand']); ?></p>
-                    <p><strong>รุ่น:</strong> <?php echo htmlspecialchars($car['model']); ?></p>
-                    <p><strong>ทะเบียน:</strong> <?php echo htmlspecialchars($car['license_plate']); ?></p>
+                    <p><strong>ยี่ห้อ:</strong> <?php echo htmlspecialchars($car['brand'] ?? ''); ?></p>
+                    <p><strong>รุ่น:</strong> <?php echo htmlspecialchars($car['model'] ?? ''); ?></p>
+                    <p><strong>ทะเบียน:</strong> <?php echo htmlspecialchars($car['license_plate'] ?? ''); ?></p>
                 </div>
             <?php endif; ?>
 

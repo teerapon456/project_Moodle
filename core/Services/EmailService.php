@@ -535,9 +535,9 @@ class EmailService
         $car = null;
         if (!empty($booking['assigned_car_id']) || !empty($booking['brand']) || !empty($booking['license_plate']) || !empty($booking['assigned_car'])) {
             $car = [
-                'brand' => $booking['brand'] ?? null,
-                'model' => $booking['model'] ?? null,
-                'license_plate' => $booking['license_plate'] ?? null,
+                'brand' => $booking['brand'] ?? $booking['assigned_car_brand'] ?? null,
+                'model' => $booking['model'] ?? $booking['assigned_car_model'] ?? null,
+                'license_plate' => $booking['license_plate'] ?? $booking['assigned_car_plate'] ?? null,
             ];
         }
 

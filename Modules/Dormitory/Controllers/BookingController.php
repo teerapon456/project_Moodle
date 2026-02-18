@@ -383,6 +383,7 @@ class BookingController extends DormBaseController
                     'employee_id' => $request['requester_id'],
                     'employee_name' => $request['fullname'],
                     'employee_email' => $request['email'],
+                    'department' => $request['department'],
                     'check_in_date' => $keyDate,
                     'accompanying_persons' => $accompanyingPersons,
                     'accompanying_details' => $accompanyingDetails

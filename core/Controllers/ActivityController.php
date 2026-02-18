@@ -168,13 +168,13 @@ class ActivityController
                 SELECT 
                     a.user_id,
                     COALESCE(u.fullname, a.user_name, 'Unknown') as user_name,
-                    u.department,
+                    u.Level3Name as department,
                     COUNT(*) as activity_count,
                     MAX(a.created_at) as last_activity
                 FROM cb_audit_logs a
                 LEFT JOIN users u ON a.user_id = u.id
                 WHERE a.created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
-                GROUP BY a.user_id, a.user_name, u.fullname, u.department
+                GROUP BY a.user_id, a.user_name, u.fullname, u.Level3Name
             ");
             $stmt1->bindValue(':days', $days, PDO::PARAM_INT);
             $stmt1->execute();
@@ -185,13 +185,13 @@ class ActivityController
                 SELECT 
                     a.user_id,
                     COALESCE(u.fullname, a.user_name, 'Unknown') as user_name,
-                    u.department,
+                    u.Level3Name as department,
                     COUNT(*) as activity_count,
                     MAX(a.created_at) as last_activity
                 FROM user_logins a
                 LEFT JOIN users u ON a.user_id = u.id
                 WHERE a.created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
-                GROUP BY a.user_id, a.user_name, u.fullname, u.department
+                GROUP BY a.user_id, a.user_name, u.fullname, u.Level3Name
             ");
             $stmt2->bindValue(':days', $days, PDO::PARAM_INT);
             $stmt2->execute();
@@ -345,7 +345,7 @@ class ActivityController
                     a.id,
                     a.user_id,
                     COALESCE(u.fullname, a.user_name) as user_name,
-                    u.department,
+                    u.Level3Name as department,
                     a.action,
                     a.ip_address,
                     a.user_agent,

@@ -6,7 +6,9 @@ services:
     image: nginx:latest
     container_name: myhr-gateway
     ports:
-      - "8080:443"
+      - "80:80"
+      - "443:443"
+      - "8090:443"
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./docker/nginx/certs:/etc/nginx/certs:ro

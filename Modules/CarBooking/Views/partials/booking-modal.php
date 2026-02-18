@@ -244,7 +244,7 @@
 
         searchTimeout = setTimeout(async () => {
             try {
-                const response = await fetch(`${API_BASE}?controller=bookings&action=searchManager&query=${encodeURIComponent(query)}`);
+                const response = await fetch(`${API_BASE}?controller=bookings&action=searchEmployee&query=${encodeURIComponent(query)}`);
                 const data = await response.json();
 
                 if (data.success && data.users && data.users.length > 0) {
@@ -300,7 +300,7 @@
 
         searchTimeout = setTimeout(async () => {
             try {
-                const response = await fetch(`${API_BASE}?controller=bookings&action=searchManager&query=${encodeURIComponent(query)}`);
+                const response = await fetch(`${API_BASE}?controller=bookings&action=searchEmployee&query=${encodeURIComponent(query)}`);
                 const data = await response.json();
 
                 if (data.success && data.users && data.users.length > 0) {

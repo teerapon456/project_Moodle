@@ -10,34 +10,7 @@ require_once __DIR__ . '/../Config/MicrosoftOAuthConfig.php';
 class UserSearchService
 {
     /**
-     * Search active users from local DB ONLY
-     * Used by Settings pages for admin user management
-     * 
-     * @param string $query Search query
-     * @return array JSON response with users array
-     */
-    public static function searchUsers($query)
-    {
-        $results = [];
-
-        // Search local database (active users only)
-        // Search local database (active users only) - REMOVED as per user request (Microsoft Only)
-        // try {
-        //     $db = new Database();
-        //     $conn = $db->getConnection();
-        //     // ... code removed ...
-        // } catch (Exception $e) {
-        //     error_log("UserSearchService::searchUsers DB Error: " . $e->getMessage());
-        // }
-
-        return [
-            'success' => true,
-            'users' => $results
-        ];
-    }
-
-    /**
-     * Search Microsoft Graph API ONLY (Users & Groups)
+     * Search Microsoft Graph API (Users, Groups, Contacts)
      * 
      * @param string $query Search query
      * @return array JSON response with results array
@@ -72,7 +45,8 @@ class UserSearchService
                             'name' => $graphUser['displayName'],
                             'email' => $email,
                             'department' => $graphUser['department'] ?? '',
-                            'source' => 'microsoft'
+                            'source' => 'microsoft',
+                            'type' => 'user'
                         ]);
                     }
                 }
@@ -88,12 +62,40 @@ class UserSearchService
                             'name' => "[Contact] " . $contact['displayName'],
                             'email' => $contact['mail'] ?? '',
                             'department' => 'Contact',
-                            'source' => 'microsoft'
+                            'source' => 'microsoft',
+                            'type' => 'contact'
                         ]);
                     }
                 }
 
-                // --- Part C: Fallback / Exact Filter Search (Crucial for hidden/shared objects) ---
+                // --- Part C: Search Groups (Distribution Lists, Security Groups, M365 Groups) ---
+                // Crucial: Use $search on 'displayName' and 'mail' for groups
+                $groupsUrl = "https://graph.microsoft.com/v1.0/groups?\$search=\"displayName:$query\" OR \"mail:$query\"&\$select=id,displayName,mail,description,groupTypes&\$top=15&\$count=true";
+                $groupsResponse = self::executeGraphRequest($groupsUrl, $accessToken);
+
+                if ($groupsResponse && !empty($groupsResponse['value'])) {
+                    foreach ($groupsResponse['value'] as $group) {
+                        if (empty($group['mail'])) continue;
+
+                        $groupType = 'Group';
+                        if (isset($group['groupTypes']) && in_array('Unified', $group['groupTypes'])) {
+                            $groupType = 'M365 Group';
+                        } elseif (empty($group['groupTypes'])) {
+                            $groupType = 'Dist. List'; // Distribution list usually has empty groupTypes
+                        }
+
+                        self::addUniqueResult($results, [
+                            'id' => $group['id'],
+                            'name' => "[$groupType] " . $group['displayName'],
+                            'email' => $group['mail'],
+                            'department' => $group['description'] ?? $groupType,
+                            'source' => 'microsoft',
+                            'type' => 'group'
+                        ]);
+                    }
+                }
+
+                // --- Part D: Fallback / Exact Filter Search (Crucial for hidden/shared objects) ---
                 if (count($results) < 5 || strpos($query, '@') !== false) {
                     $filter = "";
                     if (strpos($query, '@') !== false) {
@@ -114,27 +116,10 @@ class UserSearchService
                                 'name' => $graphUser['displayName'],
                                 'email' => $email,
                                 'department' => $graphUser['department'] ?? '',
-                                'source' => 'microsoft'
+                                'source' => 'microsoft',
+                                'type' => 'user'
                             ]);
                         }
-                    }
-                }
-
-                // --- Part D: Search Groups (Includes Distribution Lists & Security Groups) ---
-                $groupsUrl = "https://graph.microsoft.com/v1.0/groups?\$search=$searchQuery&\$select=id,displayName,mail,description&\$top=15&\$count=true";
-                $groupsResponse = self::executeGraphRequest($groupsUrl, $accessToken);
-
-                if ($groupsResponse && !empty($groupsResponse['value'])) {
-                    foreach ($groupsResponse['value'] as $group) {
-                        if (empty($group['mail'])) continue;
-
-                        self::addUniqueResult($results, [
-                            'id' => $group['id'],
-                            'name' => "[Group] " . $group['displayName'],
-                            'email' => $group['mail'],
-                            'department' => $group['description'] ?? 'Group',
-                            'source' => 'microsoft'
-                        ]);
                     }
                 }
             } else {
@@ -172,7 +157,7 @@ class UserSearchService
             $conn = $db->getConnection();
 
             $stmt = $conn->prepare("
-                SELECT id, username as code, fullname, email, department 
+                SELECT id, username as code, fullname, email, Level3Name 
                 FROM users 
                 WHERE is_active = 1 
                 AND emplevel_id >= 7
@@ -189,12 +174,55 @@ class UserSearchService
                     'code' => $row['code'],
                     'name' => $row['fullname'],
                     'email' => $row['email'],
-                    'department' => $row['department'],
+                    'department' => $row['Level3Name'], // Map Level3Name to department
                     'source' => 'local'
                 ];
             }
         } catch (Exception $e) {
             error_log("UserSearchService::searchManager DB Error: " . $e->getMessage());
+        }
+
+        return [
+            'success' => true,
+            'users' => $results
+        ];
+    }
+
+    /**
+     * Search ALL active employees (for Driver/Passenger selection)
+     * No level restriction, just is_active = 1
+     */
+    public static function searchEmployee($query)
+    {
+        $results = [];
+
+        try {
+            $db = new Database();
+            $conn = $db->getConnection();
+
+            $stmt = $conn->prepare("
+                SELECT id, username as code, fullname, email, Level3Name 
+                FROM users 
+                WHERE is_active = 1 
+                AND (username LIKE ? OR fullname LIKE ? OR email LIKE ?)
+                LIMIT 15
+            ");
+
+            $searchTerm = "%$query%";
+            $stmt->execute([$searchTerm, $searchTerm, $searchTerm]);
+
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $results[] = [
+                    'id' => $row['id'],
+                    'code' => $row['code'],
+                    'name' => $row['fullname'],
+                    'email' => $row['email'],
+                    'department' => $row['Level3Name'], // Map Level3Name to department
+                    'source' => 'local'
+                ];
+            }
+        } catch (Exception $e) {
+            error_log("UserSearchService::searchEmployee DB Error: " . $e->getMessage());
         }
 
         return [

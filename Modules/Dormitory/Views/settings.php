@@ -582,18 +582,12 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
         searchTimeout = setTimeout(async () => {
             try {
                 const apiBase = API_BASE.replace('/Dormitory/', '/CarBooking/');
-                const [dbRes, msRes] = await Promise.all([
-                    fetch(`${apiBase}?controller=bookings&action=searchUsers&query=${encodeURIComponent(query)}`),
-                    fetch(`${apiBase}?controller=bookings&action=searchEmail&query=${encodeURIComponent(query)}`)
-                ]);
 
-                const dbData = await dbRes.json();
+                // Fetch from MS Graph only (searchUsers removed)
+                const msRes = await fetch(`${apiBase}?controller=bookings&action=searchEmail&query=${encodeURIComponent(query)}`);
                 const msData = await msRes.json();
 
-                const allUsers = [
-                    ...(dbData.success ? dbData.users : []),
-                    ...(msData.success ? msData.users : [])
-                ];
+                const allUsers = msData.success ? msData.users : [];
 
                 if (allUsers.length > 0) {
                     const filtered = allUsers.filter(emp => !adminEmails.includes(emp.email));
@@ -605,7 +599,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                                     <div class="font-medium text-gray-900 truncate">${emp.name || emp.email}</div>
                                     <div class="text-xs text-gray-500">${emp.email}</div>
                                 </div>
-                                <span class="text-[10px] px-1.5 py-0.5 rounded ${emp.source === 'microsoft' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}">${emp.source === 'microsoft' ? 'MS' : 'DB'}</span>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 uppercase">${emp.type || 'MS'}</span>
                             </div>
                         `).join('');
                         resultsDiv.classList.remove('hidden');
@@ -635,18 +629,12 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
         searchTimeout = setTimeout(async () => {
             try {
                 const apiBase = API_BASE.replace('/Dormitory/', '/CarBooking/');
-                const [dbRes, msRes] = await Promise.all([
-                    fetch(`${apiBase}?controller=bookings&action=searchUsers&query=${encodeURIComponent(query)}`),
-                    fetch(`${apiBase}?controller=bookings&action=searchEmail&query=${encodeURIComponent(query)}`)
-                ]);
 
-                const dbData = await dbRes.json();
+                // Fetch from MS Graph only (searchUsers removed)
+                const msRes = await fetch(`${apiBase}?controller=bookings&action=searchEmail&query=${encodeURIComponent(query)}`);
                 const msData = await msRes.json();
 
-                const allUsers = [
-                    ...(dbData.success ? dbData.users : []),
-                    ...(msData.success ? msData.users : [])
-                ];
+                const allUsers = msData.success ? msData.users : [];
 
                 if (allUsers.length > 0) {
                     const filtered = allUsers.filter(emp => !ccEmails.includes(emp.email));
@@ -658,7 +646,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                                     <div class="font-medium text-gray-900 truncate">${emp.name || emp.email}</div>
                                     <div class="text-xs text-gray-500">${emp.email}</div>
                                 </div>
-                                <span class="text-[10px] px-1.5 py-0.5 rounded ${emp.source === 'microsoft' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}">${emp.source === 'microsoft' ? 'MS' : 'DB'}</span>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 uppercase">${emp.type || 'MS'}</span>
                             </div>
                         `).join('');
                         resultsDiv.classList.remove('hidden');

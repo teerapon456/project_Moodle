@@ -121,19 +121,11 @@ $ccEmails = $settings['cc_emails'] ?? '';
 
         searchTimeout = setTimeout(async () => {
             try {
-                // Fetch from both local DB and MS Graph
-                const [dbRes, msRes] = await Promise.all([
-                    fetch(`${API_BASE}?controller=bookings&action=searchUsers&query=${encodeURIComponent(query)}`),
-                    fetch(`${API_BASE}?controller=bookings&action=searchEmail&query=${encodeURIComponent(query)}`)
-                ]);
-
-                const dbData = await dbRes.json();
+                // Fetch from MS Graph only (searchUsers removed)
+                const msRes = await fetch(`${API_BASE}?controller=bookings&action=searchEmail&query=${encodeURIComponent(query)}`);
                 const msData = await msRes.json();
 
-                const allUsers = [
-                    ...(dbData.success ? dbData.users : []),
-                    ...(msData.success ? msData.users : [])
-                ];
+                const allUsers = msData.success ? msData.users : [];
 
                 if (allUsers.length > 0) {
                     const filtered = allUsers.filter(emp => !adminEmails.includes(emp.email));
@@ -145,7 +137,7 @@ $ccEmails = $settings['cc_emails'] ?? '';
                                     <div class="font-medium text-gray-900">${emp.name || emp.email}</div>
                                     <div class="text-xs text-gray-500">${emp.email}</div>
                                 </div>
-                                <span class="text-xs px-2 py-1 rounded ${emp.source === 'microsoft' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}">${emp.source === 'microsoft' ? 'MS' : 'DB'}</span>
+                                <span class="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 uppercase">${emp.type || 'MS'}</span>
                             </div>
                         `).join('');
                         resultsDiv.classList.remove('hidden');
@@ -174,19 +166,11 @@ $ccEmails = $settings['cc_emails'] ?? '';
 
         searchTimeout = setTimeout(async () => {
             try {
-                // Fetch from both local DB and MS Graph
-                const [dbRes, msRes] = await Promise.all([
-                    fetch(`${API_BASE}?controller=bookings&action=searchUsers&query=${encodeURIComponent(query)}`),
-                    fetch(`${API_BASE}?controller=bookings&action=searchEmail&query=${encodeURIComponent(query)}`)
-                ]);
-
-                const dbData = await dbRes.json();
+                // Fetch from MS Graph only (searchUsers removed)
+                const msRes = await fetch(`${API_BASE}?controller=bookings&action=searchEmail&query=${encodeURIComponent(query)}`);
                 const msData = await msRes.json();
 
-                const allUsers = [
-                    ...(dbData.success ? dbData.users : []),
-                    ...(msData.success ? msData.users : [])
-                ];
+                const allUsers = msData.success ? msData.users : [];
 
                 if (allUsers.length > 0) {
                     const filtered = allUsers.filter(emp => !ccEmails.includes(emp.email));
@@ -198,7 +182,7 @@ $ccEmails = $settings['cc_emails'] ?? '';
                                     <div class="font-medium text-gray-900">${emp.name || emp.email}</div>
                                     <div class="text-xs text-gray-500">${emp.email}</div>
                                 </div>
-                                <span class="text-xs px-2 py-1 rounded ${emp.source === 'microsoft' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}">${emp.source === 'microsoft' ? 'MS' : 'DB'}</span>
+                                <span class="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 uppercase">${emp.type || 'MS'}</span>
                             </div>
                         `).join('');
                         resultsDiv.classList.remove('hidden');

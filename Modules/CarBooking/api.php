@@ -28,15 +28,17 @@ $user = $_SESSION['user'] ?? null;
 // ============================================
 // NEW: Centralized User Search Routes
 // ============================================
-if ($action === 'searchUsers') {
-    require_once __DIR__ . '/../../core/Services/UserSearchService.php';
-    echo json_encode(UserSearchService::searchUsers($_GET['query'] ?? ''));
-    exit;
-}
+
 
 if ($action === 'searchManager') {
     require_once __DIR__ . '/../../core/Services/UserSearchService.php';
     echo json_encode(UserSearchService::searchManager($_GET['query'] ?? ''));
+    exit;
+}
+
+if ($action === 'searchEmployee') {
+    require_once __DIR__ . '/../../core/Services/UserSearchService.php';
+    echo json_encode(UserSearchService::searchEmployee($_GET['query'] ?? ''));
     exit;
 }
 if ($action === 'searchEmail') {

@@ -34,7 +34,7 @@ try {
 cb.*,
 u.fullname as user_fullname,
 u.username as user_name,
-u.department as user_department,
+u.Level3Name as user_department,
 u.email as user_email,
 c.name as car_name,
 c.brand,

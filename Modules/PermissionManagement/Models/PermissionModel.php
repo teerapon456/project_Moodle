@@ -9,6 +9,44 @@ class PermissionModel
         $this->conn = $dbConnection;
     }
 
+    public function getModulePermissionByCode($moduleCode, $roleId)
+    {
+        if (!$this->conn) return false;
+        
+        $sql = "
+            SELECT cm.id,
+                   COALESCE(p.can_view, 0) as can_view,
+                   COALESCE(p.can_edit, 0) as can_edit,
+                   COALESCE(p.can_delete, 0) as can_delete,
+                   COALESCE(p.can_manage, 0) as can_manage
+            FROM core_modules cm
+            LEFT JOIN core_module_permissions p
+              ON p.module_id = cm.id AND p.role_id = :role_id
+            WHERE cm.code = :code
+            LIMIT 1
+        ";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindValue(':role_id', $roleId, PDO::PARAM_INT);
+        $stmt->bindValue(':code', $moduleCode);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    public function resolveCurrentModuleCode($path, $fallback)
+    {
+        try {
+            if (!$this->conn) return $fallback;
+            $normalized = rtrim($path, '/');
+            $sql = "SELECT code FROM core_modules WHERE :p LIKE CONCAT(path, '%') ORDER BY LENGTH(path) DESC LIMIT 1";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindValue(':p', $normalized);
+            $stmt->execute();
+            return $stmt->fetchColumn() ?: $fallback;
+        } catch (Exception $e) {
+            return $fallback;
+        }
+    }
+
     public function canManageModule($roleId, $moduleId)
     {
         if (!$this->conn || !$roleId) {

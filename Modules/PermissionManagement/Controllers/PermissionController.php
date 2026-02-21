@@ -21,6 +21,16 @@ class PermissionController extends BaseController
         $this->currentRoleActive = $_SESSION['user']['role_active'] ?? 1;
     }
 
+    public function getModulePermissionByCode($moduleCode, $roleId)
+    {
+        return $this->model->getModulePermissionByCode($moduleCode, $roleId);
+    }
+
+    public function resolveCurrentModuleCode($path, $fallback)
+    {
+        return $this->model->resolveCurrentModuleCode($path, $fallback);
+    }
+
     private function requireAuth()
     {
         if (!$this->currentRoleId) {

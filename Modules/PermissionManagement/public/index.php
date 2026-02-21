@@ -41,47 +41,13 @@ $roleId = $user['role_id'] ?? null;
 $roleActive = $user['role_active'] ?? 1;
 
 require_once __DIR__ . '/../../../core/Helpers/PermissionHelper.php';
+require_once __DIR__ . '/../Controllers/PermissionController.php';
 
-function getModulePermissionByCode($conn, $moduleCode, $roleId)
-
-{
-    $sql = "
-SELECT cm.id,
-COALESCE(p.can_view, 0) as can_view,
-COALESCE(p.can_edit, 0) as can_edit,
-COALESCE(p.can_delete, 0) as can_delete,
-COALESCE(p.can_manage, 0) as can_manage
-FROM core_modules cm
-LEFT JOIN core_module_permissions p
-ON p.module_id = cm.id AND p.role_id = :role_id
-WHERE cm.code = :code
-LIMIT 1
-";
-    $stmt = $conn->prepare($sql);
-    $stmt->bindValue(':role_id', $roleId, PDO::PARAM_INT);
-    $stmt->bindValue(':code', $moduleCode);
-    $stmt->execute();
-    return $stmt->fetch(PDO::FETCH_ASSOC);
-}
-
-function resolveCurrentModuleCode($conn, $path, $fallback)
-{
-    try {
-        if (!$conn) return $fallback;
-        $normalized = rtrim($path, '/');
-        $sql = "SELECT code FROM core_modules WHERE :p LIKE CONCAT(path, '%') ORDER BY LENGTH(path) DESC LIMIT 1";
-        $stmt = $conn->prepare($sql);
-        $stmt->bindValue(':p', $normalized);
-        $stmt->execute();
-        return $stmt->fetchColumn() ?: $fallback;
-    } catch (Exception $e) {
-        return $fallback;
-    }
-}
+$controller = new PermissionController();
 
 // module code for permission management page (resolve by path, fallback env)
 $currentPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$moduleCode = resolveCurrentModuleCode($conn, $currentPath, Env::get('PERMISSION_MODULE_CODE', 'PERMISSION_MANAGEMENT'));
+$moduleCode = $controller->resolveCurrentModuleCode($currentPath, Env::get('PERMISSION_MODULE_CODE', 'PERMISSION_MANAGEMENT'));
 
 // Redirect Helper
 // Redirect logic handled by Middleware
@@ -93,7 +59,7 @@ if (!$user || !$roleId || !$conn || !$roleActive) {
 }
 
 try {
-    $perm = getModulePermissionByCode($conn, $moduleCode, (int)$roleId);
+    $perm = $controller->getModulePermissionByCode($moduleCode, (int)$roleId);
     $canView = $perm ? (bool)$perm['can_view'] : false;
     $canEdit = $perm ? ((bool)$perm['can_edit'] || (bool)$perm['can_manage']) : false;
     $canManage = $perm ? (bool)$perm['can_manage'] : false;

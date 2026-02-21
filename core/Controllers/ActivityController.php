@@ -309,6 +309,7 @@ class ActivityController
                     a.client_version,
                     a.latitude,
                     a.longitude,
+                    a.details,
                     a.created_at
                 FROM user_logins a
                 LEFT JOIN users u ON a.user_id = u.id

@@ -50,15 +50,15 @@ class CarBookingModel
     {
         $sql = "
             INSERT INTO cb_bookings (
-                user_id, driver_user_id, driver_name, driver_email,
-                approver_email, approver_user_id,
+                user_id, driver_user_id,
+                approver_user_id,
                 start_time, end_time, destination, purpose,
                 passengers, passengers_detail, passenger_user_ids,
                 status, approval_token, token_expires_at, created_at
             )
             VALUES (
-                :uid, :driver_uid, :driver_name, :driver_email,
-                :approver_email, :approver_user_id,
+                :uid, :driver_uid,
+                :approver_user_id,
                 :start_time, :end_time, :destination, :purpose,
                 :passengers, :passengers_detail, :passenger_user_ids,
                 'pending_supervisor', :token, DATE_ADD(NOW(), INTERVAL 7 DAY), NOW()
@@ -76,10 +76,16 @@ class CarBookingModel
                    u.fullname, u.username, u.email AS user_email, 
                    u.Level3Name AS department, u.Level3Name AS user_department, 
                    u.PersonnelEmail,
+                   ap.fullname AS approver_name, ap.email AS approver_email,
+                   sup_ap.fullname AS supervisor_approved_name, sup_ap.email AS supervisor_approved_email,
+                   drv.fullname AS driver_name, drv.email AS driver_email,
                    c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
                    fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
             FROM cb_bookings cb
             LEFT JOIN users u ON cb.user_id = u.id
+            LEFT JOIN users ap ON cb.approver_user_id = ap.id
+            LEFT JOIN users sup_ap ON cb.supervisor_approved_user_id = sup_ap.id
+            LEFT JOIN users drv ON cb.driver_user_id = drv.id
             LEFT JOIN cb_cars c ON cb.assigned_car_id = c.id
             LEFT JOIN cb_fleet_cards fc ON cb.fleet_card_id = fc.id
             WHERE cb.id = :id LIMIT 1
@@ -90,7 +96,25 @@ class CarBookingModel
 
     public function getByToken($token)
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM cb_bookings WHERE approval_token = :token AND token_expires_at > NOW() LIMIT 1");
+        $stmt = $this->pdo->prepare("
+            SELECT cb.*, 
+                   u.fullname, u.username, u.email AS user_email, 
+                   u.Level3Name AS department, u.Level3Name AS user_department, 
+                   u.PersonnelEmail,
+                   ap.fullname AS approver_name, ap.email AS approver_email,
+                   sup_ap.fullname AS supervisor_approved_name, sup_ap.email AS supervisor_approved_email,
+                   drv.fullname AS driver_name, drv.email AS driver_email,
+                   c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
+                   fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
+            FROM cb_bookings cb
+            LEFT JOIN users u ON cb.user_id = u.id
+            LEFT JOIN users ap ON cb.approver_user_id = ap.id
+            LEFT JOIN users sup_ap ON cb.supervisor_approved_user_id = sup_ap.id
+            LEFT JOIN users drv ON cb.driver_user_id = drv.id
+            LEFT JOIN cb_cars c ON cb.assigned_car_id = c.id
+            LEFT JOIN cb_fleet_cards fc ON cb.fleet_card_id = fc.id
+            WHERE cb.approval_token = :token AND cb.token_expires_at > NOW() LIMIT 1
+        ");
         $stmt->execute([':token' => $token]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
@@ -106,10 +130,16 @@ class CarBookingModel
     {
         $stmt = $this->pdo->prepare("
             SELECT cb.*, u.username, u.fullname, u.Level3Name AS department,
+                   ap.fullname AS approver_name, ap.email AS approver_email,
+                   sup_ap.fullname AS supervisor_approved_name, sup_ap.email AS supervisor_approved_email,
+                   drv.fullname AS driver_name_display, drv.email AS driver_email,
                    c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
                    fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
             FROM cb_bookings cb
             JOIN users u ON cb.user_id = u.id
+            LEFT JOIN users ap ON cb.approver_user_id = ap.id
+            LEFT JOIN users sup_ap ON cb.supervisor_approved_user_id = sup_ap.id
+            LEFT JOIN users drv ON cb.driver_user_id = drv.id
             LEFT JOIN cb_cars c ON cb.assigned_car_id = c.id
             LEFT JOIN cb_fleet_cards fc ON cb.fleet_card_id = fc.id
             WHERE cb.user_id = :uid
@@ -124,10 +154,16 @@ class CarBookingModel
     {
         $stmt = $this->pdo->query("
             SELECT cb.*, u.username, u.fullname, u.Level3Name AS department,
+                   ap.fullname AS approver_name, ap.email AS approver_email,
+                   sup_ap.fullname AS supervisor_approved_name, sup_ap.email AS supervisor_approved_email,
+                   drv.fullname AS driver_name_display, drv.email AS driver_email,
                    c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
                    fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
             FROM cb_bookings cb 
             JOIN users u ON cb.user_id = u.id 
+            LEFT JOIN users ap ON cb.approver_user_id = ap.id
+            LEFT JOIN users sup_ap ON cb.supervisor_approved_user_id = sup_ap.id
+            LEFT JOIN users drv ON cb.driver_user_id = drv.id
             LEFT JOIN cb_cars c ON cb.assigned_car_id = c.id
             LEFT JOIN cb_fleet_cards fc ON cb.fleet_card_id = fc.id
             ORDER BY cb.created_at DESC
@@ -139,10 +175,16 @@ class CarBookingModel
     {
         $stmt = $this->pdo->query("
             SELECT cb.*, u.username, u.fullname, u.Level3Name AS department,
+                   ap.fullname AS approver_name, ap.email AS approver_email,
+                   sup_ap.fullname AS supervisor_approved_name, sup_ap.email AS supervisor_approved_email,
+                   drv.fullname AS driver_name_display, drv.email AS driver_email,
                    c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
                    fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
             FROM cb_bookings cb 
             JOIN users u ON cb.user_id = u.id 
+            LEFT JOIN users ap ON cb.approver_user_id = ap.id
+            LEFT JOIN users sup_ap ON cb.supervisor_approved_user_id = sup_ap.id
+            LEFT JOIN users drv ON cb.driver_user_id = drv.id
             LEFT JOIN cb_cars c ON cb.assigned_car_id = c.id
             LEFT JOIN cb_fleet_cards fc ON cb.fleet_card_id = fc.id
             WHERE cb.status = 'pending_supervisor' 
@@ -154,21 +196,27 @@ class CarBookingModel
     /**
      * List bookings pending approval by a specific approver email
      */
-    public function listPendingByApproverEmail($email)
+    public function listPendingByApproverId($userId)
     {
         $stmt = $this->pdo->prepare("
             SELECT cb.*, u.username, u.fullname, u.Level3Name AS department,
+                   ap.fullname AS approver_name, ap.email AS approver_email,
+                   sup_ap.fullname AS supervisor_approved_name, sup_ap.email AS supervisor_approved_email,
+                   drv.fullname AS driver_name_display, drv.email AS driver_email,
                    c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
                    fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
             FROM cb_bookings cb 
             JOIN users u ON cb.user_id = u.id 
+            LEFT JOIN users ap ON cb.approver_user_id = ap.id
+            LEFT JOIN users sup_ap ON cb.supervisor_approved_user_id = sup_ap.id
+            LEFT JOIN users drv ON cb.driver_user_id = drv.id
             LEFT JOIN cb_cars c ON cb.assigned_car_id = c.id
             LEFT JOIN cb_fleet_cards fc ON cb.fleet_card_id = fc.id
-            WHERE cb.approver_email = :email 
+            WHERE cb.approver_user_id = :uid 
               AND cb.status = 'pending_supervisor'
             ORDER BY cb.created_at DESC
         ");
-        $stmt->bindValue(':email', $email);
+        $stmt->bindValue(':uid', $userId);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -177,10 +225,16 @@ class CarBookingModel
     {
         $stmt = $this->pdo->query("
             SELECT cb.*, u.username, u.fullname, u.Level3Name AS department,
+                   ap.fullname AS approver_name, ap.email AS approver_email,
+                   sup_ap.fullname AS supervisor_approved_name, sup_ap.email AS supervisor_approved_email,
+                   drv.fullname AS driver_name_display, drv.email AS driver_email,
                    c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
                    fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
             FROM cb_bookings cb 
             JOIN users u ON cb.user_id = u.id 
+            LEFT JOIN users ap ON cb.approver_user_id = ap.id
+            LEFT JOIN users sup_ap ON cb.supervisor_approved_user_id = sup_ap.id
+            LEFT JOIN users drv ON cb.driver_user_id = drv.id
             LEFT JOIN cb_cars c ON cb.assigned_car_id = c.id
             LEFT JOIN cb_fleet_cards fc ON cb.fleet_card_id = fc.id
             WHERE cb.status = 'pending_manager' 
@@ -193,10 +247,16 @@ class CarBookingModel
     {
         $stmt = $this->pdo->query("
             SELECT cb.*, u.username, u.fullname, u.Level3Name AS department,
+                   ap.fullname AS approver_name, ap.email AS approver_email,
+                   sup_ap.fullname AS supervisor_approved_name, sup_ap.email AS supervisor_approved_email,
+                   drv.fullname AS driver_name_display, drv.email AS driver_email,
                    c.name AS assigned_car_name, c.brand AS assigned_car_brand, c.model AS assigned_car_model, c.license_plate AS assigned_car_plate,
                    fc.card_number AS fleet_card_number, fc.department AS fleet_card_department
             FROM cb_bookings cb 
             JOIN users u ON cb.user_id = u.id 
+            LEFT JOIN users ap ON cb.approver_user_id = ap.id
+            LEFT JOIN users sup_ap ON cb.supervisor_approved_user_id = sup_ap.id
+            LEFT JOIN users drv ON cb.driver_user_id = drv.id
             LEFT JOIN cb_cars c ON cb.assigned_car_id = c.id
             LEFT JOIN cb_fleet_cards fc ON cb.fleet_card_id = fc.id
             WHERE cb.status = 'approved' 
@@ -211,8 +271,7 @@ class CarBookingModel
             SELECT cb.*, u.username, u.fullname 
             FROM cb_bookings cb 
             JOIN users u ON cb.user_id = u.id 
-            WHERE cb.status = 'rejected' 
-            AND cb.supervisor_approved_at IS NULL 
+            WHERE cb.status = 'rejected_supervisor' 
             ORDER BY cb.created_at DESC
         ");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -224,8 +283,7 @@ class CarBookingModel
             SELECT cb.*, u.username, u.fullname 
             FROM cb_bookings cb 
             JOIN users u ON cb.user_id = u.id 
-            WHERE cb.status = 'rejected' 
-            AND cb.supervisor_approved_at IS NOT NULL 
+            WHERE cb.status = 'rejected_manager' 
             ORDER BY cb.created_at DESC
         ");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -233,17 +291,16 @@ class CarBookingModel
 
     public function approveByToken($id, $approverEmail, $approverId)
     {
-        $stmt = $this->pdo->prepare("UPDATE cb_bookings SET status='pending_manager', supervisor_approved_at=NOW(), supervisor_approved_by=:approver, supervisor_approved_user_id=:approver_uid WHERE id=:id");
+        $stmt = $this->pdo->prepare("UPDATE cb_bookings SET status='pending_manager', supervisor_approved_at=NOW(), supervisor_approved_user_id=:approver_uid WHERE id=:id");
         return $stmt->execute([
             ':id' => $id,
-            ':approver' => $approverEmail,
             ':approver_uid' => $approverId ?: null
         ]);
     }
 
     public function rejectByToken($id, $reason, $rejectedBy)
     {
-        $stmt = $this->pdo->prepare("UPDATE cb_bookings SET status='rejected', rejected_at=NOW(), rejection_reason=:reason, rejected_by=:rejected_by WHERE id=:id");
+        $stmt = $this->pdo->prepare("UPDATE cb_bookings SET status='rejected_supervisor', rejected_at=NOW(), rejection_reason=:reason, rejected_by=:rejected_by WHERE id=:id");
         return $stmt->execute([
             ':reason' => $reason,
             ':id' => $id,
@@ -263,17 +320,17 @@ class CarBookingModel
         ]);
     }
 
-    public function supervisorApprove($id, $approverEmail)
+    public function supervisorApprove($id, $approverEmail, $approverId)
     {
         $stmt = $this->pdo->prepare("
             UPDATE cb_bookings 
             SET status='pending_manager', 
                 supervisor_approved_at=NOW(), 
-                supervisor_approved_by=:approver
+                supervisor_approved_user_id=:approver_uid
             WHERE id=:id
         ");
         return $stmt->execute([
-            ':approver' => $approverEmail,
+            ':approver_uid' => $approverId ?: null,
             ':id' => $id
         ]);
     }
@@ -284,7 +341,6 @@ class CarBookingModel
             UPDATE cb_bookings 
             SET status='approved', 
                 manager_approved_at=NOW(), 
-                manager_approved_by=:approver,
                 manager_approved_user_id=:approver_id,
                 assigned_car_id=:car_id,
                 fleet_card_id=:fleet_id,
@@ -293,7 +349,6 @@ class CarBookingModel
             WHERE id=:id
         ");
         return $stmt->execute([
-            ':approver' => $approverEmail,
             ':approver_id' => $approverId,
             ':id' => $id,
             ':car_id' => $carId,

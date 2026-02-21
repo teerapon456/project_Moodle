@@ -168,6 +168,8 @@ class AuthController
                         "message" => "กรุณาระบุตำแหน่งที่ตั้งก่อนเข้าสู่ระบบ",
                         "code" => "location_required"
                     ]);
+                    // Optional: Log this failure too?
+                    $this->logActivity('login_failed', null, $username, null, null, 'Location required');
                     return;
                 }
             }
@@ -195,17 +197,20 @@ class AuthController
                     if (isset($row['user_is_active']) && !$row['user_is_active']) {
                         http_response_code(403);
                         echo json_encode(["message" => "บัญชีผู้ใช้นี้ถูกปิดใช้งาน"]);
+                        $this->logActivity('login_failed', $row['id'], $row['fullname'] ?? $row['username'], $data->latitude ?? null, $data->longitude ?? null, 'User inactive');
                         return;
                     }
                     if (isset($row['role_is_active']) && $row['role_is_active'] === '0') {
                         http_response_code(403);
                         echo json_encode(["message" => "Role นี้ถูกปิดใช้งาน"]);
+                        $this->logActivity('login_failed', $row['id'], $row['fullname'] ?? $row['username'], $data->latitude ?? null, $data->longitude ?? null, 'Role inactive');
                         return;
                     }
 
                     if (!$hasPortalView($row['role_id'])) {
                         http_response_code(403);
                         echo json_encode(["message" => "ไม่มีสิทธิ์เข้าถึง HR Portal"]);
+                        $this->logActivity('login_failed', $row['id'], $row['fullname'] ?? $row['username'], $data->latitude ?? null, $data->longitude ?? null, 'No portal permissions');
                         return;
                     }
 
@@ -250,7 +255,7 @@ class AuthController
                     ]);
                 } else {
                     // Log failed login (invalid password)
-                    $this->logActivity('login_failed', $row['id'], $row['fullname'] ?? $row['username'], $data->latitude ?? null, $data->longitude ?? null);
+                    $this->logActivity('login_failed', $row['id'], $row['fullname'] ?? $row['username'], $data->latitude ?? null, $data->longitude ?? null, 'Invalid credentials');
 
                     // Unified error for invalid password
                     http_response_code(401);
@@ -258,7 +263,7 @@ class AuthController
                 }
             } else {
                 // Log failed login (user not found)
-                $this->logActivity('login_failed', null, $username, $data->latitude ?? null, $data->longitude ?? null);
+                $this->logActivity('login_failed', null, $username, $data->latitude ?? null, $data->longitude ?? null, 'User not found');
 
                 // Unified error for user not found
                 http_response_code(401);
@@ -377,7 +382,7 @@ class AuthController
     /**
      * Log user activity to cb_audit_logs table
      */
-    protected function logActivity($action, $userId = null, $userName = null, $latitude = null, $longitude = null)
+    protected function logActivity($action, $userId = null, $userName = null, $latitude = null, $longitude = null, $details = null)
     {
         // User requested to only log 'login' actions, not 'logout'
         if ($action === 'logout') {
@@ -393,8 +398,8 @@ class AuthController
                 INSERT INTO user_logins 
                 (user_id, user_name, action, ip_address, user_agent, 
                  device_type, device_brand, device_model, os_name, os_version, 
-                 client_type, client_name, client_version, latitude, longitude, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 client_type, client_name, client_version, latitude, longitude, details, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
             // Updated: Use passed parameters for geolocation
@@ -417,6 +422,7 @@ class AuthController
                 $detector->getClientVersion(),
                 $latitude,
                 $longitude,
+                $details,
                 date('Y-m-d H:i:s')
             ]);
         } catch (Exception $e) {

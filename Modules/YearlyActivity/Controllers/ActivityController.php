@@ -492,60 +492,22 @@ class ActivityController
     // 5W2H Summary Generation
     public function summary5w2h($id)
     {
-        $activity = $this->activityModel->getById($id);
-        if (!$activity) {
+        $summary = $this->activityModel->get5w2hSummary($id);
+        if (!$summary) {
             echo "Activity not found";
             return;
         }
 
-        // Fetch deep details
-        $milestones = $this->milestoneModel->getByActivityId($id);
-        $rascis = $this->milestoneModel->getAllRasciByActivity($id);
-
-        // Fetch Activity History Logs
-        $logs = $this->activityModel->getLogs($id);
-
-        // Group RASCI by Milestone
-        $rasciByMs = [];
-        foreach ($rascis as $r) {
-            $rasciByMs[$r['milestone_id']][] = $r;
-        }
-
-        // Calculate Cost (How Much) and Pre-fetch Logs for Timeline
-        $totalCost = 0;
-        $milestoneLogsMap = []; // Cache for view
-        foreach ($milestones as $ms) {
-            $resources = $this->milestoneModel->getResources($ms['id']);
-            foreach ($resources as $res) {
-                $totalCost += ($res['quantity'] * $res['unit_cost']);
-            }
-            // Fetch logs for history timeline (Gantt)
-            $milestoneLogsMap[$ms['id']] = $this->milestoneModel->getLogs($ms['id']);
-        }
-
-        // Unique People (Who) - Aggregate for top-level summary if needed, but Matrix will show details
-        $people = [];
-        foreach ($rascis as $r) {
-            if (isset($r['fullname'])) {
-                $people[$r['fullname']] = true;
-            }
-        }
-
-        $summary = [
-            'What' => $activity['name'],
-            'Description' => $activity['description'],
-            'Why' => $activity['objective'] ?: '-',
-            'When' => (!empty($activity['start_date']) ? date('d M Y', strtotime($activity['start_date'])) : 'TBD') . ' - ' . (!empty($activity['end_date']) ? date('d M Y', strtotime($activity['end_date'])) : 'TBD'),
-            'Where' => $activity['location'] ?: '-',
-            'Who' => implode(', ', array_keys($people)),
-            'How' => $activity['scope'] ?: '-', // Use Scope as generic How, but milestones detail it
-            'How Much' => number_format($totalCost, 2) . ' THB',
-            'Milestones' => $milestones,
-            'RasciMap' => $rasciByMs, // Pass the map
-            'MilestoneLogs' => $milestoneLogsMap, // Pass history logs
-            'Logs' => $logs
-        ];
-
+        // Pre-extract variables for the legacy view template
+        $activity = $summary['Activity'];
+        $milestones = $summary['Milestones'];
+        $rasciByMs = $summary['RasciMap'];
+        $involvedPeople = $summary['InvolvedPeople'];
+        $milestoneRoleMatrix = $summary['RoleMatrix'];
+        $milestoneLogsMap = $summary['MilestoneLogs'];
+        $milestoneAttachmentsMap = $summary['MilestoneAttachments'];
+        $comments = $summary['Comments'];
+        $logs = $summary['Logs'];
 
         // Permission Check for View
         $calModel = new CalendarModel();
@@ -555,6 +517,7 @@ class ActivityController
 
         require __DIR__ . '/../Views/summary_5w2h.php';
     }
+
     public function updateMilestoneStatus()
     {
         header('Content-Type: application/json');
@@ -597,7 +560,9 @@ class ActivityController
         $note = $_POST['note'] ?? '';
 
         $data = [
-            'status' => $status
+            'status' => $status,
+            'actual_start_date' => $actualStartDate && $actualStartDate !== '' ? $actualStartDate : null,
+            'actual_end_date' => $actualEndDate && $actualEndDate !== '' ? $actualEndDate : null
         ];
 
         if ($this->milestoneModel->update($msId, $data)) {
@@ -694,5 +659,154 @@ class ActivityController
         } else {
             echo json_encode(['success' => false, 'message' => 'Failed to update']);
         }
+    }
+
+    /* ========================== ATTACHMENTS ========================== */
+
+    public function uploadAttachment()
+    {
+        header('Content-Type: application/json');
+
+        $milestoneId = $_POST['milestone_id'] ?? 0;
+        if (!$milestoneId || empty($_FILES['file'])) {
+            echo json_encode(['success' => false, 'message' => 'Missing data']);
+            exit;
+        }
+
+        // Permission check
+        $milestone = $this->milestoneModel->getById($milestoneId);
+        if (!$milestone) {
+            echo json_encode(['success' => false, 'message' => 'Milestone not found']);
+            exit;
+        }
+
+        // Upload path
+        $uploadDir = __DIR__ . '/../../../public/uploads/yearly_activity/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        $file = $_FILES['file'];
+        $fileName = time() . '_' . basename($file['name']);
+        $targetFile = $uploadDir . $fileName;
+        $relPath = 'public/uploads/yearly_activity/' . $fileName;
+
+        if (move_uploaded_file($file['tmp_name'], $targetFile)) {
+            $data = [
+                'milestone_id' => $milestoneId,
+                'file_name' => $file['name'],
+                'file_path' => $relPath,
+                'file_type' => $file['type'],
+                'uploaded_by' => $this->userId
+            ];
+            $id = $this->milestoneModel->addAttachment($data);
+            echo json_encode(['success' => true, 'id' => $id, 'file_name' => $file['name'], 'file_path' => $relPath]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to move uploaded file']);
+        }
+        exit;
+    }
+
+    public function deleteAttachment()
+    {
+        header('Content-Type: application/json');
+        $id = $_POST['id'] ?? 0;
+        if (!$id) {
+            echo json_encode(['success' => false, 'message' => 'ID missing']);
+            exit;
+        }
+
+        $relPath = $this->milestoneModel->deleteAttachment($id);
+        if ($relPath) {
+            $fullPath = __DIR__ . '/../../../' . $relPath;
+            if (file_exists($fullPath)) {
+                unlink($fullPath);
+            }
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Attachment not found']);
+        }
+        exit;
+    }
+
+    /* ========================== COMMENTS ========================== */
+
+    public function addComment()
+    {
+        header('Content-Type: application/json');
+        $activityId = $_POST['activity_id'] ?? 0;
+        $text = $_POST['comment_text'] ?? '';
+
+        if (!$activityId || empty(trim($text))) {
+            echo json_encode(['success' => false, 'message' => 'Missing data']);
+            exit;
+        }
+
+        $data = [
+            'activity_id' => $activityId,
+            'user_id' => $this->userId,
+            'comment_text' => $text
+        ];
+
+        $id = $this->activityModel->addComment($data);
+        if ($id) {
+            // Check for mentions and notify
+            // Pattern: @[Name](uid:ID)
+            preg_match_all('/@\[(.*?)\]\(uid:(.*?)\)/', $text, $matches, PREG_SET_ORDER);
+
+            $mentionedUserIds = [];
+            $allMembersMentioned = false;
+
+            foreach ($matches as $match) {
+                // $match[0] = full string, $match[1] = Name, $match[2] = ID
+                $uid = $match[2];
+                if ($uid === 'all') {
+                    $allMembersMentioned = true;
+                } elseif (is_numeric($uid)) {
+                    $mentionedUserIds[] = (int)$uid;
+                }
+            }
+
+            // If @All Members, fetch all involved people
+            if ($allMembersMentioned) {
+                $summary = $this->activityModel->get5w2hSummary($activityId);
+                if (!empty($summary['InvolvedPeople'])) {
+                    foreach ($summary['InvolvedPeople'] as $uid => $name) {
+                        $mentionedUserIds[] = (int)$uid;
+                    }
+                }
+            }
+
+            // Unique and exclude self
+            $mentionedUserIds = array_unique($mentionedUserIds);
+            $currentUser = $_SESSION['user']['fullname'] ?? 'Someone';
+            $link = "Modules/YearlyActivity/index.php?page=summary_5w2h&id={$activityId}";
+
+            require_once __DIR__ . '/../../../core/Services/NotificationService.php';
+
+            foreach ($mentionedUserIds as $targetUid) {
+                if ($targetUid == $this->userId) continue;
+
+                \NotificationService::create(
+                    $targetUid,
+                    'info',
+                    'มีการพูดถึงคุณในกิจกรรม',
+                    "{$currentUser} กล่าวถึงคุณในกิจกรรม: " . ($summary['What'] ?? "#{$activityId}"),
+                    ['activity_id' => $activityId],
+                    $link
+                );
+            }
+
+            echo json_encode([
+                'success' => true,
+                'id' => $id,
+                'user_name' => $currentUser,
+                'comment_text' => $data['comment_text'],
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to add comment']);
+        }
+        exit;
     }
 }

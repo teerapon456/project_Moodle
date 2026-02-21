@@ -207,9 +207,13 @@ class NewsController
         }
 
         // If uploaded hero image exists, upload and override $heroImage
-        $uploadedHero = $this->handleHeroUpload($currentHeroImage);
-        if ($uploadedHero) {
-            $heroImage = $uploadedHero;
+        $uploadedHeroRes = $this->handleHeroUpload($currentHeroImage);
+        if ($uploadedHeroRes['status'] === 'success' && $uploadedHeroRes['path']) {
+            $heroImage = $uploadedHeroRes['path'];
+        } elseif ($uploadedHeroRes['status'] === 'error') {
+            http_response_code(400);
+            echo json_encode(['message' => 'อัปโหลดภาพปกไม่สำเร็จ: ' . ($uploadedHeroRes['message'] ?? '')]);
+            return;
         }
 
         $newsData = [
@@ -279,11 +283,11 @@ class NewsController
 
     private function handleFileUploads(int $newsId): void
     {
-        $uploadBaseUrl = '/Modules/HRNews/uploads';
+        $uploadBaseUrl = '/Modules/HRNews/public/assets/upload';
         // Regular attachments
-        $this->handleUploadField($newsId, 'attachments', $uploadBaseUrl . '/attachments', __DIR__ . '/../uploads/attachments', 'file');
+        $this->handleUploadField($newsId, 'attachments', $uploadBaseUrl . '/att', __DIR__ . '/../public/assets/upload/att', 'file');
         // Body images (flagged as body_image mime to separate from ไฟล์แนบ)
-        $this->handleUploadField($newsId, 'body_image_file', $uploadBaseUrl . '/body', __DIR__ . '/../uploads/body', 'body_image');
+        $this->handleUploadField($newsId, 'body_image_file', $uploadBaseUrl . '/body', __DIR__ . '/../public/assets/upload/body', 'body_image');
     }
 
     private function handleUploadField(int $newsId, string $field, string $publicBase, string $dirBase, ?string $attachmentType = null): void
@@ -334,47 +338,56 @@ class NewsController
         $this->newsModel->insertAttachment($newsId, $payload);
     }
 
-    private function handleHeroUpload(?string $oldPath = null): ?string
+    private function handleHeroUpload(?string $oldPath = null): array
     {
         if (empty($_FILES['hero_image_file']) || !is_array($_FILES['hero_image_file'])) {
-            return null;
+            return ['status' => 'none'];
         }
         $file = $_FILES['hero_image_file'];
         if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-            return null;
+            if ($file['error'] === UPLOAD_ERR_NO_FILE) return ['status' => 'none'];
+            return ['status' => 'error', 'message' => 'Upload error code: ' . $file['error']];
         }
         $tmp = $file['tmp_name'] ?? '';
         if (!$tmp || !is_uploaded_file($tmp)) {
-            return null;
+            return ['status' => 'error', 'message' => 'Invalid uploaded file'];
         }
         $mime = $file['type'] ?? '';
         if (strpos($mime, 'image/') !== 0) {
-            return null;
+            return ['status' => 'error', 'message' => 'Invalid file type (not an image)'];
         }
 
-        $uploadDir = realpath(__DIR__ . '/../uploads/hero');
+        $uploadDir = realpath(__DIR__ . '/../public/assets/upload/hero');
         if ($uploadDir === false) {
-            $baseDir = __DIR__ . '/../uploads/hero';
+            $baseDir = __DIR__ . '/../public/assets/upload/hero';
             if (!is_dir($baseDir)) {
                 mkdir($baseDir, 0775, true);
             }
             $uploadDir = realpath($baseDir);
         }
+
+        if (!$uploadDir || !is_writable($uploadDir)) {
+            return ['status' => 'error', 'message' => 'Upload directory not writable: ' . ($uploadDir ?: 'path not found')];
+        }
+
         $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $file['name'] ?? 'hero');
         $uniqueName = time() . '_' . bin2hex(random_bytes(4)) . '_' . $safeName;
         $destPath = $uploadDir . DIRECTORY_SEPARATOR . $uniqueName;
         if (move_uploaded_file($tmp, $destPath)) {
             // Delete old hero if it lived in our upload dir
-            if ($oldPath && strpos($oldPath, '/Modules/HRNews/uploads/hero/') !== false) {
-                $fullOld = realpath(__DIR__ . '/../uploads/hero/' . basename($oldPath));
+            if ($oldPath && strpos($oldPath, '/Modules/HRNews/public/assets/upload/hero/') !== false) {
+                $fullOld = realpath(__DIR__ . '/../public/assets/upload/hero/' . basename($oldPath));
                 if ($fullOld && file_exists($fullOld)) {
                     @unlink($fullOld);
                 }
             }
             // Return relative path - frontend will handle base path
-            return '/Modules/HRNews/uploads/hero/' . $uniqueName;
+            return [
+                'status' => 'success',
+                'path' => '/Modules/HRNews/public/assets/upload/hero/' . $uniqueName
+            ];
         }
-        return null;
+        return ['status' => 'error', 'message' => 'Failed to move uploaded file'];
     }
 
     private function deleteLinkAttachments(int $newsId): void

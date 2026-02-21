@@ -186,10 +186,17 @@ class Copilot {
             // ถ้ามี action ให้ navigate (action ถูกแยกมาจาก PHP แล้ว)
             if (data.action) {
                 setTimeout(() => {
-                    const fullUrl = data.action.startsWith('http')
-                        ? data.action
-                        : (window.APP_BASE_PATH + '/' + data.action).replace(/([^:]\/)\/+/g, "$1");
-                    window.open(fullUrl, '_blank'); // Open in new tab
+                    let fullUrl;
+                    if (data.action.startsWith('http')) {
+                        fullUrl = data.action;
+                        window.open(fullUrl, '_blank');
+                    } else {
+                        // Safe Join: Trim trailing slash from base, leading slash from action
+                        const base = (window.APP_BASE_PATH || '').replace(/\/+$/, '');
+                        const action = data.action.replace(/^\/+/, '');
+                        fullUrl = base + '/' + action;
+                        window.open(fullUrl, '_blank');
+                    }
                 }, 1500);
             }
 

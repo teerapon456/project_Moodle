@@ -571,6 +571,7 @@ if (empty($activityPerm['can_view'])) {
                             </td>
                             <td class="px-4 py-3">
                                 <span class="px-2 py-1 rounded-full text-xs font-medium ${getActionClass(a.action)}">${getActionLabel(a.action)}</span>
+                                ${a.action === 'login_failed' && a.details ? `<div class="text-[11px] text-red-500 mt-1 font-medium">${escapeHtml(a.details)}</div>` : ''}
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-500">
                                 <div class="flex items-center gap-4">

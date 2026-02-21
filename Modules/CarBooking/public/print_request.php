@@ -47,7 +47,6 @@ fc.department as fleet_card_department,
 fc.credit_limit,
 supervisor.fullname as supervisor_fullname,
 supervisor.username as supervisor_name,
-super_email_match.fullname as supervisor_fullname_by_email,
 manager.fullname as manager_fullname,
 manager.username as manager_name,
 driver_u.fullname as driver_fullname
@@ -56,9 +55,8 @@ LEFT JOIN users u ON cb.user_id = u.id
 LEFT JOIN cb_cars c ON cb.assigned_car_id = c.id
 LEFT JOIN cb_fleet_cards fc ON cb.fleet_card_id = fc.id
 LEFT JOIN users supervisor ON cb.supervisor_approved_user_id = supervisor.id
-LEFT JOIN users super_email_match ON cb.supervisor_approved_by COLLATE utf8mb4_unicode_ci = super_email_match.email
 LEFT JOIN users manager ON cb.manager_approved_user_id = manager.id
-LEFT JOIN users driver_u ON cb.driver_email COLLATE utf8mb4_unicode_ci = driver_u.email
+LEFT JOIN users driver_u ON cb.driver_user_id = driver_u.id
 WHERE cb.id = :id";
 
     $stmt = $conn->prepare($sql);
@@ -298,10 +296,7 @@ ob_start();
                 <td class="label">หัวหน้างาน :</td>
                 <td class="value">
                     <?php
-                    $supName = $booking['supervisor_fullname'] ?: $booking['supervisor_name'];
-                    if (empty($supName)) {
-                        $supName = $booking['supervisor_fullname_by_email'] ?: $booking['supervisor_approved_by'] ?: '-';
-                    }
+                    $supName = $booking['supervisor_fullname'] ?: $booking['supervisor_name'] ?: '-';
                     echo htmlspecialchars($supName);
                     ?>
                 </td>

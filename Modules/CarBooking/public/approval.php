@@ -162,6 +162,25 @@
                 const response = await fetch(`../api.php?controller=bookings&action=get_token_details&token=${encodeURIComponent(token)}`);
                 const data = await response.json();
 
+                if (response.status === 401) {
+                    // Show Login Required UI
+                    const currentUrl = window.location.href;
+                    const redirectUrl = encodeURIComponent(currentUrl);
+                    const loginLink = `../login.php?redirect=${redirectUrl}`;
+
+                    const content = document.getElementById('content');
+                    content.innerHTML = `
+                       <div class="message error" style="text-align: center; background: #fff3cd; color: #856404; border: 1px solid #ffeeba;">
+                           <h3>🔒 กรุณาเข้าสู่ระบบ</h3>
+                           <p style="margin: 15px 0;">คุณจำเป็นต้องเข้าสู่ระบบเพื่อดำเนินการอนุมัติหรือปฏิเสธคำขอนี้</p>
+                           <a href="${loginLink}" class="btn" style="background: #3498db; color: white; display: inline-block; text-decoration: none;">
+                               เข้าสู่ระบบ
+                           </a>
+                       </div>
+                    `;
+                    return;
+                }
+
                 if (!response.ok || !data.success) {
                     showError(data.message || 'ไม่สามารถโหลดข้อมูลได้');
                     return;

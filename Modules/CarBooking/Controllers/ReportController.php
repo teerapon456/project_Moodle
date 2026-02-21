@@ -117,11 +117,12 @@ class CBReportController extends CBBaseController
                 b.status,
                 c.name as car_name,
                 c.license_plate,
-                b.driver_name,
+                drv.fullname as driver_name,
                 b.created_at
             FROM cb_bookings b
             LEFT JOIN users u ON b.user_id = u.id
             LEFT JOIN cb_cars c ON b.assigned_car_id = c.id
+            LEFT JOIN users drv ON b.driver_user_id = drv.id
             WHERE DATE(b.created_at) BETWEEN ? AND ?
         ";
         $params = [$startDate, $endDate];
@@ -159,18 +160,32 @@ class CBReportController extends CBBaseController
             SELECT 
                 b.created_at,
                 u.fullname as requester,
+                u.Level3Name as department,
                 b.destination,
                 b.purpose,
                 b.start_time,
                 b.end_time,
-                b.driver_name,
+                b.start_time,
+                b.end_time,
+                drv.fullname as driver_name,
+                b.passengers_detail,
+                c.brand,
+                c.model,
                 c.license_plate,
-                b.fleet_card_number,
+                fc.card_number as fleet_card_number,
                 b.fleet_amount,
+                sup.fullname as supervisor_name,
+                b.supervisor_approved_at,
+                man.fullname as manager_name,
+                b.manager_approved_at,
                 b.status
             FROM cb_bookings b
             LEFT JOIN users u ON b.user_id = u.id
             LEFT JOIN cb_cars c ON b.assigned_car_id = c.id
+            LEFT JOIN users drv ON b.driver_user_id = drv.id
+            LEFT JOIN cb_fleet_cards fc ON b.fleet_card_id = fc.id
+            LEFT JOIN users sup ON b.supervisor_approved_user_id = sup.id
+            LEFT JOIN users man ON b.manager_approved_user_id = man.id
             WHERE DATE(b.created_at) BETWEEN ? AND ?
             ORDER BY b.created_at ASC
         ";
@@ -188,21 +203,69 @@ class CBReportController extends CBBaseController
         fputs($output, "\xEF\xBB\xBF");
 
         // Header Row
-        fputcsv($output, ['วันที่ทำรายการ', 'ผู้ขอ', 'ปลายทาง', 'วัตถุประสงค์', 'เวลาเริ่ม', 'เวลาสิ้นสุด', 'คนขับ', 'ทะเบียนรถ', 'เลขบัตรน้ำมัน', 'ยอดเงินน้ำมัน', 'สถานะ']);
+        fputcsv($output, [
+            'วันที่ทำรายการ',
+            'ผู้ขอ',
+            'แผนก',
+            'ปลายทาง',
+            'วัตถุประสงค์',
+            'เวลาเริ่ม',
+            'เวลาสิ้นสุด',
+            'คนขับ',
+            'ผู้โดยสาร',
+            'ยี่ห้อ/รุ่น',
+            'ทะเบียนรถ',
+            'เลขบัตรน้ำมัน',
+            'ยอดเงินน้ำมัน',
+            'หัวหน้าอนุมัติ',
+            'วันที่อนุมัติ(หัวหน้า)',
+            'IPCD อนุมัติ',
+            'วันที่อนุมัติ(IPCD)',
+            'สถานะ'
+        ]);
 
         // Data Rows
         foreach ($rows as $row) {
+            $brandModel = trim(($row['brand'] ?? '') . ' ' . ($row['model'] ?? ''));
+
+            // Parse passengers
+            $passengerText = '-';
+            if (!empty($row['passengers_detail'])) {
+                $decoded = json_decode($row['passengers_detail'], true);
+                if (is_array($decoded) && count($decoded) > 0) {
+                    $names = [];
+                    foreach ($decoded as $p) {
+                        if (is_array($p)) {
+                            $names[] = $p['name'] ?? $p['email'] ?? '';
+                        } else {
+                            $names[] = $p;
+                        }
+                    }
+                    $names = array_filter($names);
+                    if (!empty($names)) {
+                        $passengerText = implode(', ', $names);
+                    }
+                }
+            }
+
             fputcsv($output, [
                 $row['created_at'],
                 $row['requester'],
+                $row['department'] ?: '-',
                 $row['destination'],
                 $row['purpose'],
                 $row['start_time'],
                 $row['end_time'],
                 $row['driver_name'],
+                $passengerText,
+                $brandModel ?: '-',
                 $row['license_plate'] ?: '-',
                 $row['fleet_card_number'] ?: '-',
                 $row['fleet_amount'] ?: '-',
+                $row['supervisor_name'] ?: '-',
+                $row['supervisor_approved_at'] ?: '-',
+                $row['manager_name'] ?: '-',
+                $row['manager_approved_at'] ?: '-',
                 $this->getStatusLabel($row['status'])
             ]);
         }

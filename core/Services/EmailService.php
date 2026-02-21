@@ -384,8 +384,7 @@ class EmailService
     public static function sendSupervisorApprovalEmail($booking, $supervisorEmail, $token, $additionalCc = null)
     {
         $baseUrl = Env::getBaseUrl();
-        // Point to CarBooking approval endpoint (in public folder)
-        $reviewUrl = $baseUrl . "/Modules/CarBooking/public/approval.php?token=$token";
+        $reviewUrl = $baseUrl . "/Modules/CarBooking/index.php?page=manage&id=" . $booking['id'];
 
         $userName = $booking['user_fullname'] ?? $booking['fullname'] ?? $booking['username'] ?? 'Unknown User';
         $department = !empty($booking['user_department']) ? " - {$booking['user_department']}" : "";

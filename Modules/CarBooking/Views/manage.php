@@ -245,8 +245,29 @@ $statusLabels = [
 </style>
 
 <script>
+    const allPendingData = <?= json_encode($allPending) ?>;
     let currentApprovalBooking = null;
     let isSubmitting = false;
+
+    // Handle auto-open if ID is in URL
+    window.addEventListener('load', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const bookingId = urlParams.get('id');
+        if (bookingId) {
+            const booking = allPendingData.find(b => b.id == bookingId);
+            if (booking) {
+                // If it's a supervisor approval, it might be in a different tab
+                if (booking.status === 'pending_supervisor') {
+                    switchTab('supervisor');
+                } else if (booking.status === 'pending_manager') {
+                    switchTab('manager');
+                }
+
+                // Wait slightly for any UI transitions
+                setTimeout(() => openApprovalModal(booking), 300);
+            }
+        }
+    });
 
     function switchTab(tab) {
         document.querySelectorAll('.pending-tab').forEach(t => {

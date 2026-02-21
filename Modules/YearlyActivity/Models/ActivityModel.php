@@ -325,4 +325,131 @@ class ActivityModel
         $stmt->execute([':aid' => $activityId]);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
+
+    /* ========================== COMMENTS ========================== */
+
+    public function getComments($activityId)
+    {
+        $sql = "SELECT c.*, u.fullname as user_name 
+                FROM ya_activity_comments c
+                JOIN users u ON c.user_id = u.id
+                WHERE c.activity_id = :activity_id
+                ORDER BY c.created_at ASC";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindParam(':activity_id', $activityId);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function addComment($data)
+    {
+        $sql = "INSERT INTO ya_activity_comments (activity_id, user_id, comment_text) 
+                VALUES (:activity_id, :user_id, :comment_text)";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([
+            ':activity_id' => $data['activity_id'],
+            ':user_id' => $data['user_id'],
+            ':comment_text' => $data['comment_text']
+        ]);
+        return $this->conn->lastInsertId();
+    }
+
+    /**
+     * Get 5W2H summary for an activity
+     * Encapsulates all details for display and notification processing
+     */
+    public function get5w2hSummary($activityId)
+    {
+        $activity = $this->getById($activityId);
+        if (!$activity) return null;
+
+        // 1. Fetch Milestones
+        $msSql = "SELECT m.*, 
+                  (SELECT COUNT(*) FROM ya_milestone_risks WHERE milestone_id = m.id) as risk_count
+                  FROM ya_milestones m
+                  WHERE m.activity_id = :activity_id
+                  ORDER BY m.order_index ASC, m.due_date ASC";
+        $stmt = $this->conn->prepare($msSql);
+        $stmt->execute([':activity_id' => $activityId]);
+        $milestones = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // 2. Fetch RASCI
+        $rasciSql = "SELECT r.*, m.id as milestone_id, u.fullname, u.username, u.email 
+                     FROM ya_milestone_rasci r
+                     JOIN ya_milestones m ON r.milestone_id = m.id
+                     JOIN users u ON r.user_id = u.id
+                     WHERE m.activity_id = :activity_id";
+        $stmt = $this->conn->prepare($rasciSql);
+        $stmt->execute([':activity_id' => $activityId]);
+        $rascis = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Group RASCI and People
+        $involvedPeople = [];
+        $milestoneRoleMatrix = [];
+        $rasciByMs = [];
+        foreach ($rascis as $r) {
+            $involvedPeople[$r['user_id']] = $r['fullname'];
+            $milestoneRoleMatrix[$r['milestone_id']][$r['user_id']] = $r['role'];
+            $rasciByMs[$r['milestone_id']][] = $r;
+        }
+        asort($involvedPeople);
+
+        // 3. Process Milestones (Cost, Logs, Attachments)
+        $totalCost = 0;
+        $milestoneLogsMap = [];
+        $milestoneAttachmentsMap = [];
+
+        foreach ($milestones as $ms) {
+            $mid = $ms['id'];
+
+            // Resources for Cost
+            $resSql = "SELECT * FROM ya_milestone_resources WHERE milestone_id = :mid";
+            $resStmt = $this->conn->prepare($resSql);
+            $resStmt->execute([':mid' => $mid]);
+            $resources = $resStmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($resources as $res) {
+                $totalCost += ($res['quantity'] * $res['unit_cost']);
+            }
+
+            // Logs
+            $logSql = "SELECT l.*, u.fullname as changed_by_name 
+                       FROM ya_milestone_logs l
+                       LEFT JOIN users u ON l.changed_by = u.id
+                       WHERE l.milestone_id = :mid 
+                       ORDER BY l.changed_at ASC";
+            $logStmt = $this->conn->prepare($logSql);
+            $logStmt->execute([':mid' => $mid]);
+            $milestoneLogsMap[$mid] = $logStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Attachments
+            $attSql = "SELECT a.*, u.fullname as uploaded_by_name 
+                       FROM ya_milestone_attachments a
+                       LEFT JOIN users u ON a.uploaded_by = u.id
+                       WHERE a.milestone_id = :mid
+                       ORDER BY a.uploaded_at DESC";
+            $attStmt = $this->conn->prepare($attSql);
+            $attStmt->execute([':mid' => $mid]);
+            $milestoneAttachmentsMap[$mid] = $attStmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        return [
+            'Activity' => $activity,
+            'What' => $activity['name'],
+            'Description' => $activity['description'],
+            'Why' => $activity['objective'] ?: '-',
+            'When' => (!empty($activity['start_date']) ? date('d M Y', strtotime($activity['start_date'])) : 'TBD') . ' - ' . (!empty($activity['end_date']) ? date('d M Y', strtotime($activity['end_date'])) : 'TBD'),
+            'Where' => $activity['location'] ?: '-',
+            'Who' => implode(', ', $involvedPeople),
+            'How' => $activity['scope'] ?: '-',
+            'How Much' => number_format($totalCost, 2) . ' THB',
+            'Milestones' => $milestones,
+            'RasciMap' => $rasciByMs,
+            'InvolvedPeople' => $involvedPeople,
+            'RoleMatrix' => $milestoneRoleMatrix,
+            'MilestoneLogs' => $milestoneLogsMap,
+            'MilestoneAttachments' => $milestoneAttachmentsMap,
+            'Comments' => $this->getComments($activityId),
+            'Logs' => $this->getLogs($activityId)
+        ];
+    }
 }

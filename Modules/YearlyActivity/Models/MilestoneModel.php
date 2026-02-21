@@ -59,7 +59,7 @@ class MilestoneModel
         $fields = [];
         $params = [':id' => $id];
 
-        $allowed = ['name', 'description', 'start_date', 'due_date', 'status', 'weight_percent', 'order_index'];
+        $allowed = ['name', 'description', 'start_date', 'due_date', 'status', 'weight_percent', 'order_index', 'actual_start_date', 'actual_end_date'];
 
         foreach ($data as $key => $value) {
             if (in_array($key, $allowed)) {
@@ -278,5 +278,51 @@ class MilestoneModel
         $stmt->bindParam(':mid', $milestoneId);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /* ========================== ATTACHMENTS ========================== */
+
+    public function getAttachments($milestoneId)
+    {
+        $sql = "SELECT a.*, u.fullname as uploaded_by_name 
+                FROM ya_milestone_attachments a
+                LEFT JOIN users u ON a.uploaded_by = u.id
+                WHERE a.milestone_id = :milestone_id
+                ORDER BY a.uploaded_at DESC";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindParam(':milestone_id', $milestoneId);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function addAttachment($data)
+    {
+        $sql = "INSERT INTO ya_milestone_attachments (milestone_id, file_name, file_path, file_type, uploaded_by) 
+                VALUES (:milestone_id, :file_name, :file_path, :file_type, :uploaded_by)";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([
+            ':milestone_id' => $data['milestone_id'],
+            ':file_name' => $data['file_name'],
+            ':file_path' => $data['file_path'],
+            ':file_type' => $data['file_type'] ?? null,
+            ':uploaded_by' => $data['uploaded_by'] ?? null
+        ]);
+        return $this->conn->lastInsertId();
+    }
+
+    public function deleteAttachment($id)
+    {
+        // First get file path to delete from disk later
+        $sql = "SELECT file_path FROM ya_milestone_attachments WHERE id = :id";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([':id' => $id]);
+        $file = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $sql = "DELETE FROM ya_milestone_attachments WHERE id = :id";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindParam(':id', $id);
+        $stmt->execute();
+
+        return $file['file_path'] ?? null;
     }
 }

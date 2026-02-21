@@ -51,7 +51,7 @@ $userId = $_SESSION['user']['id'] ?? 0;
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         <!-- Left Column: 4W1H Grid -->
-        <div class="lg:col-span-2 space-y-6">
+        <div class="lg:col-span-2 flex flex-col gap-4">
             <!-- 4W1H Cards Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <!-- What -->
@@ -122,35 +122,45 @@ $userId = $_SESSION['user']['id'] ?? 0;
         </div>
 
         <!-- Right Column: Activity History Timeline -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col h-full overflow-hidden" style="max-height: 650px;">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 flex-shrink-0">
                 <i class="ri-history-line"></i> Activity Timeline
             </h3>
 
-            <div class="relative pl-6 border-l-2 border-red-100 space-y-6 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin">
+            <div class="relative pl-2 space-y-6 overflow-y-auto pr-3 scrollbar-thin flex-grow h-0">
+
                 <?php if (empty($summary['Logs'])): ?>
-                    <div class="relative">
-                        <span class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-gray-200 border-2 border-white"></span>
+                    <div class="relative flex gap-4">
+                        <div class="w-4 h-4 rounded-full bg-gray-200 border-2 border-white flex-shrink-0"></div>
                         <p class="text-sm text-gray-400 italic">No history logged yet.</p>
-                        <div class="text-xs text-gray-300 mt-1">Created on <?= date('d M Y', strtotime($activity['created_at'])) ?></div>
                     </div>
                 <?php else: ?>
                     <?php foreach ($summary['Logs'] as $log): ?>
-                        <div class="relative">
-                            <span class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-red-500 border-2 border-white"></span>
-                            <div>
-                                <div class="text-xs font-bold text-gray-400 uppercase"><?= date('d M Y, H:i', strtotime($log['changed_at'])) ?></div>
-                                <div class="text-sm font-bold text-gray-800 mt-0.5">
-                                    <?= $log['new_status'] == $log['previous_status'] ? 'Update:' : 'Status changed to' ?>
-                                    <span class="capitalize text-primary"><?= str_replace('_', ' ', $log['new_status']) ?></span>
+                        <div class="relative flex gap-4 pb-6 last:pb-0">
+
+                            <div class="absolute left-[7px] top-2 bottom-0 w-[2px] bg-red-100 last:hidden"></div>
+
+                            <div class="relative z-10 flex-shrink-0">
+                                <div class="w-4 h-4 rounded-full bg-red-500 border-2 border-white mt-1"></div>
+                            </div>
+
+                            <div class="flex-1 min-w-0">
+                                <div class="text-xs font-bold text-gray-400 uppercase leading-none">
+                                    <?= date('d M Y, H:i', strtotime($log['changed_at'])) ?>
+                                    <?php if ($log['changed_by_name']): ?>
+                                        <span class="ml-1 text-[10px] font-normal text-gray-400 normal-case">by <?= htmlspecialchars($log['changed_by_name']) ?></span>
+                                    <?php endif; ?>
                                 </div>
+
+                                <div class="text-sm font-bold text-gray-800 mt-1">
+                                    <?= $log['new_status'] == $log['previous_status'] ? 'Update:' : 'Status changed to' ?>
+                                    <span class="capitalize text-red-600"><?= str_replace('_', ' ', $log['new_status']) ?></span>
+                                </div>
+
                                 <?php if ($log['note']): ?>
-                                    <div class="mt-1 p-2 bg-gray-50 rounded border border-gray-100 text-gray-600 text-xs italic">
+                                    <div class="mt-2 p-2 bg-gray-50 rounded border border-gray-100 text-gray-600 text-[11px] italic leading-relaxed">
                                         Note: "<?= htmlspecialchars($log['note']) ?>"
                                     </div>
-                                <?php endif; ?>
-                                <?php if ($log['changed_by_name']): ?>
-                                    <div class="text-xs text-gray-400 mt-1">by <?= htmlspecialchars($log['changed_by_name']) ?></div>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -193,35 +203,31 @@ $userId = $_SESSION['user']['id'] ?? 0;
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr class="bg-gray-50 border-b border-gray-200 text-xs text-gray-500 uppercase">
-                        <th class="px-6 py-4 font-semibold w-1/4">Milestone</th>
-                        <th class="px-4 py-4 font-semibold text-center">Status</th>
-                        <th class="px-4 py-4 font-semibold text-center text-red-600 bg-red-50/50 border-l border-red-100">R</th>
-                        <th class="px-4 py-4 font-semibold text-center text-orange-600 bg-orange-50/50 border-l border-orange-100">A</th>
-                        <th class="px-4 py-4 font-semibold text-center text-primary bg-red-50/50 border-l border-red-100">S</th>
-                        <th class="px-4 py-4 font-semibold text-center text-teal-600 bg-teal-50/50 border-l border-teal-100">C</th>
-                        <th class="px-4 py-4 font-semibold text-center text-gray-600 bg-gray-50/50 border-l border-gray-200">I</th>
+                    <tr class="bg-gray-50 border-b border-gray-200 text-[10px] text-gray-500 uppercase">
+                        <th class="px-3 py-4 font-semibold w-44">Milestone</th>
+                        <th class="px-4 py-4 font-semibold text-center w-px whitespace-nowrap border-l border-gray-200">Status</th>
+                        <?php foreach (($summary['InvolvedPeople'] ?? []) as $uid => $name): ?>
+                            <th class="px-2 py-4 font-semibold text-center border-l border-gray-200 w-px">
+                                <div class="text-[10px] leading-tight text-gray-400 font-normal whitespace-nowrap">TEAM MEMBER</div>
+                                <div class="text-gray-700 mt-1 whitespace-nowrap"><?= htmlspecialchars($name) ?></div>
+                            </th>
+                        <?php endforeach; ?>
+                        <th class="px-6 py-4 font-semibold text-center w-px border-l border-gray-200 whitespace-nowrap">Files</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     <?php if (empty($summary['Milestones'])): ?>
                         <tr>
-                            <td colspan="7" class="px-6 py-8 text-center text-gray-400">No milestones defined.</td>
+                            <td colspan="<?= 3 + count($summary['InvolvedPeople'] ?? []) ?>" class="px-6 py-8 text-center text-gray-400">No milestones defined.</td>
                         </tr>
                     <?php else: ?>
                         <?php foreach ($summary['Milestones'] as $ms):
-                            // Check if current user is 'R'
-                            $rasciList = $summary['RasciMap'][$ms['id']] ?? [];
-                            $isR = false;
-                            $rUser = null;
-
-                            $roles = ['R' => [], 'A' => [], 'S' => [], 'C' => [], 'I' => []];
-                            foreach ($rasciList as $r) {
-                                $roles[$r['role']][] = $r['fullname'];
-                                if ($r['role'] === 'R') {
-                                    $rUser = $r;
-                                    if ($r['user_id'] == $userId) $isR = true;
-                                }
+                            // Check if current user is involved
+                            $isActor = false;
+                            $userRole = null;
+                            if (isset($summary['RoleMatrix'][$ms['id']][$userId])) {
+                                $isActor = true;
+                                $userRole = $summary['RoleMatrix'][$ms['id']][$userId];
                             }
 
                             // Status Colors
@@ -237,58 +243,86 @@ $userId = $_SESSION['user']['id'] ?? 0;
                         ?>
                             <tr class="hover:bg-gray-50/50 transition duration-150">
                                 <!-- Milestone Info -->
-                                <td class="px-6 py-4 align-top">
+                                <td class="px-4 py-4 align-top">
                                     <div class="font-bold text-gray-800"><?= htmlspecialchars($ms['name']) ?></div>
                                     <div class="text-xs text-gray-500 mt-1"><?= htmlspecialchars($ms['description'] ?? '') ?></div>
-                                    <div class="flex items-center gap-3 mt-2">
-                                        <span class="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600 border border-gray-200">
+                                    <div class="flex flex-wrap items-center gap-2 mt-2">
+                                        <span class="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 border border-gray-200">
                                             Due: <?= $ms['due_date'] ?? 'TBD' ?>
                                         </span>
-                                        <span class="text-xs bg-red-50 px-2 py-0.5 rounded text-primary border border-red-100">
+                                        <span class="text-[10px] bg-red-50 px-1.5 py-0.5 rounded text-primary border border-red-100">
                                             Weight: <?= $ms['weight_percent'] ?>%
                                         </span>
                                     </div>
                                 </td>
 
                                 <!-- Status -->
-                                <td class="px-4 py-4 align-top text-center">
-                                    <?php if ($isR): ?>
-                                        <button onclick="updateStatus(<?= $ms['id'] ?>, '<?= $ms['status'] ?>')"
-                                            class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider <?= $sColor ?> hover:opacity-80 transition shadow-sm">
+                                <td class="px-4 py-4 align-top text-center w-px whitespace-nowrap border-l border-gray-100">
+                                    <?php if ($canEdit || $userRole === 'R'): ?>
+                                        <button onclick="updateStatus(<?= $ms['id'] ?>, '<?= $ms['status'] ?>', '<?= $ms['actual_start_date'] ?? '' ?>', '<?= $ms['actual_end_date'] ?? '' ?>')"
+                                            class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider <?= $sColor ?> hover:opacity-80 transition shadow-sm border border-gray-200/50">
                                             <?= str_replace('_', ' ', $ms['status']) ?>
-                                            <i class="ri-arrow-down-s-line ml-1"></i>
+                                            <i class="ri-arrow-down-s-line ml-0.5"></i>
                                         </button>
                                     <?php else: ?>
-                                        <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider <?= $sColor ?>">
+                                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider <?= $sColor ?>">
                                             <?= str_replace('_', ' ', $ms['status']) ?>
                                         </span>
                                     <?php endif; ?>
                                 </td>
 
-                                <!-- RASCI Role Columns -->
-                                <?php foreach (['R', 'A', 'S', 'C', 'I'] as $role):
-                                    $bgClass = match ($role) {
-                                        'R' => 'bg-red-50/30 border-red-100',
-                                        'A' => 'bg-orange-50/30 border-orange-100',
-                                        'S' => 'bg-red-50/30 border-red-100',
-                                        'C' => 'bg-teal-50/30 border-teal-100',
-                                        'I' => 'bg-gray-50/30 border-gray-200',
+                                <!-- People Columns -->
+                                <?php foreach (($summary['InvolvedPeople'] ?? []) as $uid => $name):
+                                    $role = $summary['RoleMatrix'][$ms['id']][$uid] ?? null;
+                                    $roleColor = match ($role) {
+                                        'R' => 'bg-red-600 text-white',
+                                        'A' => 'bg-orange-500 text-white',
+                                        'S' => 'bg-primary text-white',
+                                        'C' => 'bg-purple-600 text-white',
+                                        'I' => 'bg-gray-500 text-white',
+                                        default => ''
                                     };
                                 ?>
-                                    <td class="px-4 py-4 align-top text-center border-l <?= $bgClass ?>">
-                                        <?php if (empty($roles[$role])): ?>
-                                            <span class="text-gray-300">-</span>
-                                        <?php else: ?>
-                                            <div class="flex flex-col gap-1 items-center">
-                                                <?php foreach ($roles[$role] as $name): ?>
-                                                    <div class="text-xs font-medium text-gray-700 bg-white border border-gray-200 px-2 py-1 rounded shadow-sm whitespace-nowrap">
-                                                        <?= htmlspecialchars($name) ?>
-                                                    </div>
-                                                <?php endforeach; ?>
+                                    <td class="px-2 py-4 align-middle text-center border-l border-gray-100 w-px">
+                                        <?php if ($role): ?>
+                                            <div class="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm <?= $roleColor ?> mx-auto shadow-sm ring-2 ring-white">
+                                                <?= $role ?>
                                             </div>
+                                        <?php else: ?>
+                                            <span class="text-gray-200">.</span>
                                         <?php endif; ?>
                                     </td>
                                 <?php endforeach; ?>
+
+                                <!-- Attachments -->
+                                <td class="px-6 py-4 align-top border-l border-gray-100 w-px whitespace-nowrap">
+                                    <div class="space-y-2">
+                                        <?php
+                                        $attachments = $summary['MilestoneAttachments'][$ms['id']] ?? [];
+                                        foreach ($attachments as $att): ?>
+                                            <div class="flex items-center justify-between group bg-gray-50 hover:bg-white p-1 rounded border border-gray-100 transition-all">
+                                                <a href="<?= htmlspecialchars($att['file_path']) ?>" target="_blank" class="flex items-center gap-2 min-w-0">
+                                                    <i class="ri-file-fill text-primary"></i>
+                                                    <span class="text-xs text-gray-600 truncate max-w-[70px]" title="<?= htmlspecialchars($att['file_name']) ?>">
+                                                        <?= htmlspecialchars($att['file_name']) ?>
+                                                    </span>
+                                                </a>
+                                                <?php if ($canEdit || $userRole === 'R'): ?>
+                                                    <button onclick="deleteAttachment(<?= $att['id'] ?>, <?= $ms['id'] ?>)" class="text-gray-400 hover:text-red-500 transition opacity-0 group-hover:opacity-100">
+                                                        <i class="ri-delete-bin-line"></i>
+                                                    </button>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endforeach; ?>
+
+                                        <?php if ($canEdit || $userRole === 'R'): ?>
+                                            <button onclick="triggerUpload(<?= $ms['id'] ?>)" class="w-full py-1.5 border-2 border-dashed border-gray-200 rounded-lg text-[10px] text-gray-400 font-bold hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-1">
+                                                <i class="ri-upload-2-line"></i> Upload
+                                            </button>
+                                            <input type="file" id="file-input-<?= $ms['id'] ?>" class="hidden" onchange="handleFileUpload(this, <?= $ms['id'] ?>)">
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -606,13 +640,16 @@ $userId = $_SESSION['user']['id'] ?? 0;
                             </div>
                         </div>
                     <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
 
-                    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-                    <script>
-                        function updateActivityStatus(id, currentStatus) {
-                            Swal.fire({
-                                title: 'Update Activity Status',
-                                html: `
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script>
+            function updateActivityStatus(id, currentStatus) {
+                Swal.fire({
+                    title: 'Update Activity Status',
+                    html: `
                 <div class="text-left space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">New Status</label>
@@ -631,50 +668,50 @@ $userId = $_SESSION['user']['id'] ?? 0;
                     </div>
                 </div>
             `,
-                                showCancelButton: true,
-                                confirmButtonText: 'Update Status',
-                                confirmButtonColor: '#2563eb',
-                                preConfirm: () => {
-                                    return {
-                                        status: document.getElementById('swal-act-status').value,
-                                        note: document.getElementById('swal-act-note').value
-                                    };
-                                }
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    const formData = new FormData();
-                                    formData.append('id', id);
-                                    formData.append('status', result.value.status);
-                                    formData.append('note', result.value.note);
+                    showCancelButton: true,
+                    confirmButtonText: 'Update Status',
+                    confirmButtonColor: '#2563eb',
+                    preConfirm: () => {
+                        return {
+                            status: document.getElementById('swal-act-status').value,
+                            note: document.getElementById('swal-act-note').value
+                        };
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const formData = new FormData();
+                        formData.append('id', id);
+                        formData.append('status', result.value.status);
+                        formData.append('note', result.value.note);
 
-                                    fetch('?action=change_activity_status', {
-                                            method: 'POST',
-                                            body: formData
-                                        })
-                                        .then(r => r.json())
-                                        .then(res => {
-                                            if (res.success) {
-                                                Swal.fire({
-                                                    icon: 'success',
-                                                    title: 'Updated!',
-                                                    timer: 1500,
-                                                    showConfirmButton: false
-                                                }).then(() => location.reload());
-                                            } else {
-                                                Swal.fire('Error', res.message || 'Failed to update', 'error');
-                                            }
-                                        })
-                                        .catch(err => {
-                                            Swal.fire('Error', 'Network error', 'error');
-                                        });
+                        fetch('?action=change_activity_status', {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(r => r.json())
+                            .then(res => {
+                                if (res.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Updated!',
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    }).then(() => location.reload());
+                                } else {
+                                    Swal.fire('Error', res.message || 'Failed to update', 'error');
                                 }
+                            })
+                            .catch(err => {
+                                Swal.fire('Error', 'Network error', 'error');
                             });
-                        }
+                    }
+                });
+            }
 
-                        function updateStatus(id, currentStatus, currentActualStartDate, currentActualEndDate) {
-                            Swal.fire({
-                                title: 'Update Milestone Status',
-                                html: `
+            function updateStatus(id, currentStatus, currentActualStartDate, currentActualEndDate) {
+                Swal.fire({
+                    title: 'Update Milestone Status',
+                    html: `
             <div class="text-left space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -704,60 +741,535 @@ $userId = $_SESSION['user']['id'] ?? 0;
                 <p class="text-xs text-gray-500 mt-1">Start required for In Progress. End required for Completed.</p>
             </div>
         `,
-                                showCancelButton: true,
-                                confirmButtonText: 'Update',
-                                confirmButtonColor: '#2563eb',
-                                preConfirm: () => {
-                                    const status = document.getElementById('swal-status').value;
-                                    const note = document.getElementById('swal-note').value;
-                                    const startDate = document.getElementById('swal-start-date').value;
-                                    const endDate = document.getElementById('swal-end-date').value;
+                    showCancelButton: true,
+                    confirmButtonText: 'Update',
+                    confirmButtonColor: '#2563eb',
+                    preConfirm: () => {
+                        const status = document.getElementById('swal-status').value;
+                        const note = document.getElementById('swal-note').value;
+                        const startDate = document.getElementById('swal-start-date').value;
+                        const endDate = document.getElementById('swal-end-date').value;
 
-                                    if (['in_progress'].includes(status) && !startDate) {
-                                        Swal.showValidationMessage('Actual Start Date is required for In Progress');
-                                        return false;
-                                    }
-                                    if (['completed', 'on_hold', 'proposed', 'cancelled'].includes(status) && !endDate) {
-                                        Swal.showValidationMessage('Actual End Date is required for this status');
-                                        return false;
-                                    }
-                                    return {
-                                        status,
-                                        note,
-                                        startDate,
-                                        endDate
-                                    };
+                        if (['in_progress'].includes(status) && !startDate) {
+                            Swal.showValidationMessage('Actual Start Date is required for In Progress');
+                            return false;
+                        }
+                        if (['completed', 'on_hold', 'proposed', 'cancelled'].includes(status) && !endDate) {
+                            Swal.showValidationMessage('Actual End Date is required for this status');
+                            return false;
+                        }
+                        return {
+                            status,
+                            note,
+                            startDate,
+                            endDate
+                        };
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const formData = new FormData();
+                        formData.append('id', id);
+                        formData.append('status', result.value.status);
+                        formData.append('note', result.value.note);
+                        formData.append('actual_start_date', result.value.startDate);
+                        formData.append('actual_end_date', result.value.endDate);
+
+                        fetch('?action=update_milestone_status', {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(r => r.json())
+                            .then(res => {
+                                if (res.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Updated!',
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    }).then(() => location.reload());
+                                } else {
+                                    Swal.fire('Error', res.message || 'Failed to update', 'error');
                                 }
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    const formData = new FormData();
-                                    formData.append('id', id);
-                                    formData.append('status', result.value.status);
-                                    formData.append('note', result.value.note);
-                                    formData.append('actual_start_date', result.value.startDate);
-                                    formData.append('actual_end_date', result.value.endDate);
+                            })
+                            .catch(err => {
+                                Swal.fire('Error', 'Network error', 'error');
+                            });
+                    }
+                });
+            }
+        </script>
+        <!-- Team Discussions / Activity Notes -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6 mb-12">
+            <div class="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800">Team Discussions / Activity Notes</h3>
+                    <p class="text-xs text-gray-500">Shared notes and collaboration for this activity.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold"><?= count($summary['Comments'] ?? []) ?> Comments</span>
+                </div>
+            </div>
 
-                                    fetch('?action=update_milestone_status', {
-                                            method: 'POST',
-                                            body: formData
-                                        })
-                                        .then(r => r.json())
-                                        .then(res => {
-                                            if (res.success) {
-                                                Swal.fire({
-                                                    icon: 'success',
-                                                    title: 'Updated!',
-                                                    timer: 1500,
-                                                    showConfirmButton: false
-                                                }).then(() => location.reload());
-                                            } else {
-                                                Swal.fire('Error', res.message || 'Failed to update', 'error');
-                                            }
-                                        })
-                                        .catch(err => {
-                                            Swal.fire('Error', 'Network error', 'error');
+            <div class="p-6">
+                <div id="comments-container" class="space-y-6 max-h-[500px] overflow-y-auto scrollbar-thin pr-2 mb-8">
+                    <?php if (empty($summary['Comments'])): ?>
+                        <div class="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                            <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm">
+                                <i class="ri-chat-voice-line text-2xl text-gray-300"></i>
+                            </div>
+                            <p class="text-gray-400 text-sm">No discussions yet. Start the conversation!</p>
+                        </div>
+                    <?php else: ?>
+                        <?php foreach ($summary['Comments'] as $comment): ?>
+                            <div class="flex gap-4 items-start">
+                                <div class="w-10 h-10 rounded-full bg-red-100 text-primary flex items-center justify-center font-bold shrink-0">
+                                    <?= strtoupper(substr($comment['user_name'] ?? 'U', 0, 1)) ?>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="font-bold text-gray-800 text-sm"><?= htmlspecialchars($comment['user_name']) ?></span>
+                                        <span class="text-[10px] text-gray-400"><?= date('M j, Y g:i A', strtotime($comment['created_at'])) ?></span>
+                                    </div>
+                                    <div class="text-gray-600 text-sm bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                        <?php
+                                        $commentHtml = htmlspecialchars($comment['comment_text']);
+                                        // Highlight @PersonName mentions (sort by length desc to avoid partial matches)
+                                        $people = $summary['InvolvedPeople'] ?? [];
+                                        $people['all'] = 'All Members'; // Add All Members support
+                                        uasort($people, function ($a, $b) {
+                                            return strlen($b) - strlen($a);
                                         });
+                                        foreach ($people as $uid => $pName) {
+                                            $escaped = htmlspecialchars($pName);
+                                            $commentHtml = str_replace(
+                                                '@' . $escaped,
+                                                '<span class="text-primary font-bold bg-red-50 px-1.5 py-0.5 rounded-md border border-red-100">@' . $escaped . '</span>',
+                                                $commentHtml
+                                            );
+                                        }
+                                        // Highlight #MilestoneName mentions (sort by length desc)
+                                        $milestones = $summary['Milestones'] ?? [];
+                                        usort($milestones, function ($a, $b) {
+                                            return strlen($b['name']) - strlen($a['name']);
+                                        });
+                                        foreach ($milestones as $ms) {
+                                            $escaped = htmlspecialchars($ms['name']);
+                                            $commentHtml = str_replace(
+                                                '#' . $escaped,
+                                                '<span class="text-green-700 font-bold bg-green-50 px-1.5 py-0.5 rounded-md border border-green-100">#' . $escaped . '</span>',
+                                                $commentHtml
+                                            );
+                                        }
+                                        echo nl2br($commentHtml);
+                                        ?>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Comment Input -->
+                <div class="flex gap-4 items-start border-t border-gray-100 pt-6">
+                    <div class="w-10 h-10 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold shrink-0">
+                        <i class="ri-user-line"></i>
+                    </div>
+                    <div class="flex-1 space-y-3">
+                        <div class="relative">
+                            <div id="comment-backdrop" class="absolute inset-0 px-4 py-3 text-sm pointer-events-none overflow-hidden whitespace-pre-wrap break-words border border-transparent rounded-xl" style="font-family: inherit; line-height: inherit;"></div>
+                            <textarea id="comment-text" rows="3" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition" style="background: transparent; color: transparent; caret-color: #333;" placeholder="Add a comment or note... (use @ to mention people, # for milestones)"></textarea>
+                            <!-- Mention Dropdown -->
+                            <div id="mention-dropdown" class="hidden absolute bottom-full left-0 mb-1 w-72 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto scrollbar-thin">
+                                <div id="mention-list" class="py-1"></div>
+                            </div>
+                        </div>
+                        <div class="flex justify-end">
+                            <button onclick="postComment(<?= $activity['id'] ?>)" class="px-6 py-2 bg-primary text-white rounded-lg font-bold hover:bg-primary-dark transition flex items-center gap-2">
+                                <i class="ri-send-plane-fill"></i> Post Comment
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // === Mention Data ===
+            <?php
+            // Prepare mention data in PHP to avoid JS syntax errors in IDE
+            $mentionPeople = ['all' => 'All Members'];
+            $currentUserId = $this->userId ?? 0;
+            foreach (($summary['InvolvedPeople'] ?? []) as $uid => $name) {
+                if ($uid != $currentUserId) {
+                    $mentionPeople[(string)$uid] = $name;
+                }
+            }
+            $mentionMilestones = [];
+            foreach (($summary['Milestones'] ?? []) as $ms) {
+                $mentionMilestones[(string)$ms['id']] = $ms['name'];
+            }
+            ?>
+            const mentionData = {
+                people: <?= json_encode($mentionPeople) ?>,
+                milestones: <?= json_encode($mentionMilestones) ?>
+            };
+
+            // === Mention Logic ===
+            (function() {
+                const textarea = document.getElementById('comment-text');
+                const dropdown = document.getElementById('mention-dropdown');
+                const listEl = document.getElementById('mention-list');
+                const backdrop = document.getElementById('comment-backdrop');
+                if (!textarea || !dropdown || !listEl) return;
+
+                let mentionMode = null; // '@' or '#'
+                let mentionStart = -1;
+
+                // Build name lists for highlighting (sort by length desc)
+                const peopleNames = Object.values(mentionData.people).sort((a, b) => b.length - a.length);
+                const msNames = Object.values(mentionData.milestones).sort((a, b) => b.length - a.length);
+
+                function highlightMentions() {
+                    if (!backdrop) return;
+                    let html = textarea.value
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;');
+                    // Highlight @PersonName
+                    peopleNames.forEach(name => {
+                        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        html = html.replace(new RegExp('@' + escaped, 'g'),
+                            '<span class="text-primary" style="background:rgba(239,68,68,0.12);border-radius:3px;">@' + name + '</span>');
+                    });
+                    // Highlight #MilestoneName
+                    msNames.forEach(name => {
+                        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        html = html.replace(new RegExp('#' + escaped, 'g'),
+                            '<span class="text-green-700" style="background:rgba(34,197,94,0.12);border-radius:3px;">#' + name + '</span>');
+                    });
+                    // Add trailing space so line breaks match
+                    backdrop.innerHTML = html + '\n';
+                }
+
+                textarea.addEventListener('input', function() {
+                    highlightMentions();
+                    const val = this.value;
+                    const pos = this.selectionStart;
+                    // Find the last trigger character before cursor
+                    let triggerPos = -1;
+                    let triggerChar = null;
+                    for (let i = pos - 1; i >= 0; i--) {
+                        if (val[i] === ' ' || val[i] === '\n') break;
+                        if (val[i] === '@' || val[i] === '#') {
+                            triggerPos = i;
+                            triggerChar = val[i];
+                            break;
+                        }
+                    }
+
+                    if (triggerPos >= 0) {
+                        mentionMode = triggerChar;
+                        mentionStart = triggerPos;
+                        const query = val.substring(triggerPos + 1, pos).toLowerCase();
+                        showMentionDropdown(query);
+                    } else {
+                        hideMentionDropdown();
+                    }
+                });
+
+                textarea.addEventListener('keydown', function(e) {
+                    // Atomic delete: Backspace removes entire mention at once
+                    if (e.key === 'Backspace') {
+                        const pos = this.selectionStart;
+                        const val = this.value;
+                        const allMentions = [];
+                        peopleNames.forEach(n => allMentions.push('@' + n));
+                        msNames.forEach(n => allMentions.push('#' + n));
+
+                        for (const mention of allMentions) {
+                            // Check if cursor is right after the mention (or inside it with trailing space)
+                            const beforeCursor = val.substring(0, pos);
+                            const mentionIdx = beforeCursor.lastIndexOf(mention);
+                            if (mentionIdx >= 0 && mentionIdx + mention.length >= pos - 1) {
+                                // Delete the entire mention
+                                e.preventDefault();
+                                const endPos = mentionIdx + mention.length;
+                                // Also remove trailing space if present
+                                const actualEnd = (val[endPos] === ' ') ? endPos + 1 : endPos;
+                                this.value = val.substring(0, mentionIdx) + val.substring(actualEnd);
+                                this.setSelectionRange(mentionIdx, mentionIdx);
+                                highlightMentions();
+                                return;
+                            }
+                        }
+                    }
+
+                    // Dropdown navigation
+                    if (dropdown.classList.contains('hidden')) return;
+                    if (e.key === 'Escape') {
+                        hideMentionDropdown();
+                        e.preventDefault();
+                    }
+                    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        const items = listEl.querySelectorAll('[data-mention-item]');
+                        if (!items.length) return;
+                        const active = listEl.querySelector('[data-active]');
+                        let idx = Array.from(items).indexOf(active);
+                        if (active) {
+                            active.removeAttribute('data-active');
+                            active.classList.remove('bg-red-50');
+                        }
+                        idx = e.key === 'ArrowDown' ? (idx + 1) % items.length : (idx - 1 + items.length) % items.length;
+                        items[idx].setAttribute('data-active', '');
+                        items[idx].classList.add('bg-red-50');
+                        items[idx].scrollIntoView({
+                            block: 'nearest'
+                        });
+                    }
+                    if (e.key === 'Enter') {
+                        const active = listEl.querySelector('[data-active]');
+                        if (active) {
+                            e.preventDefault();
+                            active.click();
+                        }
+                    }
+                });
+
+                document.addEventListener('click', function(e) {
+                    if (!dropdown.contains(e.target) && e.target !== textarea) {
+                        hideMentionDropdown();
+                    }
+                });
+
+                function showMentionDropdown(query) {
+                    listEl.innerHTML = '';
+                    let items = [];
+
+                    if (mentionMode === '@') {
+                        // Show people
+                        for (const [uid, name] of Object.entries(mentionData.people)) {
+                            if (!query || name.toLowerCase().includes(query)) {
+                                const isAll = uid === 'all';
+                                items.push({
+                                    type: 'person',
+                                    id: uid,
+                                    name: name,
+                                    icon: isAll ? 'ri-team-line' : 'ri-user-line',
+                                    color: isAll ? 'text-orange-600' : 'text-primary'
+                                });
+                            }
+                        }
+                        // Also show milestones with @ trigger
+                        for (const [msId, name] of Object.entries(mentionData.milestones)) {
+                            if (!query || name.toLowerCase().includes(query)) {
+                                items.push({
+                                    type: 'milestone',
+                                    id: msId,
+                                    name: name,
+                                    icon: 'ri-flag-line',
+                                    color: 'text-green-600'
+                                });
+                            }
+                        }
+                    } else if (mentionMode === '#') {
+                        // Show milestones only
+                        for (const [msId, name] of Object.entries(mentionData.milestones)) {
+                            if (!query || name.toLowerCase().includes(query)) {
+                                items.push({
+                                    type: 'milestone',
+                                    id: msId,
+                                    name: name,
+                                    icon: 'ri-flag-line',
+                                    color: 'text-green-600'
+                                });
+                            }
+                        }
+                    }
+
+                    if (items.length === 0) {
+                        listEl.innerHTML = '<div class="px-4 py-3 text-xs text-gray-400 text-center">No matches found</div>';
+                        dropdown.classList.remove('hidden');
+                        return;
+                    }
+
+                    // Add group headers
+                    const people = items.filter(i => i.type === 'person');
+                    const milestones = items.filter(i => i.type === 'milestone');
+
+                    if (people.length > 0) {
+                        listEl.innerHTML += '<div class="px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase bg-gray-50">👤 People</div>';
+                        people.forEach((item, idx) => {
+                            listEl.innerHTML += createMentionItem(item, idx === 0);
+                        });
+                    }
+                    if (milestones.length > 0) {
+                        listEl.innerHTML += '<div class="px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase bg-gray-50">📌 Milestones</div>';
+                        milestones.forEach(item => {
+                            listEl.innerHTML += createMentionItem(item, people.length === 0);
+                        });
+                    }
+
+                    // Attach click handlers
+                    listEl.querySelectorAll('[data-mention-item]').forEach(el => {
+                        el.addEventListener('click', function() {
+                            insertMention(this.dataset.type, this.dataset.id, this.dataset.name);
+                        });
+                        el.addEventListener('mouseenter', function() {
+                            listEl.querySelectorAll('[data-active]').forEach(e => {
+                                e.removeAttribute('data-active');
+                                e.classList.remove('bg-red-50');
+                            });
+                            this.setAttribute('data-active', '');
+                            this.classList.add('bg-red-50');
+                        });
+                    });
+
+                    dropdown.classList.remove('hidden');
+                }
+
+                function createMentionItem(item, isFirst) {
+                    return `<div data-mention-item data-type="${item.type}" data-id="${item.id}" data-name="${item.name}"
+                                    class="px-3 py-2 cursor-pointer hover:bg-gray-50 flex items-center gap-2 transition ${isFirst ? 'bg-red-50" data-active' : '"'}>
+                                    <i class="${item.icon} ${item.color}"></i>
+                                    <span class="text-sm text-gray-700">${item.name}</span>
+                                    <span class="text-[10px] text-gray-400 ml-auto">${item.type === 'person' ? 'Person' : 'Milestone'}</span>
+                                </div>`;
+                }
+
+                function insertMention(type, id, name) {
+                    const val = textarea.value;
+                    const prefix = type === 'person' ? '@' : '#';
+                    const syntax = `${prefix}${name} `;
+                    const before = val.substring(0, mentionStart);
+                    const after = val.substring(textarea.selectionStart);
+                    textarea.value = before + syntax + after;
+                    textarea.focus();
+                    const newPos = before.length + syntax.length;
+                    textarea.setSelectionRange(newPos, newPos);
+                    hideMentionDropdown();
+                    highlightMentions();
+                }
+
+                function hideMentionDropdown() {
+                    dropdown.classList.add('hidden');
+                    mentionMode = null;
+                    mentionStart = -1;
+                }
+            })();
+
+            // YearlyActivity Enhancements JS logic
+
+            function triggerUpload(msId) {
+                const input = document.getElementById('file-input-' + msId);
+                if (input) input.click();
+            }
+
+            function handleFileUpload(input, msId) {
+                if (!input.files || !input.files[0]) return;
+
+                const file = input.files[0];
+                const formData = new FormData();
+                formData.append('milestone_id', msId);
+                formData.append('file', file);
+
+                Swal.fire({
+                    title: 'Uploading...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                fetch('?action=upload_attachment', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Uploaded!',
+                                timer: 1000,
+                                showConfirmButton: false
+                            }).then(() => location.reload());
+                        } else {
+                            Swal.fire('Error', res.message || 'Upload failed', 'error');
+                        }
+                    })
+                    .catch(err => {
+                        Swal.fire('Error', 'Network error', 'error');
+                    });
+            }
+
+            function deleteAttachment(id, msId) {
+                Swal.fire({
+                    title: 'ยืนยันการลบไฟล์?',
+                    text: "ไฟล์จะถูกลบออกอย่างถาวรและไม่สามารถกู้คืนได้",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ef4444',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'ใช่, ลบเลย!',
+                    cancelButtonText: 'ยกเลิก'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const formData = new FormData();
+                        formData.append('id', id);
+                        fetch('?action=delete_attachment', {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(r => r.json())
+                            .then(res => {
+                                if (res.success) {
+                                    location.reload();
+                                } else {
+                                    Swal.fire('Error', res.message || 'Failed to delete', 'error');
                                 }
                             });
+                    }
+                });
+            }
+
+            function postComment(activityId) {
+                const textElem = document.getElementById('comment-text');
+                if (!textElem) return;
+                let text = textElem.value.trim();
+
+                if (!text) return;
+
+                // Format mentions: @Name -> @[Name](uid:ID)
+                if (typeof peopleNames !== 'undefined' && typeof mentionData !== 'undefined') {
+                    peopleNames.forEach(name => {
+                        const person = mentionData.people.find(p => p.name === name);
+                        if (person) {
+                            const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                            const regex = new RegExp('@' + escapedName + '(?![\\w\\s]*\\]\\(uid:)', 'g');
+                            text = text.replace(regex, `@[${name}](uid:${person.id})`);
                         }
-                    </script>
+                    });
+                }
+
+                const formData = new FormData();
+                formData.append('activity_id', activityId);
+                formData.append('comment_text', text);
+
+                fetch('?action=add_comment', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.success) {
+                            textElem.value = '';
+                            location.reload();
+                        } else {
+                            Swal.fire('Error', res.message || 'Failed to post comment', 'error');
+                        }
+                    });
+            }
+
+            // Ensure updateStatus uses the correct parameters
+            // Redefining just in case to be sure it's the latest version
+            const originalUpdateStatus = window.updateStatus;
+        </script>

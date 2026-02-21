@@ -300,7 +300,7 @@ try {
             background: white;
             border-radius: 16px;
             width: 100%;
-            max-width: 800px;
+            max-width: 1000px;
             max-height: 90vh;
             overflow-y: auto;
             position: relative;
@@ -309,6 +309,15 @@ try {
             flex-direction: column;
             gap: 16px;
             padding: 24px;
+            scrollbar-width: none;
+            /* Firefox */
+            -ms-overflow-style: none;
+            /* IE/Edge */
+        }
+
+        .news-detail-box::-webkit-scrollbar {
+            display: none;
+            /* Chrome, Safari, Opera */
         }
 
         .news-detail-header {
@@ -683,6 +692,13 @@ try {
                 </div>
 
                 <a href="#" class="forgot" data-i18n="login.forgot" onclick="openForgotPasswordModal(event)">Forgot Password ?</a>
+
+                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #f3f4f6; font-size: 0.75rem; color: #9ca3af; text-align: center; line-height: 1.5;">
+                    หากมีข้อผิดพลาด หรือไม่สามารถใช้งานได้<br>
+                    ติดต่อ: <span style="color: #4b5563; font-weight: 500;">นายปรเมศวร์ บัวศรี</span><br>
+                    (เจ้าหน้าที่วิเคราะห์ข้อมูลทรัพยากรมนุษย์)<br>
+                    <a href="mailto:porames_bua@inteqc.com" style="color: #A21D21; text-decoration: none;">porames_bua@inteqc.com</a> | 064-417-9612
+                </div>
             </form>
         </div>
     </div>

@@ -38,4 +38,5 @@ backups/
 # Large binaries
 tailwindcss.exe
 
-
+# Docker certificates
+docker/nginx/certs/

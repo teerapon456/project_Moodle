@@ -1195,9 +1195,9 @@ $profilePic = $user['profile_picture'] ?? null;
         }
 
         function showPreview(dataFromCache = null) {
-            const title = dataFromCache ? dataFromCache.title : document.getElementById('title').value;
-            const summary = dataFromCache ? dataFromCache.summary : document.getElementById('summary').value;
-            const content = dataFromCache ? dataFromCache.content : document.getElementById('content').value;
+            const title = dataFromCache ? dataFromCache.title : document.getElementById('title_th').value;
+            const summary = dataFromCache ? dataFromCache.summary : document.getElementById('summary_th').value;
+            const content = dataFromCache ? dataFromCache.content : document.getElementById('content_th').value;
             const status = dataFromCache ? dataFromCache.status : document.getElementById('status').value;
             const publishAt = dataFromCache ? dataFromCache.publish_at : document.getElementById('publish_at').value;
             const expireAt = dataFromCache ? dataFromCache.expire_at : document.getElementById('expire_at').value;

@@ -613,9 +613,12 @@ $statusLabels = [
             if (booking.fleet_amount) allocatedAsset += ' (' + Number(booking.fleet_amount).toLocaleString() + ' บาท)';
         }
 
-        let approver = booking.approver_email || '-';
+        let approver = booking.approver_name || booking.approver_email || '-';
         if (booking.supervisor_approved_by) {
-            approver += ` <span class="text-xs text-emerald-600">(${booking.supervisor_approved_by})</span>`;
+            let actualApprover = booking.supervisor_approved_name || booking.supervisor_approved_by;
+            let isMatch = (booking.supervisor_approved_by === booking.approver_email);
+            let colorClass = isMatch ? 'text-emerald-600' : 'text-red-500';
+            approver += ` <span class="text-xs ${colorClass}">(${actualApprover})</span>`;
         }
 
         content.innerHTML = `

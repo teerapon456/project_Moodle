@@ -450,6 +450,28 @@ if (isset($_GET['action'])) {
         exit;
     }
 
+    // Attachment Actions
+    if ($_REQUEST['action'] === 'upload_attachment') {
+        require_once __DIR__ . '/Controllers/ActivityController.php';
+        $controller = new ActivityController();
+        $controller->uploadAttachment();
+        exit;
+    }
+    if ($_REQUEST['action'] === 'delete_attachment') {
+        require_once __DIR__ . '/Controllers/ActivityController.php';
+        $controller = new ActivityController();
+        $controller->deleteAttachment();
+        exit;
+    }
+
+    // Comment Actions
+    if ($_REQUEST['action'] === 'add_comment') {
+        require_once __DIR__ . '/Controllers/ActivityController.php';
+        $controller = new ActivityController();
+        $controller->addComment();
+        exit;
+    }
+
     $viewPath = __DIR__ . "/Views/$page.php";
     if (file_exists($viewPath)) {
         include $viewPath;

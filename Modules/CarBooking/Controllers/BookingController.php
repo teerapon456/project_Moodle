@@ -105,8 +105,26 @@ class BookingController extends CBBaseController
             $driverEmail = $this->user['email'] ?? null;
         }
 
+        // Resolve driver ID from email if missing
+        if (!empty($inputDriverName) && empty($driverUserId)) {
+            if (!empty($data['driver_email'])) {
+                $resolvedId = $this->getUserIdByEmail($data['driver_email']);
+                if ($resolvedId) {
+                    $driverUserId = $resolvedId;
+                }
+            }
+        }
+
         // supervisor optional user id
         $approverUserId = $data['approver_user_id'] ?? null;
+
+        // Resolve approver ID from email if missing
+        if (empty($approverUserId) && !empty($data['approver_email'])) {
+            $resolvedAppId = $this->getUserIdByEmail($data['approver_email']);
+            if ($resolvedAppId) {
+                $approverUserId = $resolvedAppId;
+            }
+        }
 
         // passengers detail array -> json
         $passengerCount = 0;  // Default to 0 if no passengers
@@ -127,9 +145,9 @@ class BookingController extends CBBaseController
         $bookingData = [
             ':uid' => $this->user['id'],
             ':driver_uid' => $driverUserId,
-            ':driver_name' => $driverName,
-            ':driver_email' => $driverEmail,
-            ':approver_email' => trim($data['approver_email']),
+            // ':driver_name' => $driverName, // Removed: Column dropped
+            // ':driver_email' => $driverEmail, // Removed: Column dropped
+            // ':approver_email' => trim($data['approver_email']), // Removed: Column dropped
             ':approver_user_id' => $approverUserId ?: null,
             ':start_time' => $data['start_time'],
             ':end_time' => $data['end_time'],
@@ -234,11 +252,11 @@ class BookingController extends CBBaseController
     public function listMyPendingApprovals()
     {
         $this->requireAuth();
-        $email = $this->user['email'] ?? '';
-        if (empty($email)) {
+        $userId = $this->user['id'] ?? null;
+        if (empty($userId)) {
             return [];
         }
-        $bookings = $this->bookingModel->listPendingByApproverEmail($email);
+        $bookings = $this->bookingModel->listPendingByApproverId($userId);
         return $this->_populateDetails($bookings);
     }
 
@@ -431,7 +449,8 @@ class BookingController extends CBBaseController
             }
 
             $approverEmail = $this->user['email'] ?? $this->user['username'];
-            $this->bookingModel->supervisorApprove($bookingId, $approverEmail);
+            $approverId = $this->user['id'] ?? null;
+            $this->bookingModel->supervisorApprove($bookingId, $approverEmail, $approverId);
 
             // Log audit
             $this->logAudit('supervisor_approve', 'booking', $bookingId, ['status' => 'pending_supervisor'], ['status' => 'pending_manager']);
@@ -584,17 +603,15 @@ class BookingController extends CBBaseController
             UPDATE cb_bookings 
             SET status='approved', 
                 manager_approved_at=NOW(), 
-                manager_approved_by=:approver,
+                manager_approved_user_id=:approver_uid,
                 assigned_car_id=:car_id,
-                driver_name=:driver_name,
                 fleet_card_id=:fleet_card_id,
                 fleet_amount=:fleet_amount
             WHERE id=:id
         ");
         $stmt->execute([
-            ':approver' => $this->user['email'] ?? $this->user['username'],
+            ':approver_uid' => $this->user['id'],
             ':car_id' => $carId ?: null,
-            ':driver_name' => $driverName ?: null,
             ':fleet_card_id' => $fleetCardId ?: null,
             ':fleet_amount' => $fleetAmount ?: null,
             ':id' => $bookingId
@@ -716,11 +733,13 @@ class BookingController extends CBBaseController
             $updates[] = 'assigned_car_id = NULL';
         }
 
-        // Update driver name
+        // Update driver name - REMOVED as column is dropped
+        /*
         if (isset($data['driver_name'])) {
             $updates[] = 'driver_name = :driver_name';
             $params[':driver_name'] = $data['driver_name'];
         }
+        */
 
         if (empty($updates)) {
             return $this->jsonError('ไม่มีข้อมูลที่จะแก้ไข');
@@ -1081,7 +1100,7 @@ class BookingController extends CBBaseController
                 $this->notifyAfterSupervisorDecision($booking, true);
             } elseif ($type === 'rejection') {
                 // Rejection (by Supervisor or Manager)
-                $reason = $booking['reject_reason'] ?? '';
+                $reason = $booking['rejection_reason'] ?? '';
                 $requesterEmail = $booking['user_email'] ?? $booking['email'] ?? null;
                 $rejecterRole = ($booking['status'] === 'rejected' && $booking['manager_approved_at']) ? 'manager' : 'supervisor';
 

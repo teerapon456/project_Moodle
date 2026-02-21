@@ -249,6 +249,7 @@ class MicrosoftAuthController
         // Use the same rate limit logic as local login
         if (!SecureSession::checkRateLimit($msIdentifier, 5, 900, $userId, $displayName)) {
             $lockoutTime = SecureSession::getLockoutTime($msIdentifier, 5, 900);
+            $this->logActivity('login_failed', $userId, $displayName, null, null, 'Rate limit exceeded');
             $this->redirectToFrontend('error', 'Too many login attempts. Try again in ' . ceil($lockoutTime / 60) . ' minutes.');
             return;
         }
@@ -264,6 +265,7 @@ class MicrosoftAuthController
                 $lat = $_COOKIE['oauth_lat'] ?? null;
                 $lon = $_COOKIE['oauth_lon'] ?? null;
                 if (empty($lat) || empty($lon)) {
+                    $this->logActivity('login_failed', $userId, $displayName, null, null, 'Location required');
                     $this->redirectToFrontend('error', urlencode('กรุณาระบุตำแหน่งที่ตั้งก่อนเข้าสู่ระบบ (Location required)'));
                     return;
                 }
@@ -289,6 +291,7 @@ class MicrosoftAuthController
                 }
             }
             session_destroy();
+            $this->logActivity('login_failed', $user['id'], $user['fullname'] ?? $user['username'], null, null, 'User/Role inactive');
             $this->redirectToFrontend('error', 'role_inactive');
             return;
         }
@@ -302,6 +305,7 @@ class MicrosoftAuthController
                 }
             }
             session_destroy();
+            $this->logActivity('login_failed', $user['id'], $user['fullname'] ?? $user['username'], null, null, 'No portal permissions');
             $this->redirectToFrontend('error', 'no_permission');
             return;
         }
@@ -899,7 +903,7 @@ class MicrosoftAuthController
     /**
      * Log user activity to user_logins table
      */
-    private function logActivity($action, $userId = null, $userName = null, $latitude = null, $longitude = null)
+    private function logActivity($action, $userId = null, $userName = null, $latitude = null, $longitude = null, $details = null)
     {
         // User requested to only log 'login' actions
         if ($action === 'logout') {
@@ -914,8 +918,8 @@ class MicrosoftAuthController
                 INSERT INTO user_logins 
                 (user_id, user_name, action, ip_address, user_agent, 
                  device_type, device_brand, device_model, os_name, os_version, 
-                 client_type, client_name, client_version, latitude, longitude, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 client_type, client_name, client_version, latitude, longitude, details, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
             // Validate simple format if present
@@ -938,6 +942,7 @@ class MicrosoftAuthController
                 $detector->getClientVersion(),
                 $latitude,
                 $longitude,
+                $details,
                 date('Y-m-d H:i:s')
             ]);
         } catch (Exception $e) {

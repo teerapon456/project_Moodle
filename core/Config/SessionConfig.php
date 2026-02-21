@@ -18,7 +18,7 @@ if (session_status() === PHP_SESSION_NONE) {
         // Fallback to file system if Redis is not available
         $sessionPath = __DIR__ . '/../../storage/sessions';
         if (!is_dir($sessionPath)) {
-            mkdir($sessionPath, 0755, true);
+            @mkdir($sessionPath, 0755, true);
         }
         ini_set('session.save_handler', 'files');
         session_save_path($sessionPath);

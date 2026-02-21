@@ -6,7 +6,12 @@ date_default_timezone_set('Asia/Bangkok');
 
 // include ฟังก์ชันหลัก + autoload ของ Composer
 require_once __DIR__ . '/../../includes/functions.php';
-require_once __DIR__ . '/../../vendor/autoload.php';
+// Use Portal's vendor/autoload.php (root level) instead of IGA's own vendor
+if (file_exists('/var/www/html/vendor/autoload.php')) {
+    require_once '/var/www/html/vendor/autoload.php';
+} elseif (file_exists(__DIR__ . '/../../vendor/autoload.php')) {
+    require_once __DIR__ . '/../../vendor/autoload.php';
+}
 
 // ---------- ฟังก์ชัน helper กันเรียกไฟล์ตรง ----------
 if (!function_exists('thai_datetime_format')) {
@@ -114,7 +119,7 @@ try {
 
     // 1) ข้อมูลผู้ใช้
     $stmt = $conn->prepare("
-        SELECT u.full_name, u.email, r.role_name, lv.level_code,o.OrgCode,u.OrgUnitName,u.EmpType,u.OrgUnitTypeName
+        SELECT u.fullname, u.email, r.role_name, lv.level_code,o.OrgCode,u.OrgUnitName,u.EmpType,u.OrgUnitTypeName
         FROM users u
         LEFT JOIN roles r ON r.role_id = u.role_id
         LEFT JOIN emplevelcode lv ON lv.level_id = u.emplevel_id
@@ -524,7 +529,7 @@ ob_start();
                         </td>
 
                         <td class="label"><?php echo display_or_dash($user_info['OrgUnitTypeName'] ?? ''); ?>: </td>
-                        
+
                         <td class="value">
                             <?php echo display_or_dash($orgText ?: null); ?>
                         </td>

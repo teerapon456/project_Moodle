@@ -38,6 +38,21 @@ class AuthMiddleware
             AuthController::attemptAutoLogin();
         }
 
+        require_once __DIR__ . '/SecureSession.php';
+        // Auto-refresh session data every 5 minutes to prevent stale permissions
+        if (isset($_SESSION['user']['id'])) {
+            $lastSync = $_SESSION['last_sync'] ?? 0;
+            if (time() - $lastSync > 300) { // 5 minutes
+                // Assuming Database connection is available or we temporarily instantiate one
+                require_once __DIR__ . '/../Database/Database.php';
+                $db = new \Database();
+                $refreshedUser = SecureSession::refreshUserData($db->getConnection(), $_SESSION['user']['id']);
+                if (!$refreshedUser) {
+                    self::redirectToLogin($linkBase, 'role_inactive');
+                }
+            }
+        }
+
         $user = $_SESSION['user'] ?? null;
 
         if (!$user) {

@@ -41,9 +41,36 @@ class AuthController
             $this->clearRateLimit();
         } elseif ($method === 'POST' && $action === 'clear-all-rate-limits') {
             $this->clearAllRateLimits();
+        } elseif ($method === 'GET' && $action === 'refresh') {
+            $this->refreshSession();
         } else {
             http_response_code(400);
             echo json_encode(["message" => "Invalid request"]);
+        }
+    }
+
+    private function refreshSession()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            if (function_exists('startOptimizedSession')) {
+                startOptimizedSession();
+            } else {
+                session_start();
+            }
+        }
+
+        if (!isset($_SESSION['user']['id'])) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Not authenticated']);
+            return;
+        }
+
+        $refreshedUser = SecureSession::refreshUserData($this->conn, $_SESSION['user']['id']);
+        if ($refreshedUser) {
+            echo json_encode(['success' => true, 'user' => $refreshedUser]);
+        } else {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Session expired or privileges suspended']);
         }
     }
 

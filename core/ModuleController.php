@@ -33,6 +33,28 @@ class ModuleController extends BaseController
             session_start();
         }
 
+        require_once __DIR__ . '/Security/SecureSession.php';
+        // Auto-refresh session data every 5 minutes to prevent stale permissions
+        if (isset($_SESSION['user']['id'])) {
+            $lastSync = $_SESSION['last_sync'] ?? 0;
+            if (time() - $lastSync > 300) { // 5 minutes
+                $refreshedUser = SecureSession::refreshUserData($this->pdo, $_SESSION['user']['id']);
+                if (!$refreshedUser) {
+                    // Session was destroyed (user deleted or deactivated)
+                    http_response_code(401);
+                    $msg = 'เซสชันหมดอายุหรือสิทธิ์การใช้งานถูกระงับ กรุณาเข้าสู่ระบบใหม่';
+                    if (isset($_GET['ajax']) || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)) {
+                        echo json_encode(['success' => false, 'message' => $msg, 'error' => 'role_inactive']);
+                    } else {
+                        require_once __DIR__ . '/Config/Env.php';
+                        $basePath = rtrim(Env::get('APP_BASE_PATH', ''), '/');
+                        header("Location: " . $basePath . "/public/index.php?error=role_inactive");
+                    }
+                    exit;
+                }
+            }
+        }
+
         $this->user = $_SESSION['user'] ?? null;
 
         // 1. Identify Module (Sets moduleId, moduleCode, and EmailConfig context)

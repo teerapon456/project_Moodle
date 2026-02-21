@@ -296,4 +296,60 @@ class SecureSession
         }
         return $cleared;
     }
+
+    /**
+     * Refresh user session data from the database
+     * @param PDO|mysqli $db Connection object (PDO or mysqli)
+     * @param int $userId The user ID to refresh
+     * @return bool|array Returns updated user array or false if user not found/inactive
+     */
+    public static function refreshUserData($db, $userId)
+    {
+        try {
+            if (!$userId || !isset($_SESSION['user'])) return false;
+
+            // Handle both PDO and MySQLi connections for backward compatibility
+            $userData = null;
+            $sql = "SELECT u.id, u.username, u.email, u.role_id, u.is_active, 
+                           r.name as role_name, r.is_active as role_active, 
+                           u.Level3Name, u.fullname
+                    FROM users u
+                    LEFT JOIN roles r ON u.role_id = r.id
+                    WHERE u.id = ? LIMIT 1";
+
+            if ($db instanceof PDO) {
+                $stmt = $db->prepare($sql);
+                $stmt->execute([$userId]);
+                $userData = $stmt->fetch(PDO::FETCH_ASSOC);
+            } elseif ($db instanceof mysqli) {
+                $stmt = $db->prepare($sql);
+                $stmt->bind_param("i", $userId);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $userData = $result->fetch_assoc();
+            }
+
+            if ($userData) {
+                // Check if user or role was deactivated
+                if (!$userData['is_active'] || (isset($userData['role_active']) && !$userData['role_active'])) {
+                    self::destroy();
+                    return false;
+                }
+
+                // Update session preserving existing fields
+                $_SESSION['user'] = array_merge($_SESSION['user'], $userData);
+                $_SESSION['user']['department'] = $userData['Level3Name'] ?? null;
+                $_SESSION['last_sync'] = time();
+
+                return $_SESSION['user'];
+            } else {
+                // User deleted
+                self::destroy();
+                return false;
+            }
+        } catch (Exception $e) {
+            error_log("Session Refresh Error: " . $e->getMessage());
+            return false;
+        }
+    }
 }

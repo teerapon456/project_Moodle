@@ -10,6 +10,7 @@
         }
 
         .container {
+            background-color: #ffffff;
             background: #fff;
             border-radius: 8px;
             padding: 30px;

@@ -41,7 +41,17 @@
     <div class="container">
         <h2>คำขอของคุณถูกปฏิเสธ</h2>
         <p>เรียนคุณ <?= htmlspecialchars($userName) ?>,</p>
-        <p>คำขอ <strong><?= $type == 'move_in' ? 'ขอเข้าพัก' : ($type == 'move_out' ? 'ขอย้ายออก' : 'ขอย้ายห้อง') ?></strong> ของคุณไม่ผ่านการอนุมัติ</p>
+        <?php
+        $typeLabels = [
+            'move_in' => 'ขอเข้าพัก',
+            'move_out' => 'ขอย้ายออก',
+            'change_room' => 'ขอย้ายห้อง',
+            'add_relative' => 'ขอเพิ่มญาติ',
+            'remove_relative' => 'ขอนำญาติออก'
+        ];
+        $typeLabel = $typeLabels[$type] ?? 'หอพัก';
+        ?>
+        <p>คำขอ <strong><?= htmlspecialchars($typeLabel) ?></strong> ของคุณไม่ผ่านการอนุมัติ</p>
 
         <div class="details">
             <p><strong>เหตุผล:</strong></p>

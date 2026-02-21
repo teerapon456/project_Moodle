@@ -707,16 +707,31 @@ $maxRelatives = $maxRelativesResult ? (int)$maxRelativesResult : 5; // Default t
     function validateMoveOut() {
         let isValid = true;
 
-        // Validate move out date
-        const moveOutDate = document.querySelector('input[name="move_out_date"]');
-        if (!moveOutDate.value) {
-            showError(moveOutDate, 'กรุณาเลือกวันที่ต้องการย้ายออก');
-            isValid = false;
-        } else if (!isValidDate(moveOutDate.value)) {
-            showError(moveOutDate, 'วันที่ย้ายออกต้องไม่เป็นวันในอดีต');
-            isValid = false;
-        } else {
-            clearError(moveOutDate);
+        // Check if moving out relative only
+        const moveOutTypeChecked = document.querySelector('input[name="move_out_type"]:checked');
+        let requestTypeIsMoveOut = true;
+
+        if (moveOutTypeChecked && moveOutTypeChecked.value === 'relative') {
+            requestTypeIsMoveOut = false;
+            const selectedRelatives = document.querySelectorAll('input[name="remove_relatives[]"]:checked');
+            if (selectedRelatives.length === 0) {
+                showToast('กรุณาเลือกญาติที่ต้องการย้ายออกอย่างน้อย 1 คน', 'warning');
+                isValid = false;
+            }
+        }
+
+        if (requestTypeIsMoveOut) {
+            // Validate move out date for self
+            const moveOutDate = document.querySelector('input[name="move_out_date"]');
+            if (!moveOutDate.value) {
+                showError(moveOutDate, 'กรุณาเลือกวันที่ต้องการย้ายออก');
+                isValid = false;
+            } else if (!isValidDate(moveOutDate.value)) {
+                showError(moveOutDate, 'วันที่ย้ายออกต้องไม่เป็นวันในอดีต');
+                isValid = false;
+            } else {
+                clearError(moveOutDate);
+            }
         }
 
         // Validate reason

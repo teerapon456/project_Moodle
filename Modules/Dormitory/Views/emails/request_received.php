@@ -41,7 +41,17 @@
     <div class="container">
         <h2>ได้รับคำขอของคุณแล้ว</h2>
         <p>เรียนคุณ <?= htmlspecialchars($userName) ?>,</p>
-        <p>ระบบได้รับคำขอ <strong><?= $type == 'move_in' ? 'ขอเข้าพัก' : ($type == 'move_out' ? 'ขอย้ายออก' : 'ขอย้ายห้อง') ?></strong> ของคุณเรียบร้อยแล้ว</p>
+        <?php
+        $typeLabels = [
+            'move_in' => 'ขอเข้าพัก',
+            'move_out' => 'ขอย้ายออก',
+            'change_room' => 'ขอย้ายห้อง',
+            'add_relative' => 'ขอเพิ่มญาติ',
+            'remove_relative' => 'ขอนำญาติออก'
+        ];
+        $typeLabel = $typeLabels[$type] ?? 'หอพัก';
+        ?>
+        <p>ระบบได้รับคำขอ <strong><?= htmlspecialchars($typeLabel) ?></strong> ของคุณเรียบร้อยแล้ว</p>
 
         <div class="details">
             <p>สถานะปัจจุบัน: <strong>รอการตรวจสอบ (Pending)</strong></p>

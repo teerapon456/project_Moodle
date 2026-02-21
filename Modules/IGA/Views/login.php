@@ -213,11 +213,6 @@
             <form action="?page=login&action=check" method="POST" id="login-form">
                 <input type="hidden" name="user_type" id="user_type" value="employee">
 
-                <!-- Microsoft Login (Hidden by default or shown for Employee) -->
-                <!-- Note: The requested image didn't have MS button, but for functionality we might need it. 
-                     I'll hide it for now to match the image exactly, unless user asks for it. 
-                     Functionality via form login is prioritised. -->
-
                 <div class="mb-4">
                     <label class="block text-gray-700 text-sm font-bold mb-1">Username</label>
                     <div class="relative flex">
@@ -249,7 +244,6 @@
 
                     <div class="text-right text-xs">
                         <a href="#" class="block text-red-800 hover:underline mb-1">Forgot password?</a>
-                        <!-- <a href="#" class="block text-red-800 hover:underline">Forgot username?</a> -->
                     </div>
                 </div>
 

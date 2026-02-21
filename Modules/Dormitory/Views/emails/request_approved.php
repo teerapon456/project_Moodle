@@ -46,7 +46,17 @@
     <div class="container">
         <h2>คำขอของคุณได้รับการอนุมัติ</h2>
         <p>เรียนคุณ <?= htmlspecialchars($userName) ?>,</p>
-        <p>คำขอ <strong><?= $type == 'move_in' ? 'ขอเข้าพัก' : ($type == 'move_out' ? 'ขอย้ายออก' : 'ขอย้ายห้อง') ?></strong> ของคุณได้รับการอนุมัติแล้ว</p>
+        <?php
+        $typeLabels = [
+            'move_in' => 'ขอเข้าพัก',
+            'move_out' => 'ขอย้ายออก',
+            'change_room' => 'ขอย้ายห้อง',
+            'add_relative' => 'ขอเพิ่มญาติ',
+            'remove_relative' => 'ขอนำญาติออก'
+        ];
+        $typeLabel = $typeLabels[$type] ?? 'หอพัก';
+        ?>
+        <p>คำขอ <strong><?= htmlspecialchars($typeLabel) ?></strong> ของคุณได้รับการอนุมัติแล้ว</p>
 
         <div class="details">
             <p><strong>วันนัดรับกุญแจ/ดำเนินการ:</strong> <?= date('d/m/Y H:i', strtotime($keyDate)) ?></p>

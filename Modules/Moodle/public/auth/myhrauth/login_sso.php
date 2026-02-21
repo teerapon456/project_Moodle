@@ -87,6 +87,7 @@ try {
 
             // Sync password (direct DB update to avoid re-hashing)
             if (!empty($passwordHash)) {
+                global $DB;
                 $DB->set_field('user', 'password', $passwordHash, ['id' => $userObj->id]);
             }
         } else {
@@ -109,6 +110,7 @@ try {
 
             // Sync password (direct DB update to avoid re-hashing)
             if (!empty($passwordHash)) {
+                global $DB;
                 $DB->set_field('user', 'password', $passwordHash, ['id' => $userId]);
             }
         }

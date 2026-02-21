@@ -399,7 +399,7 @@ class ActivityModel
         $milestoneLogsMap = [];
         $milestoneAttachmentsMap = [];
 
-        foreach ($milestones as $ms) {
+        foreach ($milestones as &$ms) {
             $mid = $ms['id'];
 
             // Resources for Cost
@@ -419,8 +419,24 @@ class ActivityModel
                        ORDER BY l.changed_at ASC";
             $logStmt = $this->conn->prepare($logSql);
             $logStmt->execute([':mid' => $mid]);
-            $milestoneLogsMap[$mid] = $logStmt->fetchAll(PDO::FETCH_ASSOC);
+            $logs = $logStmt->fetchAll(PDO::FETCH_ASSOC);
+            $milestoneLogsMap[$mid] = $logs;
 
+            // Derive actual_start_date and actual_end_date from logs
+            $derivedStart = null;
+            $derivedEnd = null;
+            foreach ($logs as $l) {
+                if (!empty($l['actual_start_date'])) {
+                    $t = strtotime($l['actual_start_date']);
+                    if (!$derivedStart || $t < $derivedStart) $derivedStart = $t;
+                }
+                if (!empty($l['actual_end_date'])) {
+                    $t = strtotime($l['actual_end_date']);
+                    if (!$derivedEnd || $t > $derivedEnd) $derivedEnd = $t;
+                }
+            }
+            $ms['actual_start_date'] = $derivedStart ? date('Y-m-d H:i:s', $derivedStart) : null;
+            $ms['actual_end_date'] = $derivedEnd ? date('Y-m-d H:i:s', $derivedEnd) : null;
             // Attachments
             $attSql = "SELECT a.*, u.fullname as uploaded_by_name 
                        FROM ya_milestone_attachments a
@@ -431,6 +447,7 @@ class ActivityModel
             $attStmt->execute([':mid' => $mid]);
             $milestoneAttachmentsMap[$mid] = $attStmt->fetchAll(PDO::FETCH_ASSOC);
         }
+        unset($ms);
 
         return [
             'Activity' => $activity,

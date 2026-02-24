@@ -301,7 +301,7 @@ $userId = $_SESSION['user']['id'] ?? 0;
                                         $attachments = $summary['MilestoneAttachments'][$ms['id']] ?? [];
                                         foreach ($attachments as $att): ?>
                                             <div class="flex items-center justify-between group bg-gray-50 hover:bg-white p-1 rounded border border-gray-100 transition-all">
-                                                <a href="<?= htmlspecialchars($att['file_path']) ?>" target="_blank" class="flex items-center gap-2 min-w-0">
+                                                <a href="/<?= ltrim($att['file_path'], '/') ?>" target="_blank" class="flex items-center gap-2 min-w-0">
                                                     <i class="ri-file-fill text-primary"></i>
                                                     <span class="text-xs text-gray-600 truncate max-w-[70px]" title="<?= htmlspecialchars($att['file_name']) ?>">
                                                         <?= htmlspecialchars($att['file_name']) ?>
@@ -898,7 +898,7 @@ $userId = $_SESSION['user']['id'] ?? 0;
             <?php
             // Prepare mention data in PHP to avoid JS syntax errors in IDE
             $mentionPeople = ['all' => 'All Members'];
-            $currentUserId = $this->userId ?? 0;
+            $currentUserId = $userId ?? 0;
             foreach (($summary['InvolvedPeople'] ?? []) as $uid => $name) {
                 if ($uid != $currentUserId) {
                     $mentionPeople[(string)$uid] = $name;
@@ -1047,7 +1047,7 @@ $userId = $_SESSION['user']['id'] ?? 0;
                     let items = [];
 
                     if (mentionMode === '@') {
-                        // Show people
+                        // Show people ONLY
                         for (const [uid, name] of Object.entries(mentionData.people)) {
                             if (!query || name.toLowerCase().includes(query)) {
                                 const isAll = uid === 'all';
@@ -1060,20 +1060,8 @@ $userId = $_SESSION['user']['id'] ?? 0;
                                 });
                             }
                         }
-                        // Also show milestones with @ trigger
-                        for (const [msId, name] of Object.entries(mentionData.milestones)) {
-                            if (!query || name.toLowerCase().includes(query)) {
-                                items.push({
-                                    type: 'milestone',
-                                    id: msId,
-                                    name: name,
-                                    icon: 'ri-flag-line',
-                                    color: 'text-green-600'
-                                });
-                            }
-                        }
                     } else if (mentionMode === '#') {
-                        // Show milestones only
+                        // Show milestones ONLY
                         for (const [msId, name] of Object.entries(mentionData.milestones)) {
                             if (!query || name.toLowerCase().includes(query)) {
                                 items.push({
@@ -1105,8 +1093,8 @@ $userId = $_SESSION['user']['id'] ?? 0;
                     }
                     if (milestones.length > 0) {
                         listEl.innerHTML += '<div class="px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase bg-gray-50">📌 Milestones</div>';
-                        milestones.forEach(item => {
-                            listEl.innerHTML += createMentionItem(item, people.length === 0);
+                        milestones.forEach((item, idx) => {
+                            listEl.innerHTML += createMentionItem(item, people.length === 0 && idx === 0);
                         });
                     }
 

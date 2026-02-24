@@ -112,7 +112,14 @@ function checkManagerPermission($canView, $canManage, $module = 'โมดูล
  */
 function userHasModuleAccess($moduleCode, $roleId, $conn = null)
 {
-    $defaultPerms = ['can_view' => false, 'can_edit' => false, 'can_delete' => false, 'can_manage' => false];
+    $defaultPerms = [
+        'can_view' => false,
+        'can_edit' => false,
+        'can_delete' => false,
+        'can_manage' => false,
+        'data_scope' => 'all',
+        'allowed_departments' => null
+    ];
 
     try {
         if (!$conn) {
@@ -124,7 +131,9 @@ function userHasModuleAccess($moduleCode, $roleId, $conn = null)
         $sql = "SELECT COALESCE(p.can_view, 0) as can_view, 
                        COALESCE(p.can_edit, 0) as can_edit, 
                        COALESCE(p.can_delete, 0) as can_delete, 
-                       COALESCE(p.can_manage, 0) as can_manage 
+                       COALESCE(p.can_manage, 0) as can_manage,
+                       COALESCE(p.data_scope, 'all') as data_scope,
+                       p.allowed_departments 
                 FROM core_modules cm 
                 LEFT JOIN core_module_permissions p ON p.module_id = cm.id AND p.role_id = :role_id 
                 WHERE cm.code = :code LIMIT 1";
@@ -134,6 +143,13 @@ function userHasModuleAccess($moduleCode, $roleId, $conn = null)
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: $defaultPerms;
     } catch (Exception $e) {
+        if (ini_get('display_errors')) {
+            echo "<!-- Module Access Error: " . htmlspecialchars($e->getMessage()) . " -->";
+            // Also try to output to screen if not in a buffer
+            if (ob_get_level() == 0) {
+                echo "<div style='color:red; border:1px solid red; padding:10px;'>Permission Error: " . htmlspecialchars($e->getMessage()) . "</div>";
+            }
+        }
         return $defaultPerms;
     }
 }

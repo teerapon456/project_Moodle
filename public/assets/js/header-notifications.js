@@ -272,61 +272,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function formatTime(datetime) {
         if (!datetime) return '';
-        // MySQL returns 'YYYY-MM-DD HH:MM:SS' which new Date() often treats as UTC if no 'T' or 'Z'
-        // If the server is in UTC+7 and returns "2024-02-12 10:00:00", new Date("...") might treat it as UTC.
-        // If the browser is also UTC+7, new Date("2024-02-12 10:00:00") might work if it parses as local.
-        // However, Safari/some browsers fail on space. Replace with T is safer.
 
-        // Fix: Treat server time as potentially same-zone or force logic.
-        // Better approach: Calculate diff based on timestamps explicitly.
-
-        // Convert SQL format to compatible string
-        const t = datetime.split(/[- :]/);
-        // Apply to Date.UTC? No, that assumes input is UTC.
-        // If input "10:00" is actually Thailand time, and we are in Thailand.
+        // The datetime from DB is likely already in local time (e.g. UTC+7)
+        // If we append 'Z', JS treats it as UTC, and when converted back to local, it adds 7 hours.
+        // E.g. DB stores 13:49 (Thai time). We add 'Z' -> 13:49 UTC -> 20:49 Thai time.
+        // Then (now(13:54) - 20:49) = -7 hours difference!
+        // So we should just parse it directly, assuming the server and client are in the same timezone context.
 
         let date = new Date(datetime.replace(' ', 'T'));
-        // If invalid, try raw
         if (isNaN(date.getTime())) {
             date = new Date(datetime);
         }
 
-        // Adjust for timezone offset if strictly necessary? 
-        // The issue "7 hours ago" suggests:
-        // System time: 17:00. Notification time: 10:00 (stored as UTC? or treated as such).
-        // If server stored NOW() as 17:00 (UTC+7). Return "17:00".
-        // JS new Date("17:00") -> treated as Local 17:00 -> Diff 0. Correct.
-        // JS new Date("17:00Z") -> treated as UTC 17:00 -> Local 00:00 (Next day) -> Diff negative.
-        // Wait, "7 hours ago" means notification is OLDER than now.
-        // If Now is 17:00. Notification is 10:00.
-        // If server is UTC, it stores 10:00. Returns 10:00.
-        // JS sees 10:00. Diff = 7 hours.
-        // So the Server is storing UTC, but displaying as if it was local time?
-        // OR Server stores Local (17:00), sends "17:00". JS treats "17:00" as UTC (17:00 UTC = 24:00 Thai). Wait.
-
-        // Let's rely on a simpler "Time Ago" that ignores timezone shifts if possible, or forces local interpretation.
-        // User says "Time zone is wrong" (likely showing 7 hours ago when it just happened).
-        // This usually happens when Server sends "YYYY-MM-DD HH:mm:ss" (UTC time) and JS parses it as Local time? No.
-        // It happens when Server sends UTC "10:00", User is "17:00". JS parses "10:00" as local 10:00? No.
-
-        // Most likely: Database stores UTC. PHP returns UTC string "10:00".
-        // User is GMT+7. "now" is 17:00.
-        // JS parses "10:00" as generic date.
-        // Diff = 17:00 - 10:00 = 7 hours.
-        // Fix: Treat the incoming string as UTC by appending 'Z', then JS converts to local (17:00) -> Diff 0.
-
-        // Try appending Z if missing
-        if (!datetime.includes('Z') && !datetime.includes('+')) {
-            date = new Date(datetime.replace(' ', 'T') + 'Z');
-        } else {
-            date = new Date(datetime);
-        }
-
         const now = new Date();
-        const diff = (now - date) / 1000; // seconds
+        let diff = (now - date) / 1000; // seconds
 
-        // If diff is negative (future), it means our 'Z' fix might have been wrong (server was already local).
-        // Or clocks slightly off.
+        // If diff is negative, it could be a slight clock sync drift or timezone confusion
+        // Treat anything in the future as "Just now" (0 seconds ago)
+        if (diff < 0) {
+            diff = 0;
+        }
 
         if (diff < 60) return 'เมื่อสักครู่';
         if (diff < 3600) return Math.floor(diff / 60) + ' นาทีที่แล้ว';
@@ -349,6 +314,25 @@ document.addEventListener('DOMContentLoaded', () => {
         .bell-bounce {
             animation: bellBounce 0.6s ease-in-out;
             transform-origin: center top;
+        }
+
+        /* Slim Scrollbar for Notification List */
+        #notification-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        #notification-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #notification-list::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 10px;
+        }
+        #notification-list::-webkit-scrollbar-thumb:hover {
+            background-color: #94a3b8;
+        }
+        #notification-list {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 transparent;
         }
     `;
     document.head.appendChild(style);

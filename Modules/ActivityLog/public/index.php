@@ -565,17 +565,17 @@ if (empty($activityPerm['can_view'])) {
                 if (data.success && data.data.length > 0) {
                     tbody.innerHTML = data.data.map(a => `
                         <tr class="hover:bg-gray-50">
-                            <td class="px-4 py-3 text-sm text-gray-600">${formatDateTime(a.created_at)}</td>
-                            <td class="px-4 py-3 font-medium text-gray-900">
-                                <span>${escapeHtml(a.user_name)}</span>
+                            <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">${formatDateTime(a.created_at)}</td>
+                            <td class="px-4 py-3 font-medium text-gray-900 max-w-[150px] md:max-w-[250px] truncate" title="${escapeHtml(a.user_name)}">
+                                ${escapeHtml(a.user_name)}
                             </td>
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3 whitespace-nowrap">
                                 <span class="px-2 py-1 rounded-full text-xs font-medium ${getActionClass(a.action)}">${getActionLabel(a.action)}</span>
-                                ${a.action === 'login_failed' && a.details ? `<div class="text-[11px] text-red-500 mt-1 font-medium">${escapeHtml(a.details)}</div>` : ''}
+                                ${a.action === 'login_failed' && a.details ? `<div class="text-[11px] text-red-500 mt-1 font-medium truncate max-w-[200px]" title="${escapeHtml(a.details)}">${escapeHtml(a.details)}</div>` : ''}
                             </td>
-                            <td class="px-4 py-3 text-sm text-gray-500">
+                            <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                                 <div class="flex items-center gap-4">
-                                    <span class="inline-block w-[110px] font-mono text-gray-600 font-medium">${a.ip_address || '-'}</span>
+                                    <span class="inline-block w-[110px] font-mono text-gray-600 font-medium truncate" title="${a.ip_address || ''}">${a.ip_address || '-'}</span>
                                     <div class="flex items-center gap-1.5">
                                         <div class="w-7 h-7 flex items-center justify-center">${getDeviceIcon(a)}</div>
                                         <div class="w-7 h-7 flex items-center justify-center">${getLocationLink(a.latitude, a.longitude)}</div>

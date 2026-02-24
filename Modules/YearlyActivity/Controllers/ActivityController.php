@@ -750,28 +750,25 @@ class ActivityController
 
         $id = $this->activityModel->addComment($data);
         if ($id) {
-            // Check for mentions and notify
-            // Pattern: @[Name](uid:ID)
-            preg_match_all('/@\[(.*?)\]\(uid:(.*?)\)/', $text, $matches, PREG_SET_ORDER);
-
             $mentionedUserIds = [];
             $allMembersMentioned = false;
 
-            foreach ($matches as $match) {
-                // $match[0] = full string, $match[1] = Name, $match[2] = ID
-                $uid = $match[2];
-                if ($uid === 'all') {
-                    $allMembersMentioned = true;
-                } elseif (is_numeric($uid)) {
+            // Fetch summary first to map names to IDs
+            $summary = $this->activityModel->get5w2hSummary($activityId);
+            $involvedPeople = $summary['InvolvedPeople'] ?? [];
+
+            // Check for @All Members
+            if (stripos($text, '@All Members') !== false) {
+                $allMembersMentioned = true;
+                foreach ($involvedPeople as $uid => $name) {
                     $mentionedUserIds[] = (int)$uid;
                 }
-            }
-
-            // If @All Members, fetch all involved people
-            if ($allMembersMentioned) {
-                $summary = $this->activityModel->get5w2hSummary($activityId);
-                if (!empty($summary['InvolvedPeople'])) {
-                    foreach ($summary['InvolvedPeople'] as $uid => $name) {
+            } else {
+                // Parse individual @Name mentions
+                foreach ($involvedPeople as $uid => $name) {
+                    // Check if "@Name" exists in the text. Add boundary checks or simple string pos
+                    $searchName = '@' . $name;
+                    if (stripos($text, $searchName) !== false) {
                         $mentionedUserIds[] = (int)$uid;
                     }
                 }
@@ -779,10 +776,10 @@ class ActivityController
 
             // Unique and exclude self
             $mentionedUserIds = array_unique($mentionedUserIds);
-            $currentUser = $_SESSION['user']['fullname'] ?? 'Someone';
-            $link = "Modules/YearlyActivity/index.php?page=summary_5w2h&id={$activityId}";
 
             require_once __DIR__ . '/../../../core/Services/NotificationService.php';
+            $currentUser = $_SESSION['user']['fullname'] ?? 'Someone';
+            $link = "Modules/YearlyActivity/index.php?page=summary_5w2h&id={$activityId}";
 
             foreach ($mentionedUserIds as $targetUid) {
                 if ($targetUid == $this->userId) continue;

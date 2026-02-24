@@ -183,9 +183,16 @@ class ActivityModel
      */
     public function getById($id)
     {
-        $sql = "SELECT a.*, u.fullname as key_person_name 
+        $sql = "SELECT a.*, 
+                u.fullname as key_person_name,
+                c.owner_id as calendar_owner_id,
+                co.fullname as calendar_owner_name,
+                cb.fullname as created_by_name
                 FROM ya_activities a
                 LEFT JOIN users u ON a.key_person_id = u.id
+                LEFT JOIN ya_calendars c ON a.calendar_id = c.id
+                LEFT JOIN users co ON c.owner_id = co.id
+                LEFT JOIN users cb ON a.created_by = cb.id
                 WHERE a.id = :id";
         $stmt = $this->conn->prepare($sql);
         $stmt->bindParam(':id', $id);
@@ -387,6 +394,34 @@ class ActivityModel
         $involvedPeople = [];
         $milestoneRoleMatrix = [];
         $rasciByMs = [];
+
+        // Add activity key person (owner)
+        if (!empty($activity['key_person_id'])) {
+            $involvedPeople[$activity['key_person_id']] = $activity['key_person_name'] ?? 'Owner';
+        }
+        // Add activity creator
+        if (!empty($activity['created_by'])) {
+            $involvedPeople[$activity['created_by']] = $activity['created_by_name'] ?? 'Creator';
+        }
+        // Add calendar owner
+        if (!empty($activity['calendar_owner_id'])) {
+            $involvedPeople[$activity['calendar_owner_id']] = $activity['calendar_owner_name'] ?? 'Calendar Owner';
+        }
+
+        // Add calendar members
+        if (!empty($activity['calendar_id'])) {
+            $cmSql = "SELECT cm.user_id, u.fullname 
+                      FROM ya_calendar_members cm
+                      JOIN users u ON cm.user_id = u.id
+                      WHERE cm.calendar_id = :calendar_id";
+            $cmStmt = $this->conn->prepare($cmSql);
+            $cmStmt->execute([':calendar_id' => $activity['calendar_id']]);
+            $calMembers = $cmStmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($calMembers as $cm) {
+                $involvedPeople[$cm['user_id']] = $cm['fullname'];
+            }
+        }
+
         foreach ($rascis as $r) {
             $involvedPeople[$r['user_id']] = $r['fullname'];
             $milestoneRoleMatrix[$r['milestone_id']][$r['user_id']] = $r['role'];

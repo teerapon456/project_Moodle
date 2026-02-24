@@ -332,6 +332,14 @@ if (isset($_GET['action'])) {
         exit;
     }
 
+    if ($_GET['action'] === 'search_employee') {
+        require_once __DIR__ . '/../../core/Services/UserSearchService.php';
+        $query = $_GET['query'] ?? '';
+        header('Content-Type: application/json');
+        echo json_encode(UserSearchService::searchEmployee($query));
+        exit;
+    }
+
     // Activity Wizard Actions
     if ($_REQUEST['action'] === 'save_wizard') {
         require_once __DIR__ . '/Controllers/ActivityController.php';
@@ -537,21 +545,23 @@ if (isset($_GET['action'])) {
 
                 <!-- Notification Bell -->
                 <div class="relative" id="notif-container">
-                    <button onclick="toggleNotifications()" class="relative p-2 bg-white/10 hover:bg-white/20 rounded-lg transition">
+                    <button id="notification-bell" class="relative p-2 bg-white/10 hover:bg-white/20 rounded-lg transition">
                         <i class="ri-notification-3-line text-xl"></i>
                         <?php if ($unreadCount > 0): ?>
-                            <span class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                            <span id="notification-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
                                 <?= $unreadCount > 9 ? '9+' : $unreadCount ?>
                             </span>
+                        <?php else: ?>
+                            <span id="notification-badge" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">0</span>
                         <?php endif; ?>
                     </button>
                     <!-- Notification Dropdown -->
-                    <div id="notif-dropdown" class="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 hidden z-50 overflow-hidden">
+                    <div id="notification-dropdown" class="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 hidden z-50 overflow-hidden">
                         <div class="p-4 border-b border-gray-100 flex justify-between items-center">
                             <h3 class="font-bold text-gray-800">Notifications</h3>
-                            <button onclick="markAllRead()" class="text-xs text-primary hover:underline">Mark all read</button>
+                            <button id="mark-all-read-btn" class="text-xs text-primary hover:underline">Mark all read</button>
                         </div>
-                        <div class="max-h-80 overflow-y-auto">
+                        <div id="notification-list" class="max-h-80 overflow-y-auto">
                             <?php if (empty($notifications)): ?>
                                 <div class="p-8 text-center text-gray-400">
                                     <i class="ri-notification-off-line text-3xl mb-2"></i>
@@ -562,9 +572,10 @@ if (isset($_GET['action'])) {
                                     $iconMap = ['info' => 'ri-information-line text-blue-500', 'success' => 'ri-check-line text-green-500', 'warning' => 'ri-alert-line text-orange-500', 'error' => 'ri-error-warning-line text-red-500'];
                                     $icon = $iconMap[$notif['type']] ?? $iconMap['info'];
                                 ?>
-                                    <a href="<?= $notif['link'] ?: '#' ?>"
-                                        onclick="markAsRead(<?= $notif['id'] ?>)"
-                                        class="block p-4 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 <?= $notif['is_read'] ? 'opacity-60' : '' ?>">
+                                    <div class="notification-item block p-4 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 <?= $notif['is_read'] ? 'opacity-60' : '' ?>"
+                                        data-id="<?= $notif['id'] ?>"
+                                        onclick="handleNotificationClick('<?= $baseRoot . '/' . ltrim($notif['link'] ?: '#', '/') ?>', event)"
+                                        style="cursor: pointer;">
                                         <div class="flex gap-3">
                                             <i class="<?= $icon ?> text-xl mt-0.5"></i>
                                             <div class="flex-1 min-w-0">
@@ -576,7 +587,7 @@ if (isset($_GET['action'])) {
                                                 <span class="w-2 h-2 bg-blue-500 rounded-full mt-2"></span>
                                             <?php endif; ?>
                                         </div>
-                                    </a>
+                                    </div>
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </div>
@@ -590,23 +601,10 @@ if (isset($_GET['action'])) {
         </div>
     </header>
     <script>
-        function toggleNotifications() {
-            document.getElementById('notif-dropdown').classList.toggle('hidden');
-        }
-
-        function markAsRead(id) {
-            fetch('?action=mark_read&notif_id=' + id);
-        }
-
-        function markAllRead() {
-            fetch('?action=mark_all_read').then(() => location.reload());
-        }
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('#notif-container')) {
-                document.getElementById('notif-dropdown').classList.add('hidden');
-            }
-        });
+        window.APP_BASE_PATH = '<?= $baseRoot ?>';
+        window.ASSET_BASE = '<?= $assetBase ?>';
     </script>
+    <script src="<?= $assetBase ?>assets/js/header-notifications.js"></script>
 
     <!-- Module Navigation -->
     <nav class="bg-white shadow-sm sticky top-0 z-40">

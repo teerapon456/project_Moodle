@@ -99,7 +99,7 @@ $uri = explode('/', $uri);
 
 // Remove /api/ prefix if present and find the resource
 $resourceIndex = 0;
-$validResources = ['auth', 'bookings', 'cars', 'settings', 'users', 'dashboard', 'pdf', 'reports', 'email_logs', 'approval', 'fleetcards', 'modules', 'hrnews', 'dormitory', 'dorm', 'permissions', 'notifications', 'activity', 'scheduled_reports', 'yearlyactivity', 'sso'];
+$validResources = ['auth', 'bookings', 'cars', 'settings', 'users', 'dashboard', 'pdf', 'reports', 'email_logs', 'approval', 'fleetcards', 'modules', 'hrnews', 'dormitory', 'dorm', 'permissions', 'notifications', 'activity', 'scheduled_reports', 'yearlyactivity', 'sso', 'employees'];
 // Remove empty segments and find resource
 $cleanUri = array_values(array_filter($uri, function ($segment) {
     return $segment !== '' && $segment !== 'api';
@@ -211,6 +211,11 @@ if (isset($resource)) {
             $controller->processRequest();
             break;
         case 'permissions':
+            include_once __DIR__ . '/Modules/PermissionManagement/Controllers/PermissionController.php';
+            $controller = new PermissionController();
+            $controller->processRequest();
+            break;
+        case 'employees':
             include_once __DIR__ . '/Modules/PermissionManagement/Controllers/PermissionController.php';
             $controller = new PermissionController();
             $controller->processRequest();

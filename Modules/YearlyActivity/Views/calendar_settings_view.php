@@ -53,28 +53,42 @@
         <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-50">
             <h2 class="text-lg font-bold text-gray-800">Members & Permissions</h2>
             <span class="text-xs bg-red-50 text-primary px-2 py-1 rounded-full"><?= count($members) + 1 // +1 for owner 
-                                                                                        ?> users</span>
+                                                                                ?> users</span>
         </div>
 
         <!-- Add Member Form -->
         <!-- Add Member Form -->
-        <form action="?action=add_member" method="POST" class="bg-gray-50 p-4 rounded-xl mb-6 grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+        <form action="?action=add_member" method="POST" id="addMemberForm" class="bg-gray-50 p-4 rounded-xl mb-6 grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
             <input type="hidden" name="calendar_id" value="<?= $calendar['id'] ?>">
+            <input type="hidden" name="user_id" id="memberUserId" value="">
+            <input type="hidden" name="email" id="memberEmail" value="">
+
             <div class="md:col-span-6">
-                <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">User Email</label>
-                <input type="email" name="email" required placeholder="colleague@example.com"
-                    class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary outline-none">
+                <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Search User <span class="text-red-500">*</span></label>
+
+                <div id="selectedMember" class="hidden flex items-center gap-3 px-3 py-2 bg-white border border-gray-200 rounded-lg">
+                    <i class="ri-user-line text-primary"></i>
+                    <span id="memberDisplayName" class="text-sm font-medium"></span>
+                    <button type="button" class="ml-auto text-gray-400 hover:text-red-500" onclick="clearMember()">&times;</button>
+                </div>
+
+                <div class="relative" id="memberSearchContainer">
+                    <input type="text" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary outline-none" id="memberSearch" placeholder="Search by name or email..." autocomplete="off" oninput="searchMember(this.value)">
+                    <div id="memberResults" class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50 hidden"></div>
+                </div>
             </div>
+
             <div class="md:col-span-3">
-                <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Role</label>
-                <select name="role" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary outline-none bg-white">
+                <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Role <span class="text-red-500">*</span></label>
+                <select name="role" id="memberRole" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary outline-none bg-white">
                     <option value="viewer">Viewer</option>
                     <option value="editor">Editor</option>
                     <option value="admin">Admin</option>
                 </select>
             </div>
+
             <div class="md:col-span-3">
-                <button type="submit" class="w-full px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition font-medium whitespace-nowrap flex justify-center items-center">
+                <button type="button" onclick="submitAddMember()" class="w-full px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition font-medium whitespace-nowrap flex justify-center items-center">
                     <i class="ri-user-add-line mr-2"></i> Add Member
                 </button>
             </div>
@@ -200,4 +214,100 @@
         });
         return false;
     }
+</script>
+
+<script>
+    <?php
+    $memberEmails = [];
+    if (!empty($calendar['owner_email'])) {
+        $memberEmails[] = $calendar['owner_email'];
+    }
+    foreach ($members as $m) {
+        $memberEmails[] = $m['email'];
+    }
+    ?>
+    const existingMemberEmails = <?= json_encode($memberEmails) ?>;
+
+    let selectedMember = null;
+    let searchTimeout;
+
+    async function searchMember(query) {
+        clearTimeout(searchTimeout);
+        const resultsDiv = document.getElementById('memberResults');
+        if (!query || query.length < 2) {
+            resultsDiv.classList.add('hidden');
+            return;
+        }
+
+        searchTimeout = setTimeout(async () => {
+            try {
+                const response = await fetch(`?action=search_employee&query=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                if (data.success && Array.isArray(data.users) && data.users.length > 0) {
+                    resultsDiv.innerHTML = data.users.map(emp => {
+                        const isAdded = existingMemberEmails.includes(emp.email);
+                        const disabledClass = isAdded ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:bg-gray-50 cursor-pointer';
+                        const clickHandler = isAdded ? '' : `onclick='selectMember(${JSON.stringify(emp)})'`;
+                        const statusBadge = isAdded ? '<span class="text-[10px] px-2 py-0.5 rounded bg-red-100 text-red-600 font-bold ml-2">Added</span>' : '';
+
+                        return `
+                        <div class="flex items-center gap-3 p-3 border-b border-gray-100 last:border-b-0 ${disabledClass}" ${clickHandler}>
+                            <div class="w-8 h-8 bg-gradient-to-br from-primary to-red-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">${(emp.name || '?').charAt(0)}</div>
+                            <div class="flex-1">
+                                <div class="font-medium text-gray-900">${emp.name || emp.email} ${statusBadge}</div>
+                                <div class="text-xs text-gray-500">${emp.email}</div>
+                            </div>
+                            <span class="text-xs px-2 py-1 rounded ${emp.source === 'microsoft' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}">${emp.source === 'microsoft' ? 'MS' : 'DB'}</span>
+                        </div>
+                        `;
+                    }).join('');
+                    resultsDiv.classList.remove('hidden');
+                } else {
+                    resultsDiv.innerHTML = '<div class="p-3 text-center text-gray-400">No member found</div>';
+                    resultsDiv.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+            }
+        }, 300);
+    }
+
+    function selectMember(emp) {
+        selectedMember = emp;
+        document.getElementById('memberUserId').value = emp.id || '';
+        document.getElementById('memberEmail').value = emp.email || '';
+        document.getElementById('memberDisplayName').textContent = `${emp.name || emp.email} (${emp.email})`;
+
+        document.getElementById('selectedMember').classList.remove('hidden');
+        document.getElementById('selectedMember').classList.add('flex');
+        document.getElementById('memberSearchContainer').classList.add('hidden');
+        document.getElementById('memberResults').classList.add('hidden');
+    }
+
+    function clearMember() {
+        selectedMember = null;
+        document.getElementById('memberUserId').value = '';
+        document.getElementById('memberEmail').value = '';
+        document.getElementById('memberSearch').value = '';
+
+        document.getElementById('selectedMember').classList.add('hidden');
+        document.getElementById('selectedMember').classList.remove('flex');
+        document.getElementById('memberSearchContainer').classList.remove('hidden');
+    }
+
+    function submitAddMember() {
+        if (!document.getElementById('memberEmail').value) {
+            Swal.fire('Error', 'Please select a user to add as a member.', 'error');
+            return;
+        }
+        document.getElementById('addMemberForm').submit();
+    }
+
+    // Close search results when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#memberSearchContainer')) {
+            document.getElementById('memberResults')?.classList.add('hidden');
+        }
+    });
 </script>

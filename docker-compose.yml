@@ -187,6 +187,24 @@ services:
     networks:
       - myhr-net
 
+  # IGA Module
+  iga:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.iga
+    container_name: myhr-iga
+    restart: always
+    environment:
+      - REDIS_HOST=redis
+      - TZ=Asia/Bangkok
+    volumes:
+      - ./.env:/var/www/html/.env
+      - ./Modules/IGA:/var/www/html/Modules/IGA
+      - ./core:/var/www/html/core
+      - ./vendor:/var/www/html/vendor
+    networks:
+      - myhr-net
+
 networks:
   myhr-net:
     driver: bridge

@@ -263,6 +263,75 @@ class ActivityModel
         $stmt->bindParam(':id', $id);
         return $stmt->execute();
     }
+
+    /**
+     * Save individual activity evaluation (Multi-evaluator system)
+     */
+    public function saveIndividualEvaluation($activityId, $userId, $scores, $note)
+    {
+        $quality = $scores['quality'] ?? null;
+        $timeliness = $scores['timeliness'] ?? null;
+        $impact = $scores['impact'] ?? null;
+        $total = round((($quality + $timeliness + $impact) / 15) * 100);
+
+        $sql = "INSERT INTO ya_activity_evaluations 
+                (activity_id, user_id, score_quality, score_timeliness, score_impact, score_total, evaluation_note)
+                VALUES (:activity_id, :user_id, :quality, :timeliness, :impact, :total, :note)
+                ON DUPLICATE KEY UPDATE 
+                score_quality = VALUES(score_quality),
+                score_timeliness = VALUES(score_timeliness),
+                score_impact = VALUES(score_impact),
+                score_total = VALUES(score_total),
+                evaluation_note = VALUES(evaluation_note)";
+
+        $stmt = $this->conn->prepare($sql);
+        $success = $stmt->execute([
+            ':activity_id' => $activityId,
+            ':user_id' => $userId,
+            ':quality' => $quality,
+            ':timeliness' => $timeliness,
+            ':impact' => $impact,
+            ':total' => $total,
+            ':note' => $note
+        ]);
+
+        if ($success) {
+            $this->logHistory($activityId, 'completed', 'completed', "Individual evaluation saved by user $userId: $total%", $userId);
+        }
+        return $success;
+    }
+
+    /**
+     * Get average evaluation for an activity
+     */
+    public function getAverageEvaluation($activityId)
+    {
+        $sql = "SELECT 
+                AVG(score_quality) as avg_quality,
+                AVG(score_timeliness) as avg_timeliness,
+                AVG(score_impact) as avg_impact,
+                AVG(score_total) as avg_total,
+                COUNT(*) as evaluator_count
+                FROM ya_activity_evaluations
+                WHERE activity_id = :activity_id";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([':activity_id' => $activityId]);
+        $avg = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$avg || !$avg['evaluator_count']) return null;
+
+        // Fetch individual notes/feedbacks
+        $noteSql = "SELECT e.evaluation_note, u.fullname as evaluator_name, e.score_total, e.user_id,
+                           e.score_quality, e.score_timeliness, e.score_impact
+                    FROM ya_activity_evaluations e
+                    JOIN users u ON e.user_id = u.id
+                    WHERE e.activity_id = :activity_id"; // Fetch all, even without notes, for rating state
+        $stmt = $this->conn->prepare($noteSql);
+        $stmt->execute([':activity_id' => $activityId]);
+        $avg['feedbacks'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return $avg;
+    }
     /**
      * Change Activity Status and Log it
      */
@@ -501,7 +570,8 @@ class ActivityModel
             'MilestoneLogs' => $milestoneLogsMap,
             'MilestoneAttachments' => $milestoneAttachmentsMap,
             'Comments' => $this->getComments($activityId),
-            'Logs' => $this->getLogs($activityId)
+            'Logs' => $this->getLogs($activityId),
+            'AverageEvaluation' => $this->getAverageEvaluation($activityId)
         ];
     }
 }

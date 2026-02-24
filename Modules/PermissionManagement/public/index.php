@@ -436,6 +436,14 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                                     <div>
                                         <h4 class="font-bold text-gray-800 text-lg">Automatic Schedule</h4>
                                         <p class="text-gray-500 text-sm mt-1">Configure daily automatic synchronization from HRIS (SQL Server)</p>
+                                        <div class="flex items-center gap-4 mt-3">
+                                            <button type="button" onclick="triggerManualSync()" class="btn-primary flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm transition-all" id="btn-sync-now">
+                                                <i class="ri-loop-right-line" id="sync-icon"></i> Sync Now
+                                            </button>
+                                            <p class="text-[10px] text-gray-400 font-medium uppercase tracking-wider flex items-center gap-1.5">
+                                                <i class="ri-time-line"></i> <span id="sync-last-update">Last sync: -</span>
+                                            </p>
+                                        </div>
                                     </div>
                                     <div class="flex items-center gap-3">
                                         <span class="text-sm font-medium text-gray-700">Enable Auto Sync</span>
@@ -488,6 +496,48 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
     </div>
     </div>
     </div>
+    </div>
+
+    <!-- Sync Progress Modal -->
+    <div id="sync-modal" class="fixed inset-0 z-50 hidden">
+        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg relative animate-fade-in">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                        <i class="ri-refresh-line text-primary" id="sync-modal-icon"></i> Sync Users from HRIS
+                    </h3>
+                    <button onclick="closeSyncModal()" id="sync-modal-close" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors hidden">
+                        <i class="ri-close-line text-xl"></i>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div id="sync-status-msg" class="text-sm text-gray-600 font-medium">กำลังเริ่มต้น...</div>
+                    <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                        <div id="sync-progress-bar" class="bg-gradient-to-r from-blue-500 to-teal-500 h-3 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+                    </div>
+                    <div id="sync-progress-text" class="text-xs text-gray-400 text-right">0%</div>
+                    <div id="sync-counts" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                            <div class="text-lg font-bold text-green-600" id="sync-c-new">0</div>
+                            <div class="text-[10px] text-green-500 font-medium uppercase">ใหม่</div>
+                        </div>
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                            <div class="text-lg font-bold text-blue-600" id="sync-c-updated">0</div>
+                            <div class="text-[10px] text-blue-500 font-medium uppercase">อัปเดต</div>
+                        </div>
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+                            <div class="text-lg font-bold text-gray-500" id="sync-c-unchanged">0</div>
+                            <div class="text-[10px] text-gray-400 font-medium uppercase">คงเดิม</div>
+                        </div>
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+                            <div class="text-lg font-bold text-red-500" id="sync-c-error">0</div>
+                            <div class="text-[10px] text-red-400 font-medium uppercase">ผิดพลาด</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <style>
@@ -618,9 +668,106 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
 
                 const notifEmail = document.getElementById('notification_email');
                 if (notifEmail) notifEmail.value = data.notification_email || '';
+
+                // Load last sync time
+                try {
+                    let syncUrl = autoSyncUrl + '?action=get_last_sync';
+                    const syncRes = await fetch(syncUrl, {
+                        credentials: 'include'
+                    });
+                    if (syncRes.ok) {
+                        const syncData = await syncRes.json();
+                        const lastSyncLabel = document.getElementById('sync-last-update');
+                        if (lastSyncLabel) {
+                            lastSyncLabel.textContent = 'Last sync: ' + (syncData.last_sync || '-');
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to get last sync time', e);
+                }
+
             } catch (e) {
                 console.error('Failed to load settings', e);
             }
+        };
+
+        window.closeSyncModal = function() {
+            const modal = document.getElementById('sync-modal');
+            if (modal) modal.classList.add('hidden');
+        };
+
+        window.triggerManualSync = function() {
+            const btn = document.getElementById('btn-sync-now');
+            const icon = document.getElementById('sync-icon');
+            if (btn) btn.disabled = true;
+            if (icon) icon.classList.add('animate-spin');
+
+            // Show modal
+            const modal = document.getElementById('sync-modal');
+            const closeBtn = document.getElementById('sync-modal-close');
+            const modalIcon = document.getElementById('sync-modal-icon');
+            if (modal) modal.classList.remove('hidden');
+            if (closeBtn) closeBtn.classList.add('hidden'); // hide X until done
+            if (modalIcon) modalIcon.className = 'ri-loader-4-line animate-spin text-primary';
+
+            // Reset state
+            document.getElementById('sync-progress-bar').style.width = '0%';
+            document.getElementById('sync-progress-text').textContent = '0%';
+            document.getElementById('sync-status-msg').textContent = 'กำลังเชื่อมต่อ...';
+            document.getElementById('sync-counts').classList.add('hidden');
+            document.getElementById('sync-c-new').textContent = '0';
+            document.getElementById('sync-c-updated').textContent = '0';
+            document.getElementById('sync-c-unchanged').textContent = '0';
+            document.getElementById('sync-c-error').textContent = '0';
+
+            const autoSyncUrl = window.location.pathname.replace(/\/index\.php$/, '') + '/sync_users.php';
+            const es = new EventSource(autoSyncUrl + '?action=start');
+
+            es.onmessage = function(event) {
+                try {
+                    const d = JSON.parse(event.data);
+                    const pct = d.total > 0 ? Math.round((d.done / d.total) * 100) : 0;
+
+                    document.getElementById('sync-progress-bar').style.width = pct + '%';
+                    document.getElementById('sync-progress-text').textContent = pct + '%';
+                    document.getElementById('sync-status-msg').textContent = d.message || '';
+
+                    if (d.inserted_count !== undefined) {
+                        document.getElementById('sync-counts').classList.remove('hidden');
+                        document.getElementById('sync-c-new').textContent = d.inserted_count || 0;
+                        document.getElementById('sync-c-updated').textContent = d.updated_count || 0;
+                        document.getElementById('sync-c-unchanged').textContent = d.unchanged_count || 0;
+                        document.getElementById('sync-c-error').textContent = d.error_count || 0;
+                    }
+
+                    if (d.status === 'finished' || d.status === 'error') {
+                        es.close();
+                        if (d.status === 'finished') {
+                            document.getElementById('sync-progress-bar').style.width = '100%';
+                            document.getElementById('sync-progress-text').textContent = '100%';
+                            modalIcon.className = 'ri-check-line text-green-500';
+                        } else {
+                            modalIcon.className = 'ri-error-warning-line text-red-500';
+                        }
+                        if (closeBtn) closeBtn.classList.remove('hidden');
+                        if (btn) btn.disabled = false;
+                        if (icon) icon.classList.remove('animate-spin');
+                        loadSyncSettings();
+                    }
+                } catch (e) {
+                    console.error('SSE parse error', e);
+                }
+            };
+
+            es.onerror = function() {
+                es.close();
+                document.getElementById('sync-status-msg').textContent = 'การเชื่อมต่อขาดหาย หรือเสร็จสิ้นแล้ว';
+                if (modalIcon) modalIcon.className = 'ri-error-warning-line text-amber-500';
+                if (closeBtn) closeBtn.classList.remove('hidden');
+                if (btn) btn.disabled = false;
+                if (icon) icon.classList.remove('animate-spin');
+                loadSyncSettings();
+            };
         };
 
         // Initialize Sync Settings Form Listener

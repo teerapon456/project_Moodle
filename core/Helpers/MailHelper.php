@@ -23,16 +23,33 @@ class MailHelper
         try {
             // Server settings
             $mail->isSMTP();
-            $mail->Host       = $_ENV['SMTP_HOST'] ?? 'smtp.gmail.com'; // Fallback or Env
-            $mail->SMTPAuth   = true;
-            $mail->Username   = $_ENV['SMTP_USER'] ?? '';
-            $mail->Password   = $_ENV['SMTP_PASS'] ?? '';
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port       = $_ENV['SMTP_PORT'] ?? 587;
-            $mail->CharSet    = 'UTF-8';
+            $mail->Host       = \Env::get('SMTP_HOST', 'localhost');
+            $mail->Port       = (int) \Env::get('SMTP_PORT', 25);
+            $mail->CharSet    = \Env::get('SMTP_CHARSET', 'UTF-8');
+
+            // Authentication (only if username is provided)
+            $smtpUser = \Env::get('SMTP_USERNAME', '');
+            if (!empty($smtpUser)) {
+                $mail->SMTPAuth   = true;
+                $mail->Username   = $smtpUser;
+                $mail->Password   = \Env::get('SMTP_PASSWORD', '');
+            } else {
+                $mail->SMTPAuth   = false;
+            }
+
+            // Encryption
+            $smtpSecure = strtolower(\Env::get('SMTP_SECURE', ''));
+            if ($smtpSecure === 'tls' || $smtpSecure === 'starttls') {
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            } elseif ($smtpSecure === 'ssl') {
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+            } else {
+                $mail->SMTPSecure = '';
+                $mail->SMTPAutoTLS = false;
+            }
 
             // Recipients
-            $mail->setFrom($_ENV['SMTP_FROM_EMAIL'] ?? 'noreply@myhr.com', $_ENV['SMTP_FROM_NAME'] ?? 'MyHR System');
+            $mail->setFrom(\Env::get('SMTP_FROM_EMAIL', 'noreply@myhr.com'), \Env::get('SMTP_FROM_NAME', 'MyHR System'));
             $mail->addAddress($to);
 
             // Content

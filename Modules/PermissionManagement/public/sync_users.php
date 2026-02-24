@@ -39,9 +39,7 @@ $MYSQL_PORT = Env::get('DB_PORT', 3306);
 
 // Include Composer Autoload (for PHPMailer)
 require_once __DIR__ . '/../../../vendor/autoload.php';
-require_once __DIR__ . '/../../../core/Helpers/MailHelper.php';
-
-use Core\Helpers\MailHelper;
+require_once __DIR__ . '/../../../core/Services/EmailService.php';
 
 /* ===== Hash secret ===== */
 
@@ -88,8 +86,8 @@ function sendEmailNotify($subject, $messageHtml, $conn)
         $toEmail = $stmt->fetchColumn();
 
         if ($toEmail && filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
-            // Use MailHelper (PHPMailer wrapper)
-            $sent = MailHelper::send($toEmail, $subject, $messageHtml);
+            // Use EmailService (same as CarBooking, Dormitory, etc.)
+            $sent = EmailService::sendTestEmail($toEmail, $subject, $messageHtml);
 
             if ($sent) {
                 echo "Email sent to $toEmail.\n";
@@ -291,8 +289,7 @@ if ($action === 'get_last_sync') {
 
         $dateStr = '-';
         if ($date) {
-            $dt = new DateTime($date, new DateTimeZone('UTC'));
-            $dt->setTimezone(new DateTimeZone('Asia/Bangkok'));
+            $dt = new DateTime($date);
             $dateStr = $dt->format('d/m/Y H:i');
         }
 
@@ -337,8 +334,16 @@ if ($action === 'start' || $action === 'auto_run' || php_sapi_name() === 'cli') 
     }
 
     if (php_sapi_name() !== 'cli' && $action !== 'auto_run') {
+        @apache_setenv('no-gzip', 1);
+        @ini_set('zlib.output_compression', 0);
         header('Content-Type: text/event-stream; charset=utf-8');
         header('Cache-Control: no-cache');
+        header('Connection: keep-alive');
+        header('X-Accel-Buffering: no');
+        header('Content-Encoding: none');
+        // Disable output buffering for SSE
+        while (ob_get_level()) ob_end_flush();
+        ob_implicit_flush(true);
     }
 
     run_worker([
@@ -372,6 +377,7 @@ function run_worker(array $config)
             return;
         }
         echo "data: " . json_encode($data, JSON_UNESCAPED_UNICODE) . "\n\n";
+        if (ob_get_level()) ob_flush();
         flush();
     };
 
@@ -432,7 +438,7 @@ WITH EmployeeData AS (
            emp.OrgCode, emp.OrgUnitTypeName, emp.OrgUnitName,
            emp.OrgUnitCode AS OriginalOrgUnitCode, emp.OrgUnitCode,
            emp.FirstNameEng, emp.LastNameEng, ed.Email1,
-           emp.PositionName, emp.WorkingDate
+           emp.PositionID, emp.PositionCode, emp.PositionName, emp.PositionNameEng, emp.StartDate
       FROM uv_employee AS emp
       LEFT JOIN emAddress ed ON emp.EmpID = ed.RelatedID AND ed.AddressMode='info'
       WHERE LEN(emp.EmpCode)=10
@@ -490,6 +496,7 @@ SELECT
       CONVERT(VARCHAR(19), GETDATE(), 120) AS created_at,
       CONVERT(VARCHAR(19), GETDATE(), 120) AS updated_at,
       CASE WHEN p.WorkingStatus='Working' THEN 1 ELSE 0 END AS is_active,
+      p.PositionID, p.PositionCode, p.PositionName, p.PositionNameEng, p.StartDate,
       COALESCE(LookupOrg.OrgUnitName, p.TruncatedOrgUnitCode) AS TruncatedOrgUnitName,
       p.Part1 AS Level1Code, COALESCE(LookupPart1.OrgUnitName, p.Part1) AS Level1Name,
       p.Part2 AS Level2Code, COALESCE(LookupPart2.OrgUnitName, p.Part2) AS Level2Name,
@@ -541,14 +548,16 @@ TSQL;
             emplevel_id, EmpType, WorkingStatus, OrgID, OrgUnitTypeName, OrgUnitName,
             OriginalOrgUnitCode, OrgUnitCode, TruncatedOrgUnitCode, TruncatedOrgUnitName,
             Level1Code, Level1Name, Level2Code, Level2Name, Level3Code, Level3Name,
-            Level4Code, Level4Name, Level5Code, Level5Name
+            Level4Code, Level4Name, Level5Code, Level5Name,
+            PositionID, PositionCode, PositionName, PositionNameEng, StartDate
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?
+            ?, ?, ?, ?,
+            ?, ?, ?, ?, ?
         )
     ");
 
@@ -623,6 +632,15 @@ TSQL;
         $lvl5_code = $r['Level5Code'];
         $lvl5_name = $r['Level5Name'];
 
+        $position_id = $r['PositionID'] ?? null;
+        $position_code = $r['PositionCode'] ?? null;
+        $position_name = $r['PositionName'] ?? null;
+        $position_name_eng = $r['PositionNameEng'] ?? null;
+        $start_date = ($r['StartDate'] instanceof DateTime) ? $r['StartDate']->format('Y-m-d H:i:s') : null;
+        if (!$start_date && !empty($r['StartDate'])) {
+            $start_date = date('Y-m-d H:i:s', strtotime($r['StartDate']));
+        }
+
         // New data to compare for UPDATE
         // Protected fields NOT included (won't be overwritten):
         // - password_hash (user may have changed it)
@@ -660,6 +678,11 @@ TSQL;
             'Level4Name' => $lvl4_name,
             'Level5Code' => $lvl5_code,
             'Level5Name' => $lvl5_name,
+            'PositionID' => $position_id,
+            'PositionCode' => $position_code,
+            'PositionName' => $position_name,
+            'PositionNameEng' => $position_name_eng,
+            'StartDate' => $start_date,
             'password_hash' => $pwd_hash, // Added for reset (Subject to verification check)
         ];
 
@@ -739,7 +762,7 @@ TSQL;
                 $updateParams[] = date('Y-m-d H:i:s');
                 $updateParams[] = $person_id;
 
-                $updateSql = "UPDATE `users` SET " . implode(', ', $setClauses) . " WHERE person_id = ? AND user_id != 1";
+                $updateSql = "UPDATE `users` SET " . implode(', ', $setClauses) . " WHERE person_id = ? AND user_id != '1111'";
                 $upd_stmt = $conn_mysql->prepare($updateSql);
                 $upd_stmt->execute($updateParams);
 
@@ -783,7 +806,12 @@ TSQL;
                     $lvl4_code,
                     $lvl4_name,
                     $lvl5_code,
-                    $lvl5_name
+                    $lvl5_name,
+                    $position_id,
+                    $position_code,
+                    $position_name,
+                    $position_name_eng,
+                    $start_date
                 ]);
 
                 // Log insertion
@@ -858,7 +886,7 @@ TSQL;
         try {
             // Can't use huge IN clause with thousands of IDs, might hit limits.
             // Better to fetch all person_id from DB locally and diff array (usually faster for < 10k records)
-            $all_db_users = $conn_mysql->query("SELECT person_id, fullname, EmpCode FROM users WHERE user_id != 1 AND is_active = 1")->fetchAll(PDO::FETCH_ASSOC);
+            $all_db_users = $conn_mysql->query("SELECT person_id, fullname, EmpCode FROM users WHERE user_id != '1111' AND is_active = 1")->fetchAll(PDO::FETCH_ASSOC);
 
             // Convert processed to map for fast lookup
             $processed_map = array_flip($processed_ids);
@@ -895,15 +923,26 @@ TSQL;
     $conn_sqlsrv = null;
 
     // Build summary message
-    $summary = "สำเร็จ! ใหม่ $inserted_count, อัปเดต $updated_count, คงเดิม $unchanged_count";
+    $summary_html = "<h3>รายงานผลการดึงข้อมูลพนักงานจาก HRIS (SQL Server)</h3>";
+    $summary_html .= "<ul>";
+    $summary_html .= "<li>เพิ่มพนักงานใหม่: <b>$inserted_count</b> คน</li>";
+    $summary_html .= "<li>อัปเดตข้อมูล: <b>$updated_count</b> คน</li>";
+    $summary_html .= "<li>ข้อมูลคงเดิม: <b>$unchanged_count</b> คน</li>";
+    $summary_html .= "<li>ระงับสิทธิ์ใช้งาน (ออก/ย้าย): <b>$deactivated_count</b> คน</li>";
+
+    $summary_text = "สำเร็จ! ใหม่ $inserted_count, อัปเดต $updated_count, คงเดิม $unchanged_count";
     if ($deactivated_count > 0) {
-        $summary .= ", ปิดใช้งาน $deactivated_count (หายจากระบบ)";
+        $summary_text .= ", ปิดใช้งาน $deactivated_count";
     }
+
     if ($error_count > 0) {
-        $summary .= ", ผิดพลาด $error_count";
-        sendEmailNotify("Sync Completed with Errors", "Summary: $summary\nLast Error: $last_error", $conn_mysql);
+        $summary_text .= ", ผิดพลาด $error_count";
+        $summary_html .= "<li>ผิดพลาด: <b style='color:red;'>$error_count</b> รายการ</li>";
+        $summary_html .= "</ul><p style='color:red;'><b>Error details:</b> $last_error</p>";
+        sendEmailNotify("แจ้งเตือน: ซิงค์พนักงานเสร็จสิ้น (พบข้อผิดพลาด $error_count รายการ)", $summary_html, $conn_mysql);
     } else {
-        // Optional success email
+        $summary_html .= "</ul><p>สถานะ: <b>สำเร็จ 100%</b></p>";
+        sendEmailNotify("แจ้งเตือน: ซิงค์พนักงานเสร็จสมบูรณ์", $summary_html, $conn_mysql);
     }
 
     $send_update([
@@ -915,7 +954,7 @@ TSQL;
         'unchanged_count' => $unchanged_count,
         'error_count' => $error_count,
         'deactivated_count' => $deactivated_count, // Send back explicitly if needed
-        'message' => $summary
+        'message' => $summary_text
     ]);
 
     $conn_mysql = null;

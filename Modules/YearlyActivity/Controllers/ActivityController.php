@@ -508,6 +508,20 @@ class ActivityController
         $milestoneAttachmentsMap = $summary['MilestoneAttachments'];
         $comments = $summary['Comments'];
         $logs = $summary['Logs'];
+        $averageEvaluation = $summary['AverageEvaluation'] ?? null;
+
+        // Find if current user has already rated this activity
+        $userRating = null;
+        if ($averageEvaluation && !empty($averageEvaluation['feedbacks'])) {
+            foreach ($averageEvaluation['feedbacks'] as $fb) {
+                if (($fb['user_id'] ?? 0) == $this->userId) {
+                    $userRating = $fb;
+                    break;
+                }
+            }
+        }
+
+        // If feedbacks don't have user_id, we might need to fetch it differently or add it to the query
 
         // Permission Check for View
         $calModel = new CalendarModel();
@@ -658,6 +672,46 @@ class ActivityController
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Failed to update']);
+        }
+    }
+
+    public function rateActivity()
+    {
+        header('Content-Type: application/json');
+
+        $id = $_POST['id'] ?? 0;
+        $scores = [
+            'quality' => $_POST['score_quality'] ?? null,
+            'timeliness' => $_POST['score_timeliness'] ?? null,
+            'impact' => $_POST['score_impact'] ?? null
+        ];
+        $note = $_POST['note'] ?? '';
+
+        if (!$id || $scores['quality'] === null || $scores['timeliness'] === null || $scores['impact'] === null) {
+            echo json_encode(['success' => false, 'message' => 'Missing evaluation scores']);
+            return;
+        }
+
+        // Permission check
+        $activity = $this->activityModel->getById($id);
+        if (!$activity) {
+            echo json_encode(['success' => false, 'message' => 'Activity not found']);
+            return;
+        }
+
+        $calModel = new CalendarModel();
+        $calendar = $calModel->getCalendar($activity['calendar_id'], $this->userId);
+        $role = $calendar['user_role'] ?? 'viewer';
+
+        if (!in_array($role, ['owner', 'admin'])) {
+            echo json_encode(['success' => false, 'message' => 'Only Owner or Admin can rate the activity']);
+            return;
+        }
+
+        if ($this->activityModel->saveIndividualEvaluation($id, $this->userId, $scores, $note)) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to save evaluation']);
         }
     }
 

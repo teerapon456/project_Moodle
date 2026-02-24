@@ -353,6 +353,12 @@ if (isset($_GET['action'])) {
         $controller->changeActivityStatus();
         exit;
     }
+    if ($_REQUEST['action'] === 'rate_activity') {
+        require_once __DIR__ . '/Controllers/ActivityController.php';
+        $controller = new ActivityController();
+        $controller->rateActivity();
+        exit;
+    }
 
     // Activity API Actions (Milestones)
     if ($_GET['action'] === 'get_milestones' && isset($_GET['activity_id'])) {

@@ -935,8 +935,8 @@ class BookingController extends CBBaseController
         }
 
         try {
-            // Update user's default supervisor in database
-            $this->bookingModel->saveDefaultSupervisor($this->user['id'], $email, $name, $id);
+            // Update user's default supervisor in database (ID only)
+            $this->bookingModel->saveDefaultSupervisor($this->user['id'], $id);
 
             // Update session
             $_SESSION['user']['default_supervisor_email'] = $email;
@@ -944,7 +944,7 @@ class BookingController extends CBBaseController
             $_SESSION['user']['default_supervisor_id'] = $id;
 
             // Log audit
-            $this->logAudit('update_default_supervisor', 'user', $this->user['id'], null, ['supervisor_email' => $email]);
+            $this->logAudit('update_default_supervisor', 'user', $this->user['id'], null, ['supervisor_id' => $id]);
 
             return ['success' => true, 'message' => 'บันทึกหัวหน้าเริ่มต้นแล้ว'];
         } catch (Exception $e) {

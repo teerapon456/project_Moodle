@@ -33,17 +33,22 @@ class CarBookingModel
 
 
 
-    public function getDefaultSupervisorEmail($userId)
+    public function getDefaultSupervisor($userId)
     {
-        $stmt = $this->pdo->prepare("SELECT default_supervisor_email FROM users WHERE id = :uid LIMIT 1");
+        $stmt = $this->pdo->prepare("
+            SELECT s.id, s.fullname as name, s.email, s.Level3Name as department
+            FROM users u
+            JOIN users s ON u.default_supervisor_id = s.id
+            WHERE u.id = :uid LIMIT 1
+        ");
         $stmt->execute([':uid' => $userId]);
-        return $stmt->fetchColumn();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function updateDefaultSupervisorEmail($userId, $email)
+    public function updateDefaultSupervisor($userId, $supervisorId)
     {
-        $stmt = $this->pdo->prepare("UPDATE users SET default_supervisor_email = :email WHERE id = :uid");
-        return $stmt->execute([':email' => $email, ':uid' => $userId]);
+        $stmt = $this->pdo->prepare("UPDATE users SET default_supervisor_id = :sid WHERE id = :uid");
+        return $stmt->execute([':sid' => $supervisorId, ':uid' => $userId]);
     }
 
     public function createBooking($data)
@@ -383,18 +388,14 @@ class CarBookingModel
         return $stmt->execute($params);
     }
 
-    public function saveDefaultSupervisor($userId, $email, $name, $supervisorId)
+    public function saveDefaultSupervisor($userId, $supervisorId)
     {
         $stmt = $this->pdo->prepare("
             UPDATE users 
-            SET default_supervisor_email = :email,
-                default_supervisor_name = :name,
-                default_supervisor_id = :sid
+            SET default_supervisor_id = :sid
             WHERE id = :uid
         ");
         return $stmt->execute([
-            ':email' => $email,
-            ':name' => $name,
             ':sid' => $supervisorId,
             ':uid' => $userId
         ]);

@@ -45,7 +45,7 @@ class RoomService
                 $userData['employee_id'],
                 $userData['employee_name'],
                 $userData['employee_email'] ?? null,
-                $userData['department'] ?? null,
+                $userData['department'] ?? $userData['Level3Name'] ?? null,
                 $userData['check_in_date'] ?? date('Y-m-d'),
                 $userData['notes'] ?? null,
                 $userData['accompanying_persons'] ?? 0,
@@ -64,7 +64,7 @@ class RoomService
                 $userData['employee_id'],
                 $userData['employee_name'],
                 $userData['employee_email'] ?? null,
-                $userData['department'] ?? null,
+                $userData['department'] ?? $userData['Level3Name'] ?? null,
                 $userData['check_in_date'] ?? date('Y-m-d'),
                 $userData['notes'] ?? null,
                 $creatorId

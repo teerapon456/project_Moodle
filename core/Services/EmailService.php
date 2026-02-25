@@ -597,23 +597,26 @@ class EmailService
             'userName' => $userName,
             'type' => $type
         ]);
-        $settings = self::getModuleSettings(EmailConfig::getModuleId()); // Dormitory Module ID
+        $settings = self::getModuleSettings(20); // Dormitory Module ID
         return self::sendMail($userEmail, $subject, $html, null, $settings['cc_emails']);
     }
 
     /**
      * Send Dorm Request Approved Email
      */
-    public static function sendDormRequestApproved($userEmail, $userName, $type, $keyDate, $remark)
+    public static function sendDormRequestApproved($userEmail, $userName, $type, $keyDate, $remark, $roomNumber = null, $floor = null, $building = null)
     {
         $subject = "คำขอหอพักของคุณได้รับการอนุมัติ";
         $html = self::renderTemplate('request_approved', [
             'userName' => $userName,
             'type' => $type,
             'keyDate' => $keyDate,
-            'remark' => $remark
+            'remark' => $remark,
+            'roomNumber' => $roomNumber,
+            'floor' => $floor,
+            'building' => $building
         ]);
-        $settings = self::getModuleSettings(EmailConfig::getModuleId());
+        $settings = self::getModuleSettings(20);
         return self::sendMail($userEmail, $subject, $html, null, $settings['cc_emails']);
     }
 
@@ -628,8 +631,30 @@ class EmailService
             'type' => $type,
             'reason' => $reason
         ]);
-        $settings = self::getModuleSettings(EmailConfig::getModuleId());
+        $settings = self::getModuleSettings(20);
         return self::sendMail($userEmail, $subject, $html, null, $settings['cc_emails']);
+    }
+
+    /**
+     * Send supervisor approval request for Dormitory
+     */
+    public static function sendDormSupervisorApprovalEmail($booking, $supervisorEmail, $token)
+    {
+        $baseUrl = Env::getBaseUrl();
+        $userName = $booking['fullname'] ?? $booking['requester_name'] ?? 'ผู้ใช้งาน';
+        $subject = "การขออนุมัติบริการหอพัก - {$userName}";
+
+        $reviewUrl = rtrim($baseUrl, '/') . "/Modules/Dormitory/index.php?page=booking_manage&id=" . urlencode($booking['id'] ?? '');
+
+        $html = self::renderTemplate('supervisor_approval', [
+            'booking' => $booking,
+            'token' => $token,
+            'baseUrl' => $baseUrl,
+            'review_url' => $reviewUrl
+        ]);
+
+        $settings = self::getModuleSettings(20);
+        return self::sendMail($supervisorEmail, $subject, $html, null, $settings['cc_emails']);
     }
 
     /**
@@ -645,16 +670,12 @@ class EmailService
         $baseUrl = Env::getBaseUrl();
         $manageUrl = rtrim($baseUrl, '/') . "/Modules/Dormitory/index.php?page=booking_manage";
 
-        $html = "
-        <h2>มีคำขอหอพักใหม่</h2>
-        <p><strong>ผู้ขอ:</strong> $userName</p>
-        <p><strong>ประเภท:</strong> $requestType</p>
-        <p><strong>วันที่ขอ:</strong> " . date('d/m/Y H:i') . "</p>
-        <br>
-        <p><a href='$manageUrl' style='background:#6366f1;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;'>ไปที่หน้าจัดการคำขอ</a></p>
-        ";
+        $html = self::renderTemplate('admin_notification', [
+            'booking' => $bookingData,
+            'manageUrl' => $manageUrl
+        ]);
 
-        $settings = self::getModuleSettings(EmailConfig::getModuleId());
+        $settings = self::getModuleSettings(20);
         $adminEmails = $settings['admin_emails'];
 
         if (empty($adminEmails)) {

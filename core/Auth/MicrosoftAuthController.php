@@ -655,7 +655,7 @@ class MicrosoftAuthController
         $lastName = $nameParts[1] ?? '';
 
         // Check if user exists by Microsoft ID
-        $query = "SELECT u.id, u.username, u.email, u.role_id, u.is_active, r.name as role, r.is_active as role_active, u.microsoft_id, u.default_supervisor_email, u.fullname, u.department, u.Level3Name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.microsoft_id = :microsoft_id LIMIT 1";
+        $query = "SELECT u.id, u.username, u.email, u.role_id, u.is_active, r.name as role, r.is_active as role_active, u.microsoft_id, u.default_supervisor_id, u.fullname, u.Level3Name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.microsoft_id = :microsoft_id LIMIT 1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':microsoft_id', $microsoftId);
         $stmt->execute();
@@ -682,7 +682,7 @@ class MicrosoftAuthController
             $stmt->execute();
 
             // Fetch updated user
-            $query = "SELECT u.id, u.username, u.email, u.role_id, u.is_active, r.name as role, r.is_active as role_active, u.microsoft_id, u.default_supervisor_email, u.fullname, u.department, u.Level3Name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = :id LIMIT 1";
+            $query = "SELECT u.id, u.username, u.email, u.role_id, u.is_active, r.name as role, r.is_active as role_active, u.microsoft_id, u.default_supervisor_id, u.fullname, u.Level3Name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = :id LIMIT 1";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':id', $existingUser['id']);
             $stmt->execute();
@@ -719,7 +719,7 @@ class MicrosoftAuthController
             $userId = $this->conn->lastInsertId();
 
             // Fetch the new user
-            $query = "SELECT u.id, u.username, u.email, u.role_id, u.is_active, r.name as role, r.is_active as role_active, u.microsoft_id, u.default_supervisor_email, u.fullname, u.department, u.Level3Name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = :id LIMIT 1";
+            $query = "SELECT u.id, u.username, u.email, u.role_id, u.is_active, r.name as role, r.is_active as role_active, u.microsoft_id, u.default_supervisor_id, u.fullname, u.Level3Name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = :id LIMIT 1";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':id', $userId);
             $stmt->execute();

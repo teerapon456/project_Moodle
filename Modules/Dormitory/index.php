@@ -80,6 +80,20 @@ $canView = !empty($perms['can_view']) || !empty($perms['can_edit']) || !empty($p
 $canEdit = !empty($perms['can_edit']) || !empty($perms['can_manage']);
 $isAdmin = !empty($perms['can_manage']);
 
+// Check if user is L06+ (can approve)
+$canApprove = false;
+try {
+    if (isset($user['id']) && $pdo) {
+        $stmtTmp = $pdo->prepare("SELECT emplevel_id FROM users WHERE id = ?");
+        $stmtTmp->execute([$user['id']]);
+        $row = $stmtTmp->fetch(PDO::FETCH_ASSOC);
+        if ($row && !empty($row['emplevel_id']) && (int)$row['emplevel_id'] >= 7) {
+            $canApprove = true;
+        }
+    }
+} catch (Exception $e) {
+}
+
 // Block users without view permission
 if (!$canView) {
     header('Location: ' . $assetBase . 'index.php?error=no_permission');
@@ -92,6 +106,9 @@ $userPages = ['my-room', 'invoices', 'payments', 'request_history'];
 
 if ($canEdit) {
     $userPages[] = 'booking_form';
+}
+if ($canApprove) {
+    $userPages[] = 'booking_manage';
 }
 $userPages[] = 'maintenance-form'; // Allow all users to access maintenance form
 
@@ -143,6 +160,7 @@ if (!in_array($page, $validPages)) {
                         ]) ?>;
         const isAdmin = <?= json_encode($isAdmin) ?>;
         const canEdit = <?= json_encode($canEdit) ?>;
+        const canApprove = <?= json_encode($canApprove) ?>;
     </script>
 
     <style>
@@ -186,6 +204,24 @@ if (!in_array($page, $validPages)) {
             overflow: hidden;
             padding-left: 0;
             padding-right: 0;
+        }
+
+        /* Sleek scrollbar for sidebar */
+        .sidebar nav::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar nav::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar nav::-webkit-scrollbar-thumb {
+            background-color: #e5e7eb;
+            border-radius: 20px;
+        }
+
+        .sidebar:hover nav::-webkit-scrollbar-thumb {
+            background-color: #d1d5db;
         }
 
         .sidebar.collapsed nav ul {

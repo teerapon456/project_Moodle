@@ -82,12 +82,21 @@ if (!$canView) {
 $canApprove = false;
 try {
     if ($user && !empty($user['id']) && $pdo) {
-        $stmtTmp = $pdo->prepare("SELECT default_supervisor_email, emplevel_id FROM users WHERE id = :uid LIMIT 1");
+        $stmtTmp = $pdo->prepare("
+            SELECT u.default_supervisor_id, u.emplevel_id,
+                   s.email as default_supervisor_email,
+                   s.fullname as default_supervisor_name
+            FROM users u
+            LEFT JOIN users s ON u.default_supervisor_id = s.id
+            WHERE u.id = :uid LIMIT 1
+        ");
         $stmtTmp->execute([':uid' => $user['id']]);
         $row = $stmtTmp->fetch(PDO::FETCH_ASSOC);
         if ($row) {
-            if (!empty($row['default_supervisor_email'])) {
+            if (!empty($row['default_supervisor_id'])) {
+                $user['default_supervisor_id'] = $row['default_supervisor_id'];
                 $user['default_supervisor_email'] = $row['default_supervisor_email'];
+                $user['default_supervisor_name'] = $row['default_supervisor_name'];
             }
             // L06 = emplevel_id 7, show approval tab for L06+
             $canApprove = !empty($row['emplevel_id']) && (int)$row['emplevel_id'] >= 7;
@@ -141,7 +150,7 @@ if (!in_array($page, $validPages)) {
                             'fullname' => $user['fullname'] ?? '',
                             'role' => $user['role'] ?? 'user',
                             'role_id' => $user['role_id'] ?? null,
-                            'default_supervisor_email' => $user['default_supervisor_email'] ?? ''
+                            'default_supervisor_id' => $user['default_supervisor_id'] ?? null
                         ]) ?>;
         const canManage = <?= json_encode($canManage) ?>;
         const canEdit = <?= json_encode($canEdit) ?>;
@@ -414,7 +423,7 @@ if (!in_array($page, $validPages)) {
         </header>
 
         <!-- Content -->
-        <div class="p-6" id="contentBody">
+        <div class="p-6 bg-gray-50" id="contentBody">
             <?php
             $viewFile = __DIR__ . "/Views/{$page}.php";
             if (file_exists($viewFile)) {

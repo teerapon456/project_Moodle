@@ -15,6 +15,25 @@ startOptimizedSession();
 $action = $_GET['action'] ?? null;
 $controller = $_GET['controller'] ?? null;
 
+// Centralized User Search Routes (No controller required)
+if ($action === 'searchManager') {
+    require_once __DIR__ . '/../../core/Services/UserSearchService.php';
+    echo json_encode(UserSearchService::searchManager($_GET['query'] ?? ''));
+    exit;
+}
+
+if ($action === 'searchEmployee') {
+    require_once __DIR__ . '/../../core/Services/UserSearchService.php';
+    echo json_encode(UserSearchService::searchEmployee($_GET['query'] ?? ''));
+    exit;
+}
+
+if ($action === 'searchEmail') {
+    require_once __DIR__ . '/../../core/Services/UserSearchService.php';
+    echo json_encode(UserSearchService::searchEmail($_GET['query'] ?? ''));
+    exit;
+}
+
 if (!$controller) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Controller not specified']);

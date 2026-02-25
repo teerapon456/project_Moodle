@@ -1,6 +1,9 @@
 <?php
-// booking_manage.php - Admin only
-if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) return;
+// booking_manage.php - Admin & Supervisor
+if (!$isAdmin && (!isset($canApprove) || !$canApprove)) {
+    echo "<div class='p-6 text-center text-red-600 bg-red-50 rounded-lg'>คุณไม่มีสิทธิ์เข้าถึงหน้านี้</div>";
+    return;
+}
 ?>
 
 <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
@@ -10,10 +13,17 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
             <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
         </div>
         <select id="params_status" class="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary min-w-[150px]" onchange="loadRequests()">
-            <option value="pending">รอการอนุมัติ</option>
-            <option value="approved">อนุมัติแล้ว</option>
-            <option value="rejected">ปฏิเสธแล้ว</option>
-            <option value="all">ทั้งหมด</option>
+            <?php if ($isAdmin): ?>
+                <option value="pending_supervisor">รอหัวหน้าอนุมัติ</option>
+                <option value="pending_manager" selected>รอ IPCD อนุมัติ</option>
+                <option value="approved">อนุมัติแล้ว</option>
+                <option value="rejected_supervisor">หัวหน้าปฏิเสธ</option>
+                <option value="rejected_manager">IPCD ปฏิเสธ</option>
+                <option value="cancelled">ยกเลิกแล้ว</option>
+                <option value="all">ทั้งหมด</option>
+            <?php else: ?>
+                <option value="pending_supervisor" selected>รอหัวหน้าอนุมัติ</option>
+            <?php endif; ?>
         </select>
         <button class="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition-colors" onclick="resetFilters()" title="ล้างค่า"><i class="ri-refresh-line"></i></button>
     </div>
@@ -77,23 +87,77 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
     </div>
 </div>
 
+<!-- Approve Modal Styles -->
+<style>
+    /* Custom Scrollbar for Modal */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+        border-radius: 4px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+
+    .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+        background: #94a3b8;
+    }
+
+    /* Card classes specifically for the modal */
+    .room-card.selected-card {
+        border-color: #10b981 !important;
+        background-color: rgba(16, 185, 129, 0.04) !important;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+    }
+
+    .room-card .card-check {
+        top: 12px !important;
+        right: 12px !important;
+        background-color: white;
+        border-color: #e2e8f0;
+    }
+
+    .room-card.selected-card .card-check {
+        background-color: #10b981 !important;
+        border-color: #10b981 !important;
+    }
+
+    .room-card .card-check i {
+        opacity: 0 !important;
+        transform: scale(0.5) !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .room-card.selected-card .card-check i {
+        opacity: 1 !important;
+        transform: scale(1) !important;
+        color: white !important;
+    }
+</style>
 <!-- Approve Modal -->
 <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 opacity-0 invisible transition-all duration-200 p-5" id="approveModal">
-    <div class="bg-white rounded-xl w-full max-w-lg shadow-2xl transform scale-95 transition-all">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+    <div class="bg-white rounded-xl w-full max-w-5xl shadow-2xl transform scale-95 transition-all flex flex-col max-h-[90vh]">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
             <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <i class="ri-checkbox-circle-line text-emerald-500"></i> อนุมัติคำขอ
             </h3>
-            <button class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors text-xl" onclick="closeModal('approveModal')">&times;</button>
+            <button type="button" class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors text-xl" onclick="closeModal('approveModal')">&times;</button>
         </div>
-        <form id="approveForm" onsubmit="submitApprove(event)">
-            <div class="p-6 space-y-4">
+        <form id="approveForm" onsubmit="submitApprove(event)" class="flex flex-col overflow-hidden">
+            <div class="p-6 overflow-y-auto custom-scrollbar space-y-6 flex-grow">
                 <input type="hidden" name="id" id="approve_id">
                 <input type="hidden" name="request_type" id="approve_request_type">
                 <input type="hidden" name="required_capacity" id="approve_required_capacity">
+                <input type="hidden" name="room_id" id="selected_room_id">
 
                 <!-- Required Capacity Info -->
-                <div id="capacityInfo" class="bg-indigo-50 border border-indigo-100 rounded-lg p-3 mb-4">
+                <div id="capacityInfo" class="bg-indigo-50 border border-indigo-100 rounded-lg p-3 hidden">
                     <div class="flex items-center gap-2 text-indigo-800">
                         <i class="ri-group-line text-lg"></i>
                         <span class="font-medium">จำนวนคนที่ต้องการ:</span>
@@ -102,25 +166,49 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                     </div>
                 </div>
 
-                <div id="roomSelectContainer">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">จัดสรรห้องพัก <span class="text-red-500">*</span></label>
-                    <select name="room_id" id="room_select" class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary">
-                        <option value="">กำลังโหลดห้องว่าง...</option>
-                    </select>
-                    <small class="text-gray-500 mt-1 block">แสดงเฉพาะห้องที่มีที่ว่างเพียงพอ</small>
+                <!-- NEW Grid-based Room Selection -->
+                <div id="roomSelectContainer" class="hidden flex-col gap-4 !mt-2">
+                    <h4 class="font-medium text-gray-900">ค้นหาและจัดสรรห้องพัก <span class="text-red-500">*</span></h4>
+
+                    <!-- Filters -->
+                    <div class="flex flex-wrap items-end gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <div class="flex-grow min-w-[200px]">
+                            <label class="block text-sm text-gray-600 mb-1">กรองด้วยอาคาร</label>
+                            <select id="building_select" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" onchange="handleBuildingChange()">
+                                <option value="">เลือกอาคารทั้งหมด...</option>
+                            </select>
+                        </div>
+                        <div class="flex-grow min-w-[200px]">
+                            <label class="block text-sm text-gray-600 mb-1">กรองด้วยชั้น</label>
+                            <select id="floor_select" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" onchange="handleFloorChange()" disabled>
+                                <option value="">เลือกชั้นทั้งหมด...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Room Cards Grid -->
+                    <div id="roomsGrid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 max-h-[40vh] min-h-[150px] overflow-y-auto custom-scrollbar p-1">
+                        <!-- Rendered by JS -->
+                    </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" id="dateLabel">วันนัดรับกุญแจ/เข้าพัก <span class="text-red-500">*</span></label>
-                    <input type="datetime-local" name="key_pickup_date" id="key_pickup_date" class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" required>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div id="dateContainer" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-1" id="dateLabel">วันนัดรับกุญแจ/เข้าพัก <span class="text-red-500">*</span></label>
+                        <input type="datetime-local" name="key_pickup_date" id="key_pickup_date" class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary">
+                    </div>
+
+                    <div id="remarkContainer" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ (ภายใน)</label>
+                        <input type="text" name="admin_remark" class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" placeholder="บันทึกเพิ่มเติมสำหรับแอดมิน...">
+                    </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ (ภายใน)</label>
-                    <textarea name="admin_remark" rows="2" class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" placeholder="บันทึกเพิ่มเติมสำหรับแอดมิน..."></textarea>
+                <div id="supervisorConfirmText" class="text-center py-4 text-emerald-700 font-medium hidden">
+                    คุณแน่ใจหรือไม่ที่จะอนุมัติคำขอนี้?
                 </div>
             </div>
-            <div class="flex justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-xl">
+            <div class="flex justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100 flex-shrink-0 rounded-b-xl">
                 <button type="button" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors" onclick="closeModal('approveModal')">ยกเลิก</button>
                 <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors shadow-sm">ยืนยันอนุมัติ</button>
             </div>
@@ -257,8 +345,8 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                     ${renderDocuments(req.document_paths)}
                 </td>
                 <td class="px-6 py-4 text-right">
-                    ${req.status === 'pending' ? `
-                        <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    ${(isAdmin && ['pending_manager', 'pending_supervisor'].includes(req.status)) || (!isAdmin && req.status === 'pending_supervisor') ? `
+                        <div class="flex items-center justify-end gap-2 transition-opacity">
                             <button onclick="openApprove(${req.id}, '${req.request_type}', '${req.check_in_date || ''}', ${(() => {
                                 // For change_room/move_out: count from current occupancy
                                 if (['change_room', 'move_out'].includes(req.request_type)) {
@@ -269,11 +357,11 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                                     try { const r = JSON.parse(req.relative_details || '[]'); return Array.isArray(r) ? r.length : 0; } catch(e) { return 0; }
                                 }
                                 return 0;
-                            })()})" class="p-1.5 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors" title="อนุมัติ">
-                                <i class="ri-check-line text-lg"></i>
+                            })()}, '${req.status}')" class="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors flex items-center gap-1" title="อนุมัติ">
+                                <i class="ri-check-line text-lg"></i><span class="text-sm font-medium">อนุมัติ</span>
                             </button>
-                            <button onclick="openReject(${req.id})" class="p-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors" title="ปฏิเสธ">
-                                <i class="ri-close-line text-lg"></i>
+                            <button onclick="openReject(${req.id})" class="px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors flex items-center gap-1" title="ปฏิเสธ">
+                                <i class="ri-close-line text-lg"></i><span class="text-sm font-medium">ปฏิเสธ</span>
                             </button>
                         </div>
                     ` : renderStatusBadge(req.status)}
@@ -283,13 +371,15 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
     }
 
     let allAvailableRooms = [];
+    let currentCapacityNeed = 1;
 
     async function loadAvailableRooms(minCapacity = 1) {
+        if (!isAdmin) return;
         try {
             const res = await apiCall('booking', 'getAvailableRooms');
             if (res.success) {
                 allAvailableRooms = res.data || [];
-                filterRoomsByCapacity(minCapacity);
+                // We don't filter immediately anymore, we wait for openApprove to pass the correct capacity
             }
         } catch (e) {
             console.error(e);
@@ -297,78 +387,257 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
     }
 
     function filterRoomsByCapacity(minCapacity) {
-        const select = document.getElementById('room_select');
-        select.innerHTML = '<option value="">เลือกห้องพัก...</option>';
+        currentCapacityNeed = minCapacity;
+        const bSelect = document.getElementById('building_select');
+        const fSelect = document.getElementById('floor_select');
+        const grid = document.getElementById('roomsGrid');
+
+        // Reset
+        bSelect.innerHTML = '<option value="">เลือกอาคารทั้งหมด...</option>';
+        fSelect.innerHTML = '<option value="">เลือกชั้นทั้งหมด...</option>';
+        fSelect.disabled = true;
+        grid.innerHTML = '';
+        document.getElementById('selected_room_id').value = '';
 
         const filteredRooms = allAvailableRooms.filter(r => r.free_spots >= minCapacity);
 
         if (filteredRooms.length === 0) {
-            select.innerHTML = '<option value="">ไม่มีห้องว่างเพียงพอสำหรับ ' + minCapacity + ' คน</option>';
+            grid.innerHTML = `<div class="col-span-1 sm:col-span-2 xl:col-span-3 text-center py-12 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                <i class="ri-hotel-bed-line text-5xl mb-3 text-gray-300"></i><br>
+                ไม่มีห้องว่างเพียงพอสำหรับ ${minCapacity} คน
+            </div>`;
             return;
         }
 
+        // Attach parsed floor to all loaded rooms once
         filteredRooms.forEach(r => {
+            let floorStr;
+            const rn = r.room_number.toString();
+            if (rn.includes('-')) {
+                floorStr = rn.split('-')[0];
+            } else if (rn.length === 3) {
+                floorStr = rn.substring(0, 1);
+            } else if (rn.length === 4) {
+                floorStr = rn.substring(0, 2);
+            } else {
+                floorStr = Array.from(rn)[0];
+            }
+            r._floorParsed = floorStr;
+        });
+
+        // Extract unique buildings
+        const buildings = new Set();
+        filteredRooms.forEach(r => buildings.add(r.building_name));
+
+        buildings.forEach(bName => {
             const opt = document.createElement('option');
-            opt.value = r.id;
-            opt.textContent = `ตึก ${r.building_name} - ${r.room_number} (${r.type} - ว่าง ${r.free_spots}/${r.capacity})`;
-            select.appendChild(opt);
+            opt.value = bName;
+            opt.textContent = bName;
+            bSelect.appendChild(opt);
+        });
+
+        // Initial render without filters
+        renderRoomsGrid(filteredRooms);
+    }
+
+    function handleBuildingChange() {
+        const selectedBuilding = document.getElementById('building_select').value;
+        const fSelect = document.getElementById('floor_select');
+        document.getElementById('selected_room_id').value = '';
+
+        fSelect.innerHTML = '<option value="">เลือกชั้นทั้งหมด...</option>';
+
+        if (!selectedBuilding) {
+            fSelect.disabled = true;
+            // Show all that match capacity
+            renderRoomsGrid(allAvailableRooms.filter(r => r.free_spots >= currentCapacityNeed));
+            return;
+        }
+
+        fSelect.disabled = false;
+
+        const matchingRooms = allAvailableRooms.filter(r => r.building_name === selectedBuilding && r.free_spots >= currentCapacityNeed);
+
+        const floors = new Set();
+        matchingRooms.forEach(r => floors.add(r._floorParsed));
+
+        const sortedFloors = Array.from(floors).sort((a, b) => parseInt(a) - parseInt(b));
+        sortedFloors.forEach(f => {
+            const opt = document.createElement('option');
+            opt.value = f;
+            opt.textContent = `ชั้น ${f}`;
+            fSelect.appendChild(opt);
+        });
+
+        renderRoomsGrid(matchingRooms);
+    }
+
+    function handleFloorChange() {
+        const selectedBuilding = document.getElementById('building_select').value;
+        const selectedFloor = document.getElementById('floor_select').value;
+        document.getElementById('selected_room_id').value = '';
+
+        let matchingRooms = allAvailableRooms.filter(r => r.building_name === selectedBuilding && r.free_spots >= currentCapacityNeed);
+
+        if (selectedFloor) {
+            matchingRooms = matchingRooms.filter(r => r._floorParsed === selectedFloor);
+        }
+
+        renderRoomsGrid(matchingRooms);
+    }
+
+    function renderRoomsGrid(rooms) {
+        const grid = document.getElementById('roomsGrid');
+        grid.innerHTML = '';
+
+        if (rooms.length === 0) {
+            grid.innerHTML = `<div class="col-span-1 sm:col-span-2 xl:col-span-3 text-center py-12 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-300">ไม่พบห้องที่ตรงกับเงื่อนไข</div>`;
+            return;
+        }
+
+        // Sort by building then room number
+        rooms.sort((a, b) => {
+            if (a.building_name !== b.building_name) return a.building_name.localeCompare(b.building_name);
+            return parseInt(a.room_number) - parseInt(b.room_number);
+        });
+
+        rooms.forEach(r => {
+            const isFull = r.free_spots === 0;
+            const progress = (r.current_occupants / r.capacity) * 100;
+            const progressColor = progress > 80 ? 'bg-red-500' : (progress > 50 ? 'bg-amber-500' : 'bg-emerald-500');
+
+            // Format occupant names
+            let namesHtml = '';
+            if (r.occupant_names) {
+                const names = r.occupant_names.split(',');
+                namesHtml = `<div class="mt-3 pt-3 border-t border-gray-100 flex flex-col gap-1.5">`;
+                names.forEach(n => {
+                    namesHtml += `<div class="text-[13px] text-gray-600 flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0"><i class="ri-user-line text-xs text-gray-400"></i></div> <span class="truncate">${n.trim()}</span></div>`;
+                });
+                namesHtml += `</div>`;
+            } else {
+                namesHtml = `<div class="mt-3 pt-3 border-t border-gray-100 text-[13px] text-emerald-600/80 font-medium flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center"><i class="ri-door-open-line text-xs"></i></div> ห้องว่างทั้งหมด</div>`;
+            }
+
+            const card = document.createElement('div');
+            // Using CSS classes for the card layout instead of pure JS hover toggles for cleaner code
+            card.className = `room-card relative p-5 rounded-2xl border-2 transition-all duration-200 cursor-pointer bg-white overflow-hidden shadow-sm hover:shadow-md group ${isFull ? 'opacity-50 pointer-events-none grayscale border-gray-100' : 'border-gray-100 hover:border-emerald-500 hover:bg-emerald-50/10'}`;
+            card.dataset.roomId = r.id;
+            card.onclick = () => selectRoom(card, r.id);
+
+            card.innerHTML = `
+                <div class="flex items-center justify-between mb-4 pb-4 border-b border-gray-100">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-emerald-100 group-hover:text-emerald-600 transition-colors icon-wrapper">
+                            <i class="ri-door-fill text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="text-lg font-bold text-gray-900 group-hover:text-emerald-700 transition-colors leading-tight card-title">${r.room_number}</div>
+                            <div class="text-xs font-medium text-gray-500 mt-0.5">อาคาร ${r.building_name}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-end mb-2.5">
+                    <div class="flex flex-col">
+                       <span class="text-xs text-gray-500 mb-0.5">ผู้เข้าพัก</span>
+                       <span class="text-sm font-semibold text-gray-900">${r.current_occupants} <span class="text-gray-400 font-normal">/ ${r.capacity}</span></span>
+                    </div>
+                    <div class="text-right">
+                       <div class="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-md inline-block">ว่าง ${r.free_spots} ที่</div>
+                    </div>
+                </div>
+                
+                <div class="w-full bg-gray-100 rounded-full h-1.5 mb-1 overflow-hidden">
+                    <div class="${progressColor} h-1.5 rounded-full" style="width: ${progress}%"></div>
+                </div>
+
+                ${namesHtml}
+
+                <div class="absolute w-6 h-6 rounded-full border-2 flex items-center justify-center card-check transition-all shadow-sm">
+                    <i class="ri-check-line text-white text-sm transition-all font-bold"></i>
+                </div>
+            `;
+            grid.appendChild(card);
         });
     }
 
-    function openApprove(id, type, checkIn, relativesCount = 0) {
+    function selectRoom(cardElement, roomId) {
+        // Deselect all
+        document.querySelectorAll('.room-card').forEach(c => {
+            c.classList.remove('selected-card');
+        });
+
+        // Select chosen
+        cardElement.classList.add('selected-card');
+
+        document.getElementById('selected_room_id').value = roomId;
+    }
+
+    function openApprove(id, type, checkIn, relativesCount = 0, status = 'pending_supervisor') {
         document.getElementById('approve_id').value = id;
         document.getElementById('approve_request_type').value = type;
 
         const roomSelectContainer = document.getElementById('roomSelectContainer');
-        const roomSelect = document.getElementById('room_select');
-        const dateLabel = document.getElementById('dateLabel');
+        const dateContainer = document.getElementById('dateContainer');
+        const dateInput = document.getElementById('key_pickup_date');
+        const remarkContainer = document.getElementById('remarkContainer');
         const capacityInfo = document.getElementById('capacityInfo');
+        const supervisorConfirmText = document.getElementById('supervisorConfirmText');
+        const dateLabel = document.getElementById('dateLabel');
         const modalTitle = document.querySelector('#approveModal h3');
 
-        // Reset defaults
-        roomSelectContainer.style.display = 'block';
-        roomSelect.required = true;
-        capacityInfo.style.display = 'block';
-        dateLabel.innerHTML = 'วันนัดรับกุญแจ/เข้าพัก <span class="text-red-500">*</span>';
-        modalTitle.innerHTML = '<i class="ri-checkbox-circle-line text-emerald-500"></i> อนุมัติคำขอ';
+        // Reset display
+        roomSelectContainer.classList.add('hidden');
+        roomSelectContainer.classList.remove('flex');
+        dateContainer.classList.add('hidden');
+        remarkContainer.classList.add('hidden');
+        capacityInfo.classList.add('hidden');
+        supervisorConfirmText.classList.add('hidden');
+        dateInput.required = false;
 
-        if (type === 'move_out') {
-            // Move Out: no room needed, just date
-            roomSelectContainer.style.display = 'none';
-            roomSelect.required = false;
-            capacityInfo.style.display = 'none';
-            dateLabel.innerHTML = 'วันที่ย้ายออก <span class="text-red-500">*</span>';
-            modalTitle.innerHTML = '<i class="ri-logout-box-line text-red-500"></i> อนุมัติย้ายออก';
-        } else if (type === 'add_relative') {
-            // Add Relative: no room needed (auto-uses current room), just date
-            roomSelectContainer.style.display = 'none';
-            roomSelect.required = false;
-            capacityInfo.style.display = 'none';
-            dateLabel.innerHTML = 'วันที่เพิ่มญาติ <span class="text-red-500">*</span>';
-            modalTitle.innerHTML = '<i class="ri-user-add-line text-purple-500"></i> อนุมัติเพิ่มญาติ';
-        } else if (type === 'change_room') {
-            // Change Room: need new room, capacity must account for relatives moving with user
-            roomSelectContainer.style.display = 'block';
-            roomSelect.required = true;
-            capacityInfo.style.display = 'block';
-            dateLabel.innerHTML = 'วันที่ย้ายห้อง <span class="text-red-500">*</span>';
-            modalTitle.innerHTML = '<i class="ri-swap-line text-blue-500"></i> อนุมัติย้ายห้อง';
-
-            // Need enough capacity for user + their existing relatives
-            const requiredCapacity = 1 + relativesCount;
-            document.getElementById('approve_required_capacity').value = requiredCapacity;
-            document.getElementById('requiredCountDisplay').textContent = requiredCapacity;
-            filterRoomsByCapacity(requiredCapacity);
+        // If it's a supervisor approval, they don't pick anything, they just confirm
+        if (status === 'pending_supervisor') {
+            supervisorConfirmText.classList.remove('hidden');
+            modalTitle.innerHTML = '<i class="ri-checkbox-circle-line text-emerald-500"></i> อนุมัติคำขอ (หัวหน้างาน)';
         } else {
-            // Move In: need room + date
-            const requiredCapacity = 1 + relativesCount;
-            document.getElementById('approve_required_capacity').value = requiredCapacity;
-            document.getElementById('requiredCountDisplay').textContent = requiredCapacity;
-            filterRoomsByCapacity(requiredCapacity);
-        }
+            // IPCD Approval - Need Room, Date, Remarks depending on type
+            dateContainer.classList.remove('hidden');
+            remarkContainer.classList.remove('hidden');
+            dateInput.required = true;
 
-        const minDate = checkIn ? new Date(checkIn).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16);
-        document.getElementById('key_pickup_date').value = minDate;
+            if (type === 'move_out') {
+                // Move Out: no room needed, just date
+                dateLabel.innerHTML = 'วันที่ย้ายออก <span class="text-red-500">*</span>';
+                modalTitle.innerHTML = '<i class="ri-logout-box-line text-red-500"></i> อนุมัติย้ายออก';
+            } else if (type === 'add_relative') {
+                // Add Relative: no room needed (auto-uses current room), just date
+                dateLabel.innerHTML = 'วันที่เพิ่มญาติ <span class="text-red-500">*</span>';
+                modalTitle.innerHTML = '<i class="ri-user-add-line text-purple-500"></i> อนุมัติเพิ่มญาติ';
+            } else if (type === 'change_room' || type === 'move_in') {
+                // Change Room or Move In: need room
+                roomSelectContainer.classList.remove('hidden');
+                roomSelectContainer.classList.add('flex');
+
+                capacityInfo.classList.remove('hidden');
+
+                if (type === 'change_room') {
+                    dateLabel.innerHTML = 'วันที่ย้ายห้อง <span class="text-red-500">*</span>';
+                    modalTitle.innerHTML = '<i class="ri-swap-line text-blue-500"></i> อนุมัติย้ายห้อง';
+                } else {
+                    dateLabel.innerHTML = 'วันนัดรับกุญแจ/เข้าพัก <span class="text-red-500">*</span>';
+                    modalTitle.innerHTML = '<i class="ri-checkbox-circle-line text-emerald-500"></i> อนุมัติคำขอ';
+                }
+
+                const requiredCapacity = 1 + relativesCount;
+                document.getElementById('approve_required_capacity').value = requiredCapacity;
+                document.getElementById('requiredCountDisplay').textContent = requiredCapacity;
+                filterRoomsByCapacity(requiredCapacity);
+            }
+
+            const minDate = checkIn ? new Date(checkIn).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16);
+            dateInput.value = minDate;
+        }
 
         openModal('approveModal');
     }
@@ -382,6 +651,14 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 
         const formData = new FormData(e.target);
         const data = Object.fromEntries(formData);
+
+        // Validation for hidden input
+        if (['move_in', 'change_room'].includes(data.request_type) && !data.room_id && data.status !== 'pending_supervisor') {
+            showToast('กรุณาเลือกจัดสรรห้องพัก', 'error');
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            return;
+        }
 
         try {
             await apiCall('booking', 'approve', data, 'POST');
@@ -482,17 +759,25 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 
     function renderStatusBadge(status) {
         const statuses = {
-            'pending': {
-                label: 'รออนุมัติ',
+            'pending_supervisor': {
+                label: 'รอหัวหน้าอนุมัติ',
+                class: 'bg-amber-100 text-amber-800'
+            },
+            'pending_manager': {
+                label: 'รอ IPCD อนุมัติ',
                 class: 'bg-yellow-100 text-yellow-800'
             },
             'approved': {
-                label: 'อนุมัติ',
+                label: 'อนุมัติแล้ว',
                 class: 'bg-emerald-100 text-emerald-800'
             },
-            'rejected': {
-                label: 'ปฏิเสธ',
+            'rejected_supervisor': {
+                label: 'หัวหน้าปฏิเสธ',
                 class: 'bg-red-100 text-red-800'
+            },
+            'rejected_manager': {
+                label: 'IPCD ปฏิเสธ',
+                class: 'bg-red-200 text-red-900'
             },
             'cancelled': {
                 label: 'ยกเลิก',

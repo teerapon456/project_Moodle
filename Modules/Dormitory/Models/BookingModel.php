@@ -83,11 +83,24 @@ class BookingModel
     {
         $sql = "
             INSERT INTO dorm_reservations 
-            (requester_id, request_type, reason, room_type_preference, has_relative, relative_details, document_paths, check_in, status)
-            VALUES (:requester_id, :request_type, :reason, :room_type_preference, :has_relative, :relative_details, :document_paths, :check_in, 'pending')
+            (requester_id, request_type, reason, room_type_preference, has_relative, relative_details, document_paths, check_in, status, supervisor_email, approval_token, token_expires_at)
+            VALUES (:requester_id, :request_type, :reason, :room_type_preference, :has_relative, :relative_details, :document_paths, :check_in, :status, :supervisor_email, :approval_token, :token_expires_at)
         ";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($data);
+        $stmt->execute([
+            ':requester_id' => $data['requester_id'],
+            ':request_type' => $data['request_type'],
+            ':reason' => $data['reason'] ?? null,
+            ':room_type_preference' => $data['room_type_preference'] ?? null,
+            ':has_relative' => $data['has_relative'] ?? 0,
+            ':relative_details' => $data['relative_details'] ?? null,
+            ':document_paths' => $data['document_paths'] ?? null,
+            ':check_in' => $data['check_in'] ?? null,
+            ':status' => $data['status'] ?? 'pending_supervisor',
+            ':supervisor_email' => $data['supervisor_email'] ?? null,
+            ':approval_token' => $data['approval_token'] ?? null,
+            ':token_expires_at' => $data['token_expires_at'] ?? null,
+        ]);
         return $this->pdo->lastInsertId();
     }
 
@@ -112,8 +125,9 @@ class BookingModel
     public function getAvailableRooms()
     {
         $sql = "
-            SELECT r.id, r.room_number, r.status, r.room_type as type, b.name as building_name, r.capacity,
-                   (SELECT COALESCE(SUM(1 + COALESCE(o.accompanying_persons, 0)), 0) FROM dorm_occupancies o WHERE o.room_id = r.id AND o.status = 'active') as current_occupants
+            SELECT r.id, r.room_number, r.floor , r.status, r.room_type as type, b.name as building_name, r.capacity,
+                   (SELECT COALESCE(SUM(1 + COALESCE(o.accompanying_persons, 0)), 0) FROM dorm_occupancies o WHERE o.room_id = r.id AND o.status = 'active') as current_occupants,
+                   (SELECT GROUP_CONCAT(u.fullname SEPARATOR ', ') FROM dorm_occupancies o JOIN users u ON o.employee_id = u.id WHERE o.room_id = r.id AND o.status = 'active') as occupant_names
             FROM dorm_rooms r
             JOIN dorm_buildings b ON r.building_id = b.id
             WHERE r.status != 'maintenance'
@@ -130,6 +144,24 @@ class BookingModel
             }
         }
         return $availableRooms;
+    }
+
+    public function getRequestsBySupervisor($supervisorEmail, $status)
+    {
+        $sql = "
+            SELECT r.*, u.fullname, u.Level3Name as department, u.email, rt.name as room_type_name,
+                   ar.room_number as assigned_room_number, ab.name as assigned_building_name
+            FROM dorm_reservations r
+            JOIN users u ON r.requester_id = u.id
+            LEFT JOIN dorm_room_types rt ON r.room_type_preference = rt.id
+            LEFT JOIN dorm_rooms ar ON r.room_id = ar.id
+            LEFT JOIN dorm_buildings ab ON ar.building_id = ab.id
+            WHERE r.supervisor_email = ? AND r.status = ?
+            ORDER BY r.created_at DESC
+        ";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$supervisorEmail, $status]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getReservationById($id, $lock = false)
@@ -153,20 +185,78 @@ class BookingModel
 
     public function updateStatus($id, $status, $cancelReason = null, $approverId = null)
     {
-        $sql = "UPDATE dorm_reservations SET status = ?, cancel_reason = ?, approver_id = ?, approved_at = NOW() WHERE id = ?";
+        $sql = "UPDATE dorm_reservations SET status = ?, cancel_reason = ?, approver_id = ?, updated_at = NOW() WHERE id = ?";
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute([$status, $cancelReason, $approverId, $id]);
+    }
+
+    public function saveDefaultSupervisor($userId, $supervisorId)
+    {
+        $sql = "UPDATE users SET default_supervisor_id = ? WHERE id = ?";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([$supervisorId, $userId]);
+    }
+
+    public function getUserWithSupervisor($userId)
+    {
+        $sql = "SELECT u.*, 
+                       s.fullname as default_supervisor_name, 
+                       s.email as default_supervisor_email
+                FROM users u
+                LEFT JOIN users s ON u.default_supervisor_id = s.id
+                WHERE u.id = ?";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$userId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    public function approveSupervisor($id, $userId = null)
+    {
+        $sql = "UPDATE dorm_reservations 
+                SET status = 'pending_manager', supervisor_approved_at = NOW(), supervisor_approved_user_id = ?, token_expires_at = NULL, approval_token = NULL 
+                WHERE id = ?";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([$userId, $id]);
+    }
+
+    public function rejectSupervisor($id, $reason, $rejectedBy, $userId = null)
+    {
+        $sql = "UPDATE dorm_reservations 
+                SET status = 'rejected_supervisor', rejection_reason = ?, rejected_by = ?, supervisor_approved_user_id = ?, token_expires_at = NULL, approval_token = NULL, approved_at = NOW() 
+                WHERE id = ?";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([$reason, $rejectedBy, $userId, $id]);
+    }
+
+    public function rejectManager($id, $reason, $rejectedBy, $userId = null)
+    {
+        $sql = "UPDATE dorm_reservations 
+                SET status = 'rejected_manager', rejection_reason = ?, rejected_by = ?, manager_approved_user_id = ?, manager_approved_at = NOW()
+                WHERE id = ?";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([$reason, $rejectedBy, $userId, $id]);
     }
 
     public function approveReservation($id, $roomId, $keyDate, $remark, $approverId)
     {
         $sql = "
             UPDATE dorm_reservations 
-            SET status = 'approved', room_id = ?, key_pickup_date = ?, admin_remark = ?, approver_id = ?, approved_at = NOW(), check_out = NULL
+            SET status = 'approved', room_id = ?, key_pickup_date = ?, admin_remark = ?, approver_id = ?, manager_approved_user_id = ?, manager_approved_at = NOW(), approved_at = NOW(), check_out = NULL
             WHERE id = ?
         ";
         $stmt = $this->pdo->prepare($sql);
-        return $stmt->execute([$roomId, $keyDate, $remark, $approverId, $id]);
+        return $stmt->execute([$roomId, $keyDate, $remark, $approverId, $approverId, $id]);
+    }
+
+    public function getReservationByToken($token)
+    {
+        $sql = "SELECT r.*, u.email as requester_email_address, u.fullname as requester_name 
+                FROM dorm_reservations r 
+                JOIN users u ON r.requester_id = u.id 
+                WHERE r.approval_token = ?";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$token]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
     public function getRoomById($id)
     {

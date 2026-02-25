@@ -52,25 +52,30 @@
                 </a>
             </li>
 
-            <?php if ($isAdmin): ?>
+            <?php if ($isAdmin || $canApprove): ?>
                 <li class="nav-section pt-4 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">จัดการห้องพัก</li>
+            <?php endif; ?>
+            <?php if ($isAdmin): ?>
                 <li>
                     <a href="?page=buildings" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors <?= $page === 'buildings' ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100' ?>">
                         <i class="ri-building-line text-lg"></i>
                         <span class="sidebar-text">อาคาร</span>
                     </a>
                 </li>
+            <?php endif; ?>
+            <?php if ($isAdmin || $canApprove): ?>
                 <li>
                     <a href="?page=booking_manage" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors <?= $page === 'booking_manage' ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100' ?>">
                         <i class="ri-file-list-3-line text-lg"></i>
                         <span class="sidebar-text">จัดการคำขอ</span>
                     </a>
                 </li>
-                <li>
-                    <a href="?page=rooms" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors <?= $page === 'rooms' ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100' ?>">
-                        <i class="ri-door-open-line text-lg"></i>
-                        <span class="sidebar-text">ห้องพัก</span>
-                    </a>
+            <?php endif; ?>
+            <?php if ($isAdmin): ?>
+                <a href="?page=rooms" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors <?= $page === 'rooms' ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100' ?>">
+                    <i class="ri-door-open-line text-lg"></i>
+                    <span class="sidebar-text">ห้องพัก</span>
+                </a>
                 </li>
                 <li>
                     <a href="?page=history" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors <?= $page === 'history' ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100' ?>">

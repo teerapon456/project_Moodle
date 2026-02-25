@@ -28,7 +28,7 @@ class CBReportController extends CBBaseController
                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
                 SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled
             FROM cb_bookings
-            WHERE DATE(created_at) BETWEEN ? AND ?
+            WHERE DATE(start_time) BETWEEN ? AND ?
         ");
         $stmt->execute([$startDate, $endDate]);
         $stats = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -51,7 +51,7 @@ class CBReportController extends CBBaseController
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'approved' OR status = 'completed' THEN 1 ELSE 0 END) as approved
             FROM cb_bookings
-            WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? MONTH)
+            WHERE start_time >= DATE_SUB(NOW(), INTERVAL ? MONTH)
             GROUP BY DATE_FORMAT(created_at, '%Y-%m')
             ORDER BY month ASC
         ";
@@ -123,7 +123,7 @@ class CBReportController extends CBBaseController
             LEFT JOIN users u ON b.user_id = u.id
             LEFT JOIN cb_cars c ON b.assigned_car_id = c.id
             LEFT JOIN users drv ON b.driver_user_id = drv.id
-            WHERE DATE(b.created_at) BETWEEN ? AND ?
+            WHERE DATE(b.start_time) BETWEEN ? AND ?
         ";
         $params = [$startDate, $endDate];
 
@@ -186,8 +186,8 @@ class CBReportController extends CBBaseController
             LEFT JOIN cb_fleet_cards fc ON b.fleet_card_id = fc.id
             LEFT JOIN users sup ON b.supervisor_approved_user_id = sup.id
             LEFT JOIN users man ON b.manager_approved_user_id = man.id
-            WHERE DATE(b.created_at) BETWEEN ? AND ?
-            ORDER BY b.created_at ASC
+            WHERE DATE(b.start_time) BETWEEN ? AND ?
+            ORDER BY b.start_time ASC
         ";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$startDate, $endDate]);
@@ -280,15 +280,23 @@ class CBReportController extends CBBaseController
             case 'approved':
                 return 'อนุมัติแล้ว';
             case 'rejected':
+            case 'rejected_supervisor':
+            case 'rejected_manager':
                 return 'ถูกปฏิเสธ';
             case 'completed':
                 return 'เสร็จสิ้น';
+            case 'in_use':
+                return 'กำลังใช้งาน';
+            case 'pending_return':
+                return 'รอคืนรถ';
             case 'pending_supervisor':
                 return 'รอหัวหน้าอนุมัติ';
             case 'pending_manager':
                 return 'รอ IPCD ตรวจสอบ';
             case 'cancelled':
                 return 'ยกเลิก';
+            case 'revoked':
+                return 'ยกเลิกโดยแอดมิน';
             default:
                 return $status;
         }

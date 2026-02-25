@@ -581,13 +581,11 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 
         searchTimeout = setTimeout(async () => {
             try {
-                const apiBase = API_BASE.replace('/Dormitory/', '/CarBooking/');
+                // Fetch from current module's API
+                const res = await fetch(`${API_BASE}?action=searchEmail&query=${encodeURIComponent(query)}`);
+                const data = await res.json();
 
-                // Fetch from MS Graph only (searchUsers removed)
-                const msRes = await fetch(`${apiBase}?controller=bookings&action=searchEmail&query=${encodeURIComponent(query)}`);
-                const msData = await msRes.json();
-
-                const allUsers = msData.success ? msData.users : [];
+                const allUsers = data.success ? data.users : [];
 
                 if (allUsers.length > 0) {
                     const filtered = allUsers.filter(emp => !adminEmails.includes(emp.email));
@@ -628,13 +626,11 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 
         searchTimeout = setTimeout(async () => {
             try {
-                const apiBase = API_BASE.replace('/Dormitory/', '/CarBooking/');
+                // Fetch from current module's API
+                const res = await fetch(`${API_BASE}?action=searchEmail&query=${encodeURIComponent(query)}`);
+                const data = await res.json();
 
-                // Fetch from MS Graph only (searchUsers removed)
-                const msRes = await fetch(`${apiBase}?controller=bookings&action=searchEmail&query=${encodeURIComponent(query)}`);
-                const msData = await msRes.json();
-
-                const allUsers = msData.success ? msData.users : [];
+                const allUsers = data.success ? data.users : [];
 
                 if (allUsers.length > 0) {
                     const filtered = allUsers.filter(emp => !ccEmails.includes(emp.email));

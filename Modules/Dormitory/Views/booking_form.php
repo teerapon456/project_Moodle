@@ -58,8 +58,8 @@ $maxRelatives = $maxRelativesResult ? (int)$maxRelativesResult : 5; // Default t
 
     .form-input:focus {
         background-color: #ffffff;
-        border-color: #4f46e5;
-        box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+        border-color: #b91c1c;
+        box-shadow: 0 0 0 4px rgba(185, 28, 28, 0.1);
         outline: none;
     }
 
@@ -127,6 +127,20 @@ $maxRelatives = $maxRelativesResult ? (int)$maxRelativesResult : 5; // Default t
         margin-right: 0.75rem;
         color: #4f46e5;
         font-size: 1.25rem;
+    }
+
+    /* Approver Search Results */
+    #approver-results {
+        position: absolute;
+        z-index: 50;
+        width: 100%;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.75rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        max-height: 250px;
+        overflow-y: auto;
+        margin-top: 0.25rem;
     }
 </style>
 
@@ -241,6 +255,12 @@ $maxRelatives = $maxRelativesResult ? (int)$maxRelativesResult : 5; // Default t
 
                 <!-- MOVE IN SECTION -->
                 <div id="section-move_in" class="<?= $defaultTab == 'move_in' ? '' : 'hidden' ?>">
+                    <!-- Date Selection -->
+                    <div class="mb-6">
+                        <label class="text-xs font-semibold text-gray-500 mb-2 block">วันที่ต้องการเข้าพัก</label>
+                        <input type="date" name="check_in_date" class="form-input bg-white w-full md:w-64">
+                    </div>
+
                     <!-- Reason -->
                     <div class="mb-6">
                         <div class="section-title text-base border-0 mb-3 pb-0 text-gray-700">
@@ -299,7 +319,7 @@ $maxRelatives = $maxRelativesResult ? (int)$maxRelativesResult : 5; // Default t
 
                     <hr class="border-gray-100 my-6">
 
-                    <!-- Room Type & Date -->
+                    <!-- Stay Information -->
                     <div class="section-title">
                         <i class="ri-hotel-bed-line"></i> ข้อมูลการเข้าพัก
                     </div>
@@ -312,11 +332,6 @@ $maxRelatives = $maxRelativesResult ? (int)$maxRelativesResult : 5; // Default t
                                     <i class="ri-loader-4-line animate-spin"></i> กำลังโหลดประเภทห้อง...
                                 </span>
                             </div>
-                        </div>
-
-                        <div class="w-full md:w-auto">
-                            <label class="text-xs font-semibold text-gray-500 mb-2 block">วันที่ต้องการเข้าพัก</label>
-                            <input type="date" name="check_in_date" class="form-input bg-white">
                         </div>
                     </div>
 
@@ -574,6 +589,44 @@ $maxRelatives = $maxRelativesResult ? (int)$maxRelativesResult : 5; // Default t
                     <div>
                         <label class="font-medium">เหตุผลการขอย้าย</label>
                         <input type="text" name="change_reason" class="form-input mt-1">
+                    </div>
+                </div>
+
+                <!-- APPROVER SECTION -->
+                <div class="bg-blue-50/50 rounded-xl p-6 mb-8 border border-blue-100/50 mt-8">
+                    <div class="section-title border-none mb-4 pb-0 !text-sm !text-blue-900 uppercase tracking-wider">
+                        <i class="ri-user-follow-line text-blue-600"></i> ผู้อนุมัติ (หัวหน้างาน/ผู้จัดการ)
+                    </div>
+                    <div class="relative">
+                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 block">ระบุชื่อหรืออีเมลผู้บังคับบัญชาเพื่อขออนุมัติ <span class="text-red-500">*</span></label>
+                        <div class="flex gap-2">
+                            <div class="relative flex-1">
+                                <input type="text" id="approver_search" class="form-input bg-white pr-10" placeholder="ระบุชื่อหรืออีเมลเพื่อค้นหา..." autocomplete="off">
+                                <div id="approver-loading" class="absolute right-3 top-1/2 -translate-y-1/2 hidden">
+                                    <i class="ri-loader-4-line animate-spin text-blue-500"></i>
+                                </div>
+                                <div id="approver-results" class="hidden"></div>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mt-1">แจ้งเตือน: ระบบจะส่งอีเมลขออนุมัติไปยังอีเมลที่คุณเลือก</p>
+
+                        <input type="hidden" name="approver_email" id="approver_email" value="<?= htmlspecialchars($userData['default_supervisor_email'] ?? '') ?>">
+
+                        <!-- Selected Approver Card -->
+                        <div id="selected-approver-display" class="<?= empty($userData['default_supervisor_email']) ? 'hidden' : '' ?> mt-3 p-3 bg-white border border-blue-200 rounded-lg flex items-center justify-between shadow-sm">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                    <i class="ri-user-follow-fill"></i>
+                                </div>
+                                <div>
+                                    <div id="approver-name-display" class="font-semibold text-sm text-gray-900"><?= htmlspecialchars($userData['default_supervisor_name'] ?? 'ผู้อนุมัติที่บันทึกไว้') ?></div>
+                                    <div id="approver-email-display" class="text-xs text-gray-500"><?= htmlspecialchars($userData['default_supervisor_email'] ?? '') ?></div>
+                                </div>
+                            </div>
+                            <button type="button" onclick="clearSelectedApprover()" class="text-gray-400 hover:text-red-500 transition-colors">
+                                <i class="ri-close-circle-line text-xl"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -1161,6 +1214,14 @@ $maxRelatives = $maxRelativesResult ? (int)$maxRelativesResult : 5; // Default t
             return;
         }
 
+        // Validate Approver Email
+        const approverEmail = document.getElementById('approver_email').value;
+        if (!approverEmail) {
+            showToast('กรุณาระบุผู้อนุมัติ', 'warning');
+            document.getElementById('approver_search').focus();
+            return;
+        }
+
         // Collect relatives data before submission
         if (requestType === 'move_in' && document.getElementById('has_relative').checked) {
             collectRelativesData();
@@ -1298,5 +1359,119 @@ $maxRelatives = $maxRelativesResult ? (int)$maxRelativesResult : 5; // Default t
             }
         });
     });
+
+    // ========== Approver Search Logic ==========
+    let searchTimeout = null;
+    const approverSearch = document.getElementById('approver_search');
+    const approverResults = document.getElementById('approver-results');
+    const approverLoading = document.getElementById('approver-loading');
+    const approverEmailInput = document.getElementById('approver_email');
+    const selectedApproverDisplay = document.getElementById('selected-approver-display');
+    const approverNameDisplay = document.getElementById('approver-name-display');
+    const approverEmailDisplay = document.getElementById('approver-email-display');
+
+    approverSearch.addEventListener('input', function() {
+        const query = this.value.trim();
+        clearTimeout(searchTimeout);
+
+        if (query.length < 2) {
+            approverResults.classList.add('hidden');
+            return;
+        }
+
+        searchTimeout = setTimeout(async () => {
+            approverLoading.classList.remove('hidden');
+            try {
+                const response = await fetch(API_BASE + `?action=searchManager&query=${encodeURIComponent(query)}`);
+                const result = await response.json();
+
+                if (result.success && result.users && result.users.length > 0) {
+                    let html = '';
+                    result.users.forEach(emp => {
+                        html += `
+                            <div class="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0" onclick='selectApprover(${JSON.stringify(emp)})'>
+                                <div class="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center text-white text-xs font-semibold">${(emp.name || '?').charAt(0)}</div>
+                                <div class="flex-1">
+                                    <div class="font-medium text-gray-900 text-sm">${emp.name}</div>
+                                    <div class="text-xs text-gray-500">${emp.email} ${emp.department ? ' | ' + emp.department : ''}</div>
+                                </div>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded ${emp.source === 'microsoft' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}">${emp.source === 'microsoft' ? 'MS' : 'DB'}</span>
+                            </div>
+                        `;
+                    });
+                    approverResults.innerHTML = html;
+                    approverResults.classList.remove('hidden');
+                } else {
+                    approverResults.innerHTML = '<div class="p-4 text-xs text-gray-400 text-center">ไม่พบรายชื่อที่ตรงกัน</div>';
+                    approverResults.classList.remove('hidden');
+                }
+            } catch (err) {
+                console.error('Search failed:', err);
+            } finally {
+                approverLoading.classList.add('hidden');
+            }
+        }, 300);
+    });
+
+    // Close results when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!approverSearch.contains(e.target) && !approverResults.contains(e.target)) {
+            approverResults.classList.add('hidden');
+        }
+    });
+
+    function selectApprover(emp, saveAsDefault = true) {
+        const name = emp.name;
+        const email = emp.email;
+        const dept = emp.department;
+
+        approverEmailInput.value = email;
+        approverNameDisplay.textContent = name;
+        approverEmailDisplay.textContent = email + (dept ? ' | ' + dept : '');
+        selectedApproverDisplay.classList.remove('hidden');
+        approverResults.classList.add('hidden');
+        approverSearch.value = '';
+        clearError(approverSearch);
+
+        if (saveAsDefault) {
+            saveDefaultSupervisor(emp);
+        }
+    }
+
+    async function saveDefaultSupervisor(emp) {
+        try {
+            await fetch(`${API_BASE}?controller=booking&action=saveDefaultSupervisor`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    supervisor_email: emp.email,
+                    supervisor_name: emp.name,
+                    supervisor_id: emp.id || null
+                })
+            });
+        } catch (error) {
+            console.error('Failed to save default supervisor:', error);
+        }
+    }
+
+    function clearSelectedApprover() {
+        approverEmailInput.value = '';
+        selectedApproverDisplay.classList.add('hidden');
+        approverSearch.focus();
+    }
+
+    // Pre-fill default supervisor if available
+    <?php if (!empty($userData['default_supervisor_email'])): ?>
+        document.addEventListener('DOMContentLoaded', function() {
+            selectApprover({
+                name: '<?= addslashes($userData['default_supervisor_name'] ?: $userData['default_supervisor_email']) ?>',
+                email: '<?= addslashes($userData['default_supervisor_email']) ?>',
+                id: '<?= addslashes($userData['default_supervisor_id'] ?: '') ?>',
+                department: ''
+            }, false);
+        });
+    <?php endif; ?>
 </script>
 <?php endif; ?>

@@ -24,8 +24,8 @@ class BookingController extends DormBaseController
     public function getBookingFormData()
     {
         $this->requireAuth();
-        $user = $this->user;
-        $userId = $user['id'];
+        $userId = $this->user['id'];
+        $user = $this->bookingModel->getUserWithSupervisor($userId);
 
         // Fetch Room Types for dropdown
         $roomTypes = $this->bookingModel->getRoomTypes();
@@ -45,18 +45,20 @@ class BookingController extends DormBaseController
         // Check for specific pending requests
         $hasPendingMoveIn = false;
         foreach ($myRequests as $req) {
-            if ($req['request_type'] == 'move_in' && $req['status'] == 'pending') {
+            if ($req['request_type'] == 'move_in' && in_array($req['status'], ['pending_supervisor', 'pending_manager'])) {
                 $hasPendingMoveIn = true;
                 break;
             }
         }
 
-        // Map user data for view
         $userData = [
             'fullname' => $user['fullname'],
-            'department' => $user['department'] ?? '-',
-            'position' => $user['position'] ?? '-',
-            'start_date' => $user['start_date'] ?? '-'
+            'department' => $user['Level3Name'] ?? '-',
+            'position' => $user['PositionName'] ?? '-',
+            'start_date' => $user['start_date'] ?? '-',
+            'default_supervisor_email' => $user['default_supervisor_email'] ?? null,
+            'default_supervisor_name' => $user['default_supervisor_name'] ?? null,
+            'default_supervisor_id' => $user['default_supervisor_id'] ?? null
         ];
 
         return compact('userData', 'roomTypes', 'currentOccupancy', 'myRequests', 'myMaintenanceRequests', 'hasPendingMoveIn');
@@ -240,43 +242,46 @@ class BookingController extends DormBaseController
             }
         }
 
+        // Supervisor Approval Logic
+        $supervisorEmail = $input['approver_email'] ?? null;
+        if (empty($supervisorEmail)) {
+            return $this->error('กรุณาระบุอีเมลผู้บังคับบัญชา');
+        }
+
+        // Generate Approval Token
+        $token = bin2hex(random_bytes(32));
+        $expiresAt = date('Y-m-d H:i:s', strtotime('+7 days'));
+
         // Insert into DB
         try {
             $requestId = $this->bookingModel->createReservation([
-                ':requester_id' => $userId,
-                ':request_type' => $requestType,
-                ':reason' => $reason,
-                ':room_type_preference' => $roomTypePref,
-                ':has_relative' => $hasRelative,
-                ':relative_details' => $relativeDetails,
-                ':document_paths' => json_encode($documentPaths, JSON_UNESCAPED_UNICODE),
-                ':check_in' => $checkInDate
+                'requester_id' => $userId,
+                'request_type' => $requestType,
+                'reason' => $reason,
+                'room_type_preference' => $roomTypePref,
+                'has_relative' => $hasRelative,
+                'relative_details' => $relativeDetails,
+                'document_paths' => json_encode($documentPaths, JSON_UNESCAPED_UNICODE),
+                'check_in' => $checkInDate,
+                'status' => 'pending_supervisor',
+                'supervisor_email' => $supervisorEmail,
+                'approval_token' => $token,
+                'token_expires_at' => $expiresAt
             ]);
 
-            // Send Email Notification
+            // Send Email to Supervisor
+            require_once __DIR__ . '/../../../core/Services/EmailService.php';
+            $requestData = $this->bookingModel->getReservationWithUser($requestId);
+            if ($requestData) {
+                EmailService::sendDormSupervisorApprovalEmail($requestData, $supervisorEmail, $token);
+            }
+
+            // Send Email Notification to Requester
             $this->logAudit('create_request', 'dorm_reservation', $requestId);
             EmailService::sendDormRequestReceived($this->user['email'], $this->user['fullname'], $requestType);
 
-            // Notify Admin (Hardcoded or Settings)
-            EmailService::sendDormRequestNotificationToAdmin([
-                'fullname' => $this->user['fullname'],
-                'request_type' => $requestType
-            ]);
-            // Notify admins via in-app notification
-            $requestTypeLabel = match ($requestType) {
-                'move_in' => 'ขอเข้าพัก',
-                'move_out' => 'ขอย้ายออก',
-                'change_room' => 'ขอเปลี่ยนห้อง',
-                'add_relative' => 'ขอเพิ่มญาติ',
-                'remove_relative' => 'ขอนำญาติออก',
-                default => $requestType
-            };
-            $this->notifyDormAdmins(
-                'info',
-                'มีคำขอหอพักใหม่',
-                "คำขอ#{$requestId}: {$this->user['fullname']} {$requestTypeLabel}",
-                "Modules/Dormitory/?page=requests"
-            );
+            // Notify Admin (Delayed until supervisor approves)
+            // Currently removed from here to follow the correct flow.
 
             return $this->success([], 'ส่งคำขอเรียบร้อยแล้ว');
         } catch (PDOException $e) {
@@ -290,10 +295,39 @@ class BookingController extends DormBaseController
     public function listRequests()
     {
         $this->requireAuth();
-        $this->requirePermission('manage');
 
-        $status = $_GET['status'] ?? 'pending';
-        $requests = $this->bookingModel->getRequestsByStatus($status);
+        // Determine user access
+        $isAdmin = $this->hasPermission('manage');
+        $isApprover = false;
+
+        $roleId = $this->user['role_id'] ?? 0;
+        try {
+            $stmtTmp = $this->pdo->prepare("SELECT emplevel_id FROM users WHERE id = ?");
+            $stmtTmp->execute([$this->user['id']]);
+            $row = $stmtTmp->fetch(PDO::FETCH_ASSOC);
+            if ($row && !empty($row['emplevel_id']) && (int)$row['emplevel_id'] >= 7) {
+                $isApprover = true;
+            }
+        } catch (Exception $e) {
+        }
+
+        if (!$isAdmin && !$isApprover) {
+            return $this->error('คุณไม่มีสิทธิ์เข้าถึงข้อมูลนี้');
+        }
+
+        $status = $_GET['status'] ?? 'pending_supervisor';
+
+        // If not admin, force status to pending_supervisor and filter by their email
+        if (!$isAdmin) {
+            if ($status !== 'pending_supervisor') {
+                // Returning empty array if supervisor tries to view other statuses right now (simplification)
+                // Optionally we can return their past approvals
+                return $this->success(['requests' => []]);
+            }
+            $requests = $this->bookingModel->getRequestsBySupervisor($this->user['email'], 'pending_supervisor');
+        } else {
+            $requests = $this->bookingModel->getRequestsByStatus($status);
+        }
 
         // Enrich change_room and move_out requests with current occupancy relative data
         foreach ($requests as &$req) {
@@ -339,22 +373,78 @@ class BookingController extends DormBaseController
     public function approve($input)
     {
         $this->requireAuth();
-        $this->requirePermission('manage');
 
         $requestId = $input['id'];
         $roomId = !empty($input['room_id']) ? $input['room_id'] : null;
-        $keyDate = $input['key_pickup_date'];
+        $keyDate = $input['key_pickup_date'] ?? null;
         $adminRemark = $input['admin_remark'] ?? '';
 
         try {
             $this->pdo->beginTransaction();
 
             // Check current status first
-            $currentStatus = $this->bookingModel->getReservationById($requestId)['status'] ?? null;
-
-            if ($currentStatus !== 'pending') {
+            $request = $this->bookingModel->getReservationById($requestId, true);
+            if (!$request) {
                 $this->pdo->rollBack();
-                return $this->error('คำขอนี้ถูกดำเนินการไปแล้ว');
+                return $this->error('ไม่พบคำขอ');
+            }
+
+            $currentStatus = $request['status'] ?? null;
+
+            if ($currentStatus === 'pending_supervisor') {
+                $isApprover = ($request['supervisor_email'] === ($this->user['email'] ?? ''));
+                $isAdmin = $this->hasPermission('manage');
+
+                if (!$isApprover && !$isAdmin) {
+                    $this->pdo->rollBack();
+                    return $this->error('คุณไม่มีสิทธิ์อนุมัติคำขอนี้');
+                }
+
+                $this->bookingModel->approveSupervisor($requestId, null);
+
+                // Audit Log
+                $this->logAudit('supervisor_approve', 'dorm_reservation', $requestId, ['status' => 'pending_supervisor'], ['status' => 'pending_manager'], $request['requester_id']);
+
+                $this->pdo->commit();
+
+                // Notify Admin Layer
+                $requestTypeLabel = match ($request['request_type']) {
+                    'move_in' => 'ขอเข้าพัก',
+                    'move_out' => 'ขอย้ายออก',
+                    'change_room' => 'ขอเปลี่ยนห้อง',
+                    'add_relative' => 'ขอเพิ่มญาติ',
+                    'remove_relative' => 'ขอนำญาติออก',
+                    default => $request['request_type']
+                };
+                $fullRequest = $this->bookingModel->getReservationWithUser($requestId);
+                $requesterName = $fullRequest ? $fullRequest['fullname'] : 'ผู้ใช้งาน';
+
+                $this->notifyDormAdmins(
+                    'info',
+                    'หอพัก: คำขอใหม่รออนุมัติ',
+                    "คำขอ #{$requestId} จาก {$requesterName} {$requestTypeLabel} ได้รับการอนุมัติจากหัวหน้างานแล้ว",
+                    "Modules/Dormitory/?page=booking_manage"
+                );
+
+                // Send email to admin
+                require_once __DIR__ . '/../../../core/Services/EmailService.php';
+                EmailService::sendDormRequestNotificationToAdmin([
+                    'fullname' => $requesterName,
+                    'request_type' => $request['request_type']
+                ]);
+
+                return $this->success([], 'หัวหน้างานอนุมัติคำขอเรียบร้อยแล้ว');
+            }
+
+            if ($currentStatus !== 'pending_manager') {
+                $this->pdo->rollBack();
+                return $this->error('คำขอนี้ไม่ได้อยู่ในสถานะรอการอนุมัติ');
+            }
+
+            // From here, it's Admin (IPCD) approval...
+            if (!$this->hasPermission('manage')) {
+                $this->pdo->rollBack();
+                return $this->error('คุณไม่มีสิทธิ์จัดการหอพัก');
             }
 
             // Update Reservation
@@ -503,7 +593,22 @@ class BookingController extends DormBaseController
             // Send Email
             try {
                 if ($request) {
-                    EmailService::sendDormRequestApproved($request['email'], $request['fullname'], $request['request_type'], $keyDate, $adminRemark);
+                    $roomDetails = null;
+                    if (!empty($roomId)) {
+                        $stmt = $this->pdo->prepare("SELECT r.room_number, r.floor, b.name as building_name FROM dorm_rooms r JOIN dorm_buildings b ON r.building_id = b.id WHERE r.id = ?");
+                        $stmt->execute([$roomId]);
+                        $roomDetails = $stmt->fetch(PDO::FETCH_ASSOC);
+                    }
+                    EmailService::sendDormRequestApproved(
+                        $request['email'],
+                        $request['fullname'],
+                        $request['request_type'],
+                        $keyDate,
+                        $adminRemark,
+                        $roomDetails['room_number'] ?? null,
+                        $roomDetails['floor'] ?? null,
+                        $roomDetails['building_name'] ?? null
+                    );
                 }
             } catch (Exception $emailEx) {
                 error_log("Email sending failed: " . $emailEx->getMessage());
@@ -549,7 +654,6 @@ class BookingController extends DormBaseController
     public function reject($input)
     {
         $this->requireAuth();
-        $this->requirePermission('manage');
 
         $requestId = $input['id'];
         $reason = $input['reject_reason'];
@@ -559,14 +663,59 @@ class BookingController extends DormBaseController
 
             // Check status (Lock row)
             $reservation = $this->bookingModel->getReservationById($requestId, true);
-            $currentStatus = $reservation['status'] ?? null;
-
-            if ($currentStatus !== 'pending') {
+            if (!$reservation) {
                 $this->pdo->rollBack();
-                return $this->error('คำขอนี้ถูกดำเนินการไปแล้ว');
+                return $this->error('ไม่พบคำขอ');
             }
 
-            $this->bookingModel->updateStatus($requestId, 'rejected', $reason, $this->user['id']);
+            $currentStatus = $reservation['status'] ?? null;
+
+            if ($currentStatus === 'pending_supervisor') {
+                $isApprover = ($reservation['supervisor_email'] === ($this->user['email'] ?? ''));
+                $isAdmin = $this->hasPermission('manage');
+
+                if (!$isApprover && !$isAdmin) {
+                    $this->pdo->rollBack();
+                    return $this->error('คุณไม่มีสิทธิ์ปฏิเสธคำขอนี้');
+                }
+
+                $this->bookingModel->rejectSupervisor($requestId, $reason, $reservation['supervisor_email'], null);
+
+                // Audit Log
+                $this->logAudit('supervisor_reject', 'dorm_reservation', $requestId, ['status' => 'pending_supervisor'], ['status' => 'rejected_supervisor', 'reason' => $reason], $reservation['requester_id']);
+
+                $this->pdo->commit();
+
+                // Notify Requester
+                try {
+                    NotificationService::create(
+                        $reservation['requester_id'],
+                        'error',
+                        'คำขอหอพักถูกปฏิเสธโดยหัวหน้างาน',
+                        'เหตุผล: ' . $reason,
+                        ['request_id' => $requestId],
+                        \Core\Helpers\UrlHelper::getBaseUrl() . '/Modules/Dormitory/?page=my-room'
+                    );
+                } catch (Exception $e) {
+                }
+
+                require_once __DIR__ . '/../../../core/Services/EmailService.php';
+                EmailService::sendDormRequestRejected($reservation['email'], $reservation['requester_name'], $reservation['request_type'], $reason, 'หัวหน้างาน');
+
+                return $this->success([], 'ปฏิเสธคำขอเรียบร้อยแล้ว');
+            }
+
+            if ($currentStatus !== 'pending_manager') {
+                $this->pdo->rollBack();
+                return $this->error('คำขอนี้ไม่ได้อยู่ในสถานะรอการอนุมัติ');
+            }
+
+            if (!$this->hasPermission('manage')) {
+                $this->pdo->rollBack();
+                return $this->error('คุณไม่มีสิทธิ์จัดการหอพัก');
+            }
+
+            $this->bookingModel->rejectManager($requestId, $reason, $this->user['fullname'], $this->user['id']);
 
             $this->pdo->commit();
         } catch (Exception $e) {
@@ -582,7 +731,7 @@ class BookingController extends DormBaseController
         }
 
         // Audit Log
-        $this->logAudit('reject_request', 'dorm_reservation', $requestId, ['status' => 'pending'], ['status' => 'rejected', 'reason' => $reason]);
+        $this->logAudit('reject_request', 'dorm_reservation', $requestId, ['status' => 'pending_manager'], ['status' => 'rejected_manager', 'reason' => $reason]);
 
         // Real-time notification - ข้อความตามประเภทคำขอ
         if ($request) {
@@ -641,7 +790,7 @@ class BookingController extends DormBaseController
                 return $this->error('คุณไม่มีสิทธิ์ยกเลิกคำขอนี้');
             }
 
-            if ($request['status'] !== 'pending') {
+            if (!in_array($request['status'], ['pending_supervisor', 'pending_manager'])) {
                 $this->pdo->rollBack();
                 return $this->error('ไม่สามารถยกเลิกคำขอที่ดำเนินการไปแล้วได้');
             }
@@ -652,7 +801,7 @@ class BookingController extends DormBaseController
             $this->pdo->commit();
 
             // Audit Log
-            $this->logAudit('cancel_request', 'dorm_reservation', $requestId, ['status' => 'pending'], ['status' => 'cancelled', 'reason' => $reason]);
+            $this->logAudit('cancel_request', 'dorm_reservation', $requestId, ['status' => $request['status']], ['status' => 'cancelled', 'reason' => $reason]);
 
             // Notify admins
             $this->notifyDormAdmins(
@@ -666,6 +815,116 @@ class BookingController extends DormBaseController
         } catch (Exception $e) {
             $this->pdo->rollBack();
             return $this->error('Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * API: Handle Supervisor Email Approval Link
+     */
+    public function handleTokenAction()
+    {
+        $token = $_GET['token'] ?? null;
+        $action = $_GET['action'] ?? null;
+        $reason = $_GET['reason'] ?? 'ไม่อนุมัติจากลิงก์อีเมล';
+
+        if (!$token || !in_array($action, ['approve', 'reject'])) {
+            return $this->error('ข้อมูลไม่ถูกต้องหรือลิงก์ไม่สมบูรณ์');
+        }
+
+        $request = $this->bookingModel->getReservationByToken($token);
+
+        if (!$request) {
+            return $this->error('ไม่พบคำขอนี้ หรือลิงก์ถูกใช้งานไปแล้ว');
+        }
+
+        if ($request['status'] !== 'pending_supervisor') {
+            return $this->error('คำขอนี้ถูกดำเนินการไปแล้ว');
+        }
+
+        if ($request['token_expires_at'] && strtotime($request['token_expires_at']) < time()) {
+            return $this->error('ลิงก์นี้หมดอายุแล้ว');
+        }
+
+        try {
+            $this->pdo->beginTransaction();
+
+            if ($action === 'approve') {
+                $this->bookingModel->approveSupervisor($request['id'], null);
+
+                // Audit Log
+                $this->logAudit('supervisor_approve', 'dorm_reservation', $request['id'], ['status' => 'pending_supervisor'], ['status' => 'pending_manager'], $request['requester_id']);
+
+                // Notify Admin Layer
+                $this->notifyDormAdmins(
+                    'info',
+                    'หัวหน้างานอนุมัติคำขอหอพัก',
+                    "คำขอ #{$request['id']} จาก {$request['requester_name']} หัวหน้างานอนุมัติแล้ว รอการพิจารณา",
+                    "Modules/Dormitory/?page=requests"
+                );
+
+                // Send email to admin
+                EmailService::sendDormRequestNotificationToAdmin([
+                    'fullname' => $request['requester_name'],
+                    'request_type' => $request['request_type']
+                ]);
+            } else {
+                $this->bookingModel->rejectSupervisor($request['id'], $reason, $request['supervisor_email'], null);
+
+                // Audit Log
+                $this->logAudit('supervisor_reject', 'dorm_reservation', $request['id'], ['status' => 'pending_supervisor'], ['status' => 'rejected_supervisor', 'reason' => $reason], $request['requester_id']);
+
+                // Notify Requester
+                NotificationService::create(
+                    $request['requester_id'],
+                    'error',
+                    'หัวหน้างานปฏิเสธคำขอหอพัก',
+                    "คำขอ #{$request['id']} ถูกปฏิเสธ: {$reason}",
+                    ['request_id' => $request['id']],
+                    \Core\Helpers\UrlHelper::getBaseUrl() . '/Modules/Dormitory/?page=booking_form'
+                );
+
+                require_once __DIR__ . '/../Services/EmailService.php';
+                EmailService::sendDormRequestRejected($request['requester_email_address'], $request['requester_name'], $request['request_type'], $reason);
+            }
+
+            $this->pdo->commit();
+            return $this->success([], 'ดำเนินการเรียบร้อยแล้ว');
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            return $this->error('Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Save default supervisor for current user
+     */
+    public function saveDefaultSupervisor($data)
+    {
+        $this->requireAuth();
+
+        $email = $data['supervisor_email'] ?? '';
+        $name = $data['supervisor_name'] ?? '';
+        $id = $data['supervisor_id'] ?? null;
+
+        if (!$email) {
+            return $this->error('กรุณาระบุอีเมลหัวหน้า');
+        }
+
+        try {
+            // Update user's default supervisor in database (ID only)
+            $this->bookingModel->saveDefaultSupervisor($this->user['id'], $id);
+
+            // Update session
+            $_SESSION['user']['default_supervisor_email'] = $email;
+            $_SESSION['user']['default_supervisor_name'] = $name;
+            $_SESSION['user']['default_supervisor_id'] = $id;
+
+            // Log audit
+            $this->logAudit('update_default_supervisor', 'user', $this->user['id'], null, ['supervisor_id' => $id]);
+
+            return $this->success([], 'บันทึกหัวหน้าเริ่มต้นแล้ว');
+        } catch (Exception $e) {
+            return $this->error('ไม่สามารถบันทึกได้: ' . $e->getMessage());
         }
     }
 }

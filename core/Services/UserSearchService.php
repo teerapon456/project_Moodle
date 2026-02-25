@@ -157,7 +157,7 @@ class UserSearchService
             $conn = $db->getConnection();
 
             $stmt = $conn->prepare("
-                SELECT id, username as code, fullname, email, Level3Name 
+                SELECT id, username as code, fullname, email, Level3Name, PositionName 
                 FROM users 
                 WHERE is_active = 1 
                 AND emplevel_id >= 7
@@ -174,7 +174,8 @@ class UserSearchService
                     'code' => $row['code'],
                     'name' => $row['fullname'],
                     'email' => $row['email'],
-                    'department' => $row['Level3Name'], // Map Level3Name to department
+                    'department' => $row['Level3Name'] ?? '',
+                    'position' => $row['PositionName'] ?? '',
                     'source' => 'local'
                 ];
             }
@@ -184,7 +185,8 @@ class UserSearchService
 
         return [
             'success' => true,
-            'users' => $results
+            'users' => $results,
+            'employees' => $results // Alias for backward compatibility
         ];
     }
 
@@ -201,7 +203,7 @@ class UserSearchService
             $conn = $db->getConnection();
 
             $stmt = $conn->prepare("
-                SELECT id, username as code, fullname, email, Level3Name 
+                SELECT id, username as code, fullname, email, Level3Name, PositionName 
                 FROM users 
                 WHERE is_active = 1 
                 AND (username LIKE ? OR fullname LIKE ? OR email LIKE ?)
@@ -217,7 +219,8 @@ class UserSearchService
                     'code' => $row['code'],
                     'name' => $row['fullname'],
                     'email' => $row['email'],
-                    'department' => $row['Level3Name'], // Map Level3Name to department
+                    'department' => $row['Level3Name'] ?? '',
+                    'position' => $row['PositionName'] ?? '',
                     'source' => 'local'
                 ];
             }
@@ -227,7 +230,8 @@ class UserSearchService
 
         return [
             'success' => true,
-            'users' => $results
+            'users' => $results,
+            'employees' => $results // Alias for backward compatibility
         ];
     }
 

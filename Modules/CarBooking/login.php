@@ -64,7 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'role_id' => $user['role_id'],
                         'role' => $user['role_name'],
                         'department' => $user['Level3Name'], // Use Level3Name for department
-                        'default_supervisor_email' => $user['default_supervisor_email']
+                        'position' => $user['PositionName'], // Use PositionName
+                        'default_supervisor_id' => $user['default_supervisor_id']
                     ];
 
                     // Log login

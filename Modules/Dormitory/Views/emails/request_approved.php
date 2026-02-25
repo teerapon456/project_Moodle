@@ -60,6 +60,18 @@
         <p>คำขอ <strong><?= htmlspecialchars($typeLabel) ?></strong> ของคุณได้รับการอนุมัติแล้ว</p>
 
         <div class="details">
+            <p><strong>รายละเอียดการเข้าพัก:</strong></p>
+            <ul>
+                <?php if (!empty($building)): ?>
+                    <li><strong>อาคาร:</strong> <?= htmlspecialchars($building) ?></li>
+                <?php endif; ?>
+                <?php if (!empty($floor)): ?>
+                    <li><strong>ชั้น:</strong> <?= htmlspecialchars($floor) ?></li>
+                <?php endif; ?>
+                <?php if (!empty($roomNumber)): ?>
+                    <li><strong>เลขห้อง:</strong> <?= htmlspecialchars($roomNumber) ?></li>
+                <?php endif; ?>
+            </ul>
             <p><strong>วันนัดรับกุญแจ/ดำเนินการ:</strong> <?= date('d/m/Y H:i', strtotime($keyDate)) ?></p>
             <?php if (!empty($remark)): ?>
                 <p><strong>หมายเหตุจากเจ้าหน้าที่:</strong> <?= htmlspecialchars($remark) ?></p>

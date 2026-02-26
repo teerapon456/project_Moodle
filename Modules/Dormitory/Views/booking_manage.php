@@ -155,6 +155,7 @@ if (!$isAdmin && (!isset($canApprove) || !$canApprove)) {
                 <input type="hidden" name="request_type" id="approve_request_type">
                 <input type="hidden" name="required_capacity" id="approve_required_capacity">
                 <input type="hidden" name="room_id" id="selected_room_id">
+                <input type="hidden" name="status" id="approve_status">
 
                 <!-- Required Capacity Info -->
                 <div id="capacityInfo" class="bg-indigo-50 border border-indigo-100 rounded-lg p-3 hidden">
@@ -577,6 +578,7 @@ if (!$isAdmin && (!isset($canApprove) || !$canApprove)) {
     function openApprove(id, type, checkIn, relativesCount = 0, status = 'pending_supervisor') {
         document.getElementById('approve_id').value = id;
         document.getElementById('approve_request_type').value = type;
+        document.getElementById('approve_status').value = status;
 
         const roomSelectContainer = document.getElementById('roomSelectContainer');
         const dateContainer = document.getElementById('dateContainer');

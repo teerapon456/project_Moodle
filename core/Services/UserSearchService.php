@@ -69,8 +69,8 @@ class UserSearchService
                 }
 
                 // --- Part C: Search Groups (Distribution Lists, Security Groups, M365 Groups) ---
-                // Crucial: Use $search on 'displayName' and 'mail' for groups
-                $groupsUrl = "https://graph.microsoft.com/v1.0/groups?\$search=\"displayName:$query\" OR \"mail:$query\"&\$select=id,displayName,mail,description,groupTypes&\$top=15&\$count=true";
+                // Broaden search to include more fields and better quoting
+                $groupsUrl = "https://graph.microsoft.com/v1.0/groups?\$search=\"displayName:$query\" OR \"mail:$query\" OR \"description:$query\"&\$select=id,displayName,mail,description,groupTypes&\$top=20&\$count=true";
                 $groupsResponse = self::executeGraphRequest($groupsUrl, $accessToken);
 
                 if ($groupsResponse && !empty($groupsResponse['value'])) {
@@ -81,7 +81,7 @@ class UserSearchService
                         if (isset($group['groupTypes']) && in_array('Unified', $group['groupTypes'])) {
                             $groupType = 'M365 Group';
                         } elseif (empty($group['groupTypes'])) {
-                            $groupType = 'Dist. List'; // Distribution list usually has empty groupTypes
+                            $groupType = 'Dist. List';
                         }
 
                         self::addUniqueResult($results, [
@@ -95,21 +95,25 @@ class UserSearchService
                     }
                 }
 
-                // --- Part D: Fallback / Exact Filter Search (Crucial for hidden/shared objects) ---
+                // --- Part D: Fallback / Exact Filter Search (Crucial for hidden/shared objects/groups) ---
                 if (count($results) < 5 || strpos($query, '@') !== false) {
-                    $filter = "";
+                    $userFilter = "";
+                    $groupFilter = "";
+
                     if (strpos($query, '@') !== false) {
-                        $filter = urlencode("mail eq '$query' or userPrincipalName eq '$query' or proxyAddresses/any(a:a eq 'smtp:$query')");
+                        $userFilter = urlencode("mail eq '$query' or userPrincipalName eq '$query' or proxyAddresses/any(a:a eq 'smtp:$query')");
+                        $groupFilter = urlencode("mail eq '$query' or proxyAddresses/any(a:a eq 'smtp:$query')");
                     } else {
-                        $filter = urlencode("startswith(displayName,'$query') or startswith(mail,'$query')");
+                        $userFilter = urlencode("startswith(displayName,'$query') or startswith(mail,'$query')");
+                        $groupFilter = urlencode("startswith(displayName,'$query') or startswith(mail,'$query')");
                     }
 
-                    // Try User filtering
-                    $filterUrl = "https://graph.microsoft.com/v1.0/users?\$filter=$filter&\$select=$commonSelect,proxyAddresses&\$top=10";
-                    $filterResponse = self::executeGraphRequest($filterUrl, $accessToken);
+                    // 1. Try User filtering (includes Shared Mailboxes)
+                    $userFilterUrl = "https://graph.microsoft.com/v1.0/users?\$filter=$userFilter&\$select=$commonSelect,proxyAddresses&\$top=10";
+                    $userFilterResponse = self::executeGraphRequest($userFilterUrl, $accessToken);
 
-                    if ($filterResponse && !empty($filterResponse['value'])) {
-                        foreach ($filterResponse['value'] as $graphUser) {
+                    if ($userFilterResponse && !empty($userFilterResponse['value'])) {
+                        foreach ($userFilterResponse['value'] as $graphUser) {
                             $email = $graphUser['mail'] ?? $graphUser['userPrincipalName'];
                             self::addUniqueResult($results, [
                                 'id' => $graphUser['id'],
@@ -118,6 +122,32 @@ class UserSearchService
                                 'department' => $graphUser['department'] ?? '',
                                 'source' => 'microsoft',
                                 'type' => 'user'
+                            ]);
+                        }
+                    }
+
+                    // 2. Try Group filtering (Distribution Lists & Groups)
+                    $groupFilterUrl = "https://graph.microsoft.com/v1.0/groups?\$filter=$groupFilter&\$select=id,displayName,mail,description,groupTypes&\$top=10";
+                    $groupFilterResponse = self::executeGraphRequest($groupFilterUrl, $accessToken);
+
+                    if ($groupFilterResponse && !empty($groupFilterResponse['value'])) {
+                        foreach ($groupFilterResponse['value'] as $group) {
+                            if (empty($group['mail'])) continue;
+
+                            $groupType = 'Group';
+                            if (isset($group['groupTypes']) && in_array('Unified', $group['groupTypes'])) {
+                                $groupType = 'M365 Group';
+                            } elseif (empty($group['groupTypes'])) {
+                                $groupType = 'Dist. List';
+                            }
+
+                            self::addUniqueResult($results, [
+                                'id' => $group['id'],
+                                'name' => "[$groupType] " . $group['displayName'],
+                                'email' => $group['mail'],
+                                'department' => $group['description'] ?? $groupType,
+                                'source' => 'microsoft',
+                                'type' => 'group'
                             ]);
                         }
                     }

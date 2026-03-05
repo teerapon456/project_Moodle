@@ -19,11 +19,13 @@ if (isset($_SESSION['user'])) {
 }
 
 $error = null;
+$redirectTo = $_REQUEST['redirect_to'] ?? 'index.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';
     $csrfToken = $_POST['_csrf_token'] ?? '';
+    $redirectTo = $_POST['redirect_to'] ?? 'index.php';
 
     require_once __DIR__ . '/../../core/Security/CsrfHelper.php';
     require_once __DIR__ . '/../../core/Auth/AuthService.php';
@@ -36,7 +38,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($result['success']) {
             $auth->initializeSession($result['user']);
-            header("Location: index.php");
+            // Final safety check for redirect destination
+            if (empty($redirectTo) || strpos($redirectTo, 'login.php') !== false) {
+                $redirectTo = 'index.php';
+            }
+            header("Location: " . $redirectTo);
             exit;
         } else {
             $error = $result['message'];
@@ -52,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>เข้าสู่ระบบ - หอพัก (Dormitory)</title>
+    <title>เข้าสู่ระบบ - ระบบหอพัก (Dormitory)</title>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= $publicUrl ?>/assets/css/tailwind.css">
     <style>
@@ -123,6 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             require_once __DIR__ . '/../../core/Security/CsrfHelper.php';
             \Core\Security\CsrfHelper::insertField();
             ?>
+            <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($redirectTo) ?>">
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="username">
                     ชื่อผู้ใช้ / อีเมล
@@ -146,7 +153,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <span>หรือ (OR)</span>
         </div>
 
-        <a href="/auth/microsoft/login?redirect_to=/Modules/Dormitory/" class="sso-link">
+        <?php
+        $ssoRedirect = !empty($redirectTo) && $redirectTo !== 'index.php' ? $redirectTo : '/Modules/Dormitory/';
+        ?>
+        <a href="/auth/microsoft/login?redirect_to=<?= urlencode($ssoRedirect) ?>" class="sso-link">
             <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft" class="w-4 h-4">
             <span>เข้าสู่ระบบผ่าน Microsoft SSO</span>
         </a>

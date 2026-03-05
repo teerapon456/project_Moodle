@@ -71,7 +71,6 @@ class AuthMiddleware
     public static function redirectToLogin($linkBase = '/', $error = '')
     {
         // Detect Docker Public Root
-        // If DocumentRoot ends in 'public', we are likely in Docker container mapping public directly
         $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
         $isDockerPublic = (basename(rtrim($docRoot, '/')) === 'public');
 
@@ -79,14 +78,26 @@ class AuthMiddleware
         if ($isDockerPublic) {
             $loginPath = '/index.php';
         } else {
-            // Ensure linkBase ends with / if not empty
             $base = rtrim($linkBase, '/');
             $loginPath = ($base ? $base : '') . '/public/index.php';
         }
 
         // Add error param
+        $params = [];
         if ($error) {
-            $loginPath .= '?error=' . urlencode($error);
+            $params['error'] = $error;
+        }
+
+        // Add redirect_to automatically if not already on a login page
+        if (!isset($_GET['redirect_to']) && strpos($_SERVER['REQUEST_URI'], 'login.php') === false && strpos($_SERVER['REQUEST_URI'], 'public/index.php') === false) {
+            require_once __DIR__ . '/../Helpers/UrlHelper.php';
+            $params['redirect_to'] = \Core\Helpers\UrlHelper::getCurrentUrl();
+        } elseif (isset($_GET['redirect_to'])) {
+            $params['redirect_to'] = $_GET['redirect_to'];
+        }
+
+        if (!empty($params)) {
+            $loginPath .= '?' . http_build_query($params);
         }
 
         header("Location: " . $loginPath);

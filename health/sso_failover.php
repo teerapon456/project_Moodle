@@ -7,7 +7,7 @@
  */
 
 // Include the standard Microsoft Auth Controller from the core directory
-require_once __DIR__ . '/../../core/Auth/MicrosoftAuthController.php';
+require_once __DIR__ . '/core/Auth/MicrosoftAuthController.php';
 
 // Ensure the action is set, defaulting to 'login' if missing
 if (!isset($_GET['action']) || empty($_GET['action'])) {

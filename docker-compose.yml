@@ -195,6 +195,31 @@ services:
     networks:
       - myhr-net
 
+  # System Health Dashboard Container
+  health:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.health
+    container_name: myhr-health
+    restart: always
+    environment:
+      - TZ=Asia/Bangkok
+      - REDIS_HOST=redis
+      - HEALTH_ADMIN_SECRET=${HEALTH_ADMIN_SECRET}
+    env_file:
+      - .env
+    volumes:
+      - ./core/Config:/var/www/html/core/Config
+      - ./health:/var/www/html
+      - ./core:/var/www/html/core
+      - ./public/assets:/var/www/html/assets
+      - ./.env:/var/www/html/.env
+      - /var/run/docker.sock:/var/run/docker.sock
+    group_add:
+      - "988"
+    networks:
+      - myhr-net
+
   # Dormitory Module
   dormitory:
     build:

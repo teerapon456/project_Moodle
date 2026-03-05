@@ -58,6 +58,7 @@ class ApplicantAuthController
         }
 
         // Show login view
+        $redirectTo = $_GET['redirect_to'] ?? '';
         header('Content-Type: text/html; charset=UTF-8');
         include __DIR__ . '/../Views/applicant/login.php';
     }
@@ -97,7 +98,12 @@ class ApplicantAuthController
                 'is_applicant' => true,
             ];
 
-            header("Location: /Modules/IGA/?page=dashboard");
+            $redirectTo = $_POST['redirect_to'] ?? '/Modules/IGA/?page=dashboard';
+            if (strpos($redirectTo, 'http') === 0) {
+                $redirectTo = '/Modules/IGA/?page=dashboard';
+            }
+
+            header("Location: " . $redirectTo);
             exit;
         } else {
             $_SESSION['login_error'] = "อีเมลหรือรหัสผ่านไม่ถูกต้อง";

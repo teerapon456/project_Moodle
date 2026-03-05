@@ -195,6 +195,7 @@
             <form action="?action=authenticate" method="POST" id="loginForm">
                 <?= CSRFMiddleware::getHiddenField() ?>
                 <input type="hidden" name="login_type" id="loginType" value="applicant">
+                <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_GET['redirect_to'] ?? $_POST['redirect_to'] ?? '') ?>">
 
                 <div class="mb-4">
                     <label id="userLabel" class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">อีเมล (Email)</label>
@@ -230,7 +231,11 @@
                     <span>หรือ (OR)</span>
                 </div>
 
-                <a href="/auth/microsoft/login?redirect_to=/Modules/IGA/" class="sso-link">
+                <?php
+                $returnUrl = $_GET['redirect_to'] ?? $_POST['redirect_to'] ?? '/Modules/IGA/';
+                $ssoUrl = "/auth/microsoft/login?redirect_to=" . urlencode($returnUrl);
+                ?>
+                <a href="<?= $ssoUrl ?>" class="sso-link">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft" class="w-4 h-4">
                     <span>เข้าสู่ระบบผ่าน Microsoft SSO</span>
                 </a>

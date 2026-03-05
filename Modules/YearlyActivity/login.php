@@ -37,7 +37,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($result['success']) {
             $auth->initializeSession($result['user']);
-            header("Location: index.php");
+
+            $redirectTo = $_POST['redirect_to'] ?? 'index.php';
+            // Simple validation to prevent open redirects
+            if (strpos($redirectTo, 'http') === 0) {
+                $redirectTo = 'index.php';
+            }
+
+            header("Location: " . $redirectTo);
             exit;
         } else {
             $error = $result['message'];
@@ -125,10 +132,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form method="POST" action="">
-            <?php
             require_once __DIR__ . '/../../core/Security/CsrfHelper.php';
             \Core\Security\CsrfHelper::insertField();
             ?>
+            <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_GET['redirect_to'] ?? $_POST['redirect_to'] ?? 'index.php') ?>">
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="username">
                     ชื่อผู้ใช้ / อีเมล
@@ -152,7 +159,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <span>หรือ (OR)</span>
         </div>
 
-        <a href="/auth/microsoft/login?redirect_to=/Modules/YearlyActivity/" class="sso-link" onclick="document.cookie='oauth_redirect=/Modules/YearlyActivity/; path=/;'">
+        <?php
+        $returnUrl = $_GET['redirect_to'] ?? $_POST['redirect_to'] ?? '/Modules/YearlyActivity/';
+        $ssoUrl = "/auth/microsoft/login?redirect_to=" . urlencode($returnUrl);
+        ?>
+        <a href="<?= $ssoUrl ?>" class="sso-link" onclick="document.cookie='oauth_redirect=<?= $returnUrl ?>; path=/;'">
             <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft" class="w-4 h-4">
             <span>เข้าสู่ระบบผ่าน Microsoft SSO</span>
         </a>

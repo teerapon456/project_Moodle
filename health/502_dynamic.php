@@ -31,7 +31,7 @@ if ($isApiRequest) {
     exit;
 }
 
-require_once __DIR__ . '/../../core/Database/Database.php';
+require_once __DIR__ . '/core/Database/Database.php';
 
 $db = new Database();
 $conn = $db->getConnection();
@@ -67,9 +67,9 @@ function formatPath($path)
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบกำลังปรับปรุง - MyHR Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/tailwind.css">
+    <link rel="stylesheet" href="assets/css/tailwind.css">
     <!-- Include Remix Icon if icons are in Remix syntax -->
-    <link href="/assets/css/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/remixicon.css">
     <style>
         body {
             font-family: 'Kanit', sans-serif;

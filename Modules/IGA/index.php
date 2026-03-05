@@ -126,7 +126,15 @@ $publicUrl = rtrim($assetBase, '/');
 $standalonePages = ['login', 'register', 'verify'];
 if (in_array($page, $standalonePages)) {
     // Redirect to consistent action-based URL
-    header("Location: /Modules/IGA/?action={$page}");
+    $redirectParam = '';
+    if (isset($_GET['redirect_to'])) {
+        $redirectParam = '&redirect_to=' . urlencode($_GET['redirect_to']);
+    } elseif (!in_array($action, $standalonePages)) {
+        // Only auto-gen if we're coming from a protected page, not if already on login
+        $redirectParam = '&redirect_to=' . urlencode(UrlHelper::getCurrentUrl());
+    }
+
+    header("Location: /Modules/IGA/?action={$page}" . $redirectParam);
     exit;
 }
 

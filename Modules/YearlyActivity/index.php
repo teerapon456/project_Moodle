@@ -9,7 +9,9 @@ require_once __DIR__ . '/../../core/Database/Database.php';
 // Auth Check
 $user = $_SESSION['user'] ?? null;
 if (!$user) {
-    header('Location: login.php');
+    require_once __DIR__ . '/../../core/Helpers/UrlHelper.php';
+    $redirectTo = urlencode(\Core\Helpers\UrlHelper::getCurrentUrl());
+    header("Location: login.php?redirect_to=$redirectTo");
     exit;
 }
 

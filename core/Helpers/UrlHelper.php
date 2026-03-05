@@ -174,4 +174,22 @@ class UrlHelper
         $baseRoot = rtrim($basePath, '/');
         return ($baseRoot ? $baseRoot . '/' : '/');
     }
+
+    /**
+     * Get the current full URL including query strings.
+     * @param bool $includeQuery Whether to include query parameters
+     * @return string Full URL
+     */
+    public static function getCurrentUrl($includeQuery = true)
+    {
+        $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http");
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+
+        if (!$includeQuery) {
+            $uri = explode('?', $uri)[0];
+        }
+
+        return $protocol . "://" . $host . $uri;
+    }
 }

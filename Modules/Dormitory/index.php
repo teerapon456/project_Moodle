@@ -18,9 +18,10 @@ $basePath = UrlHelper::getBasePath();
 
 // Check authentication
 if (!isset($_SESSION['user'])) {
+    $redirectUrl = UrlHelper::getCurrentUrl();
     session_write_close(); // Release lock before redirect
-    // Redirect to local login page
-    header('Location: login.php');
+    // Redirect to local login page with redirect_to parameter
+    header('Location: login.php?redirect_to=' . urlencode($redirectUrl));
     exit;
 }
 

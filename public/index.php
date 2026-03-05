@@ -41,12 +41,17 @@ if ($docRoot && is_dir($docRoot . '/assets')) {
     $assetBase = ($baseRoot ? $baseRoot : '') . '/public/';
 }
 
-// If logged-in and active + has HR portal view, redirect to HR services
+// If logged-in and active + has HR portal view, redirect to HR services (or deep link)
 $user = $_SESSION['user'] ?? null;
 if ($user && !isset($_GET['error'])) {
     $roleId = $user['role_id'] ?? null;
     if ($roleId && $auth->hasModulePermission($roleId, 'HR_PORTAL')) {
-        header('Location: ' . $linkBase . 'Modules/HRServices/public/index.php');
+        $redirectTo = $_GET['redirect_to'] ?? '';
+        // Final safety check for redirect destination
+        if (empty($redirectTo) || strpos($redirectTo, 'index.php') !== false || strpos($redirectTo, 'login') !== false) {
+            $redirectTo = $linkBase . 'Modules/HRServices/public/index.php';
+        }
+        header('Location: ' . $redirectTo);
         exit;
     }
 }
@@ -614,6 +619,7 @@ $mandatoryGeolocation = $auth->isGeoMandatory();
             </div>
             <form id="loginForm" style="width: 100%; display: flex; flex-direction: column; gap: 14px;">
                 <?php \Core\Security\CsrfHelper::insertField(); ?>
+                <input type="hidden" id="redirect_to" name="redirect_to" value="<?= htmlspecialchars($_GET['redirect_to'] ?? '') ?>">
                 <input type="hidden" id="latitude" name="latitude">
                 <input type="hidden" id="longitude" name="longitude">
                 <div id="locationStatus" style="text-align: center; font-size: 0.85rem; padding: 4px; min-height: 24px;"></div>
@@ -786,7 +792,10 @@ $mandatoryGeolocation = $auth->isGeoMandatory();
             const remember = document.getElementById('remember').checked ? 1 : 0;
             const lat = document.getElementById('latitude').value;
             const lon = document.getElementById('longitude').value;
-            window.location.href = `${API_BASE_URL}/auth/microsoft/login?remember=${remember}&lat=${lat}&lon=${lon}`;
+            const redirectTo = document.getElementById('redirect_to').value;
+            let url = `${API_BASE_URL}/auth/microsoft/login?remember=${remember}&lat=${lat}&lon=${lon}`;
+            if (redirectTo) url += `&redirect_to=${encodeURIComponent(redirectTo)}`;
+            window.location.href = url;
         };
 
         // Forgot Password Modal Functions
@@ -1214,7 +1223,12 @@ $mandatoryGeolocation = $auth->isGeoMandatory();
                     console.log('Login response data:', data);
 
                     if (response.ok) {
-                        window.location.href = <?php echo json_encode($linkBase . 'Modules/HRServices/public/index.php?login_success=1'); ?>;
+                        const redirectTo = document.getElementById('redirect_to').value;
+                        if (redirectTo && !redirectTo.includes('login') && !redirectTo.includes('index.php')) {
+                            window.location.href = redirectTo;
+                        } else {
+                            window.location.href = <?php echo json_encode($linkBase . 'Modules/HRServices/public/index.php?login_success=1'); ?>;
+                        }
                     } else {
                         // Check for specific error code or fallback
                         if (data.code === 'invalid_credentials' || response.status === 401) {

@@ -1,0 +1,28 @@
+FROM php:8.2-apache
+
+# Install dependencies required by PHP extensions
+RUN apt-get update && apt-get install -y \
+    libxml2-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install essential PHP extensions for database connectivity
+RUN docker-php-ext-install mysqli pdo pdo_mysql
+
+# Create docker group and add www-data to it for socket access
+RUN groupadd -g 988 docker_host && usermod -aG docker_host www-data
+
+# We will use TCP ping (fsockopen) for Redis health check to keep it lightweight and avoid pecl timeouts
+
+# Enable Apache modules if necessary
+RUN a2enmod rewrite
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy the health scripts
+# We'll map the volume in docker-compose for easy live-editing, but we also copy for production
+COPY health/ /var/www/html/
+
+# Expose port 80
+EXPOSE 80

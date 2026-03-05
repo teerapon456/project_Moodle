@@ -12,6 +12,9 @@ services:
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./docker/nginx/certs:/etc/nginx/certs:ro
+      - ./docker/nginx/html:/usr/share/nginx/html:ro
+      - ./public:/var/www/html/public:ro
+      - ./Modules/HRServices/public/assets:/var/www/html/Modules/HRServices/public/assets:ro
     depends_on:
       - portal
       - moodle
@@ -84,6 +87,11 @@ services:
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
+      # SMTP Settings
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL}
+      - SMTP_FROM_NAME="INTEQC Moodle"
     depends_on:
       - moodle_db
       - redis
@@ -158,14 +166,32 @@ services:
       dockerfile: docker/Dockerfile.carbooking
     container_name: myhr-carbooking
     restart: always
-    environment:
-      - REDIS_HOST=redis
-      - TZ=Asia/Bangkok
+    env_file:
+      - .env
     volumes:
-      - ./.env:/var/www/html/.env
-      - ./Modules/CarBooking:/var/www/html/Modules/CarBooking
       - ./core:/var/www/html/core
-      - ./vendor:/var/www/html/vendor
+      - ./Modules/CarBooking:/var/www/html/Modules/CarBooking
+    depends_on:
+      - db
+      - redis
+    networks:
+      - myhr-net
+
+  # Yearly Activity Module
+  yearlyactivity:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.yearlyactivity
+    container_name: myhr-yearlyactivity
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./core:/var/www/html/core
+      - ./Modules/YearlyActivity:/var/www/html/Modules/YearlyActivity
+    depends_on:
+      - db
+      - redis
     networks:
       - myhr-net
 

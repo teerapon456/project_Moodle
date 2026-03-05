@@ -4,9 +4,9 @@
 
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../core/Database/Database.php';
-require_once __DIR__ . '/../core/Helpers/MailHelper.php';
+require_once __DIR__ . '/../core/Services/EmailService.php';
 
-use Core\Helpers\MailHelper;
+// use Core\Helpers\MailHelper; // Removed
 use Dotenv\Dotenv;
 
 // Load Env
@@ -70,7 +70,7 @@ foreach ($activities as $act) {
         <p>Best Regards,<br>MyHR System</p>
     ";
 
-    $sent = MailHelper::send($act['email'], $subject, $body);
+    $sent = EmailService::sendRawEmail($act['email'], $subject, $body);
 
     if ($sent) {
         echo "Sent!\n";

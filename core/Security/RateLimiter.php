@@ -23,9 +23,9 @@ class RateLimiter
     {
         $identifier = $identifier ?? self::getIdentifier();
         $limit = self::$limits[$type] ?? self::$limits['default'];
-        
+
         $key = 'rate_limit_' . md5($type . '_' . $identifier);
-        
+
         if (!isset($_SESSION[$key])) {
             $_SESSION[$key] = [
                 'attempts' => 0,
@@ -33,18 +33,18 @@ class RateLimiter
                 'window_start' => time()
             ];
         }
-        
+
         $data = &$_SESSION[$key];
         $now = time();
-        
+
         // Reset if window has passed
         if ($now - $data['window_start'] > $limit['window']) {
             $data['attempts'] = 0;
             $data['window_start'] = $now;
         }
-        
+
         $data['attempts']++;
-        
+
         if ($data['attempts'] > $limit['attempts']) {
             $remainingTime = $limit['window'] - ($now - $data['window_start']);
             return [
@@ -54,7 +54,7 @@ class RateLimiter
                 'limit' => $limit['attempts']
             ];
         }
-        
+
         return [
             'allowed' => true,
             'remaining_attempts' => $limit['attempts'] - $data['attempts'],
@@ -68,14 +68,15 @@ class RateLimiter
      */
     private static function getIdentifier()
     {
-        // Use IP address as primary identifier
-        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-        
+        // Use IP address as primary identifier (correctly detected via IpHelper)
+        require_once __DIR__ . '/../Helpers/IpHelper.php';
+        $ip = \Core\Helpers\IpHelper::getClientIp();
+
         // If user is logged in, use user ID for more specific limiting
         if (isset($_SESSION['user']['id'])) {
             return 'user_' . $_SESSION['user']['id'];
         }
-        
+
         return 'ip_' . $ip;
     }
 
@@ -86,12 +87,12 @@ class RateLimiter
     {
         $identifier = $identifier ?? self::getIdentifier();
         $key = 'rate_limit_' . md5($type . '_' . $identifier);
-        
+
         if (isset($_SESSION[$key])) {
             unset($_SESSION[$key]);
             return true;
         }
-        
+
         return false;
     }
 
@@ -103,7 +104,7 @@ class RateLimiter
         $identifier = $identifier ?? self::getIdentifier();
         $limit = self::$limits[$type] ?? self::$limits['default'];
         $key = 'rate_limit_' . md5($type . '_' . $identifier);
-        
+
         if (!isset($_SESSION[$key])) {
             return [
                 'attempts' => 0,
@@ -112,11 +113,11 @@ class RateLimiter
                 'reset_time' => 0
             ];
         }
-        
+
         $data = $_SESSION[$key];
         $now = time();
         $remainingTime = max(0, $limit['window'] - ($now - $data['window_start']));
-        
+
         return [
             'attempts' => $data['attempts'],
             'limit' => $limit['attempts'],
@@ -131,7 +132,7 @@ class RateLimiter
     public static function protect($type)
     {
         $result = self::check($type);
-        
+
         if (!$result['allowed']) {
             http_response_code(429);
             header('Retry-After: ' . $result['remaining_time']);
@@ -144,7 +145,7 @@ class RateLimiter
             ]);
             exit;
         }
-        
+
         return true;
     }
 
@@ -155,27 +156,27 @@ class RateLimiter
     {
         $identifier = $identifier ?? self::getIdentifier();
         $key = 'sliding_rate_' . md5($type . '_' . $identifier);
-        
+
         if (!isset($_SESSION[$key])) {
             $_SESSION[$key] = [];
         }
-        
+
         $requests = &$_SESSION[$key];
         $now = time();
-        
+
         // Remove old requests outside the window
-        $requests = array_filter($requests, function($timestamp) use ($now, $windowSeconds) {
+        $requests = array_filter($requests, function ($timestamp) use ($now, $windowSeconds) {
             return $now - $timestamp < $windowSeconds;
         });
-        
+
         // Add current request
         $requests[] = $now;
-        
+
         if (count($requests) > $maxRequests) {
             // Find the oldest request to calculate retry after
             $oldest = min($requests);
             $retryAfter = $windowSeconds - ($now - $oldest);
-            
+
             return [
                 'allowed' => false,
                 'retry_after' => $retryAfter,
@@ -183,7 +184,7 @@ class RateLimiter
                 'limit' => $maxRequests
             ];
         }
-        
+
         return [
             'allowed' => true,
             'requests' => count($requests),
@@ -199,25 +200,25 @@ class RateLimiter
         if (!$pdo) {
             return self::check($type, $identifier);
         }
-        
+
         $identifier = $identifier ?? self::getIdentifier();
         $limit = self::$limits[$type] ?? self::$limits['default'];
-        
+
         $table = 'rate_limits';
         $now = time();
         $windowStart = $now - $limit['window'];
-        
+
         // Clean old entries
         $cleanupSql = "DELETE FROM $table WHERE type = ? AND created_at < ?";
         $cleanupStmt = $pdo->prepare($cleanupSql);
         $cleanupStmt->execute([$type, $windowStart]);
-        
+
         // Count recent attempts
         $countSql = "SELECT COUNT(*) as count FROM $table WHERE type = ? AND identifier = ? AND created_at > ?";
         $countStmt = $pdo->prepare($countSql);
         $countStmt->execute([$type, $identifier, $windowStart]);
         $count = $countStmt->fetchColumn();
-        
+
         if ($count >= $limit['attempts']) {
             return [
                 'allowed' => false,
@@ -225,12 +226,12 @@ class RateLimiter
                 'limit' => $limit['attempts']
             ];
         }
-        
+
         // Record this attempt
         $insertSql = "INSERT INTO $table (type, identifier, created_at) VALUES (?, ?, ?)";
         $insertStmt = $pdo->prepare($insertSql);
         $insertStmt->execute([$type, $identifier, $now]);
-        
+
         return [
             'allowed' => true,
             'attempts' => $count + 1,
@@ -253,7 +254,7 @@ class RateLimiter
                 INDEX idx_created_at (created_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ";
-        
+
         return $pdo->exec($sql);
     }
 }

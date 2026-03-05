@@ -226,20 +226,8 @@ class ModuleController extends BaseController
      */
     protected function getClientIp()
     {
-        if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-            $ip = $_SERVER['HTTP_CLIENT_IP'];
-        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            // Handle comma-separated list
-            $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-            $ip = trim($ips[0]);
-        } else {
-            $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        }
-
-        if ($ip === '::1') {
-            return '127.0.0.1';
-        }
-        return $ip;
+        require_once __DIR__ . '/Helpers/IpHelper.php';
+        return \Core\Helpers\IpHelper::getClientIp();
     }
     /**
      * Helper: Handle Not Found (404)

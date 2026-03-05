@@ -48,7 +48,7 @@ if (!$isAuthRequest) {
 session_write_close();
 
 // CSRF Protection for state-changing requests (POST, PUT, DELETE)
-$csrfExemptRoutes = ['auth/login', 'auth/microsoft', 'hrnews/published', 'api/auth', 'auth/rate-limits', 'auth/clear-rate-limit', 'auth/clear-all-rate-limits']; // Routes that don't need CSRF
+$csrfExemptRoutes = ['auth/microsoft', 'hrnews/published', 'api/auth', 'auth/rate-limits', 'auth/clear-rate-limit', 'auth/clear-all-rate-limits']; // Routes that don't need CSRF
 
 // Better route detection for API endpoints
 $requestUri = $_SERVER['REQUEST_URI'] ?? '';
@@ -99,13 +99,11 @@ $uri = explode('/', $uri);
 
 // Remove /api/ prefix if present and find the resource
 $resourceIndex = 0;
-$validResources = ['auth', 'bookings', 'cars', 'settings', 'users', 'dashboard', 'pdf', 'reports', 'email_logs', 'approval', 'fleetcards', 'modules', 'hrnews', 'dormitory', 'dorm', 'permissions', 'notifications', 'activity', 'scheduled_reports', 'yearlyactivity', 'sso', 'employees'];
+$validResources = ['auth', 'bookings', 'cars', 'settings', 'users', 'dashboard', 'pdf', 'reports', 'email_logs', 'approval', 'fleetcards', 'modules', 'hrnews', 'dormitory', 'dorm', 'permissions', 'notifications', 'activity', 'scheduled_reports', 'yearlyactivity', 'sso', 'employees', 'iga'];
 // Remove empty segments and find resource
 $cleanUri = array_values(array_filter($uri, function ($segment) {
     return $segment !== '' && $segment !== 'api';
 }));
-
-
 
 foreach ($cleanUri as $index => $segment) {
     if (in_array($segment, $validResources)) {
@@ -328,6 +326,50 @@ if (isset($resource)) {
                 header("Location: /yearlyactivity"); // Reset to dashboard
             }
             // Retain control, do not break to default 404
+            exit;
+            break;
+
+        case 'iga':
+            // Base router for the IGA Module
+            // /iga?controller=foo&action=bar OR /iga/foo/bar
+            $igaController = $_GET['controller'] ?? $cleanUri[$resourceIndex + 1] ?? 'dashboard';
+
+            if (isset($cleanUri[$resourceIndex + 1]) && !isset($_GET['action'])) {
+                $_GET['action'] = $cleanUri[$resourceIndex + 2] ?? 'index';
+            }
+
+            $map = [
+                'dashboard' => 'DashboardController',
+                'applicant' => 'ApplicantAuthController',
+                'admin_tests' => 'AdminTestController',
+                'admin_categories' => 'AdminCategoryController',
+                'user_tests' => 'UserTestController'
+            ];
+
+            if (isset($map[$igaController])) {
+                $controllerClass = $map[$igaController];
+                include_once __DIR__ . "/Modules/IGA/Controllers/{$controllerClass}.php";
+                if (class_exists($controllerClass)) {
+                    $controller = new $controllerClass();
+                    if (method_exists($controller, 'processRequest')) {
+                        $controller->processRequest();
+                    } else {
+                        $action = $_GET['action'] ?? 'index';
+                        if (method_exists($controller, $action)) {
+                            $controller->$action();
+                        } else {
+                            http_response_code(404);
+                            echo "Action not found in IGA Module";
+                        }
+                    }
+                } else {
+                    http_response_code(404);
+                    echo "Controller Class {$controllerClass} not found";
+                }
+            } else {
+                $basePath = rtrim(Env::get('APP_BASE_PATH', ''), '/');
+                header("Location: " . $basePath . "/404.php");
+            }
             exit;
             break;
         /*

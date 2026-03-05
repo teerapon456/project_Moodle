@@ -73,6 +73,33 @@ if (empty($emailLogPerm['can_view'])) {
         body {
             font-family: 'Kanit', sans-serif;
         }
+
+        /* Custom Modern Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+            transition: background 0.2s;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* For Firefox */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f1f1f1;
+        }
     </style>
 </head>
 
@@ -196,7 +223,7 @@ if (empty($emailLogPerm['can_view'])) {
 
     <!-- Detail Modal -->
     <div id="detail-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl mx-4">
+        <div class="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl mx-4">
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <h3 class="font-semibold text-lg text-gray-900 flex items-center gap-2">
                     <i class="ri-mail-line text-primary"></i>
@@ -307,34 +334,64 @@ if (empty($emailLogPerm['can_view'])) {
                     const log = data.data;
                     document.getElementById('detail-content').innerHTML = `
                         <div class="space-y-4">
-                            <div class="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                            <div class="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
                                 <div>
-                                    <span class="text-xs text-gray-400 block">เวลา</span>
-                                    <span class="font-medium">${formatDateTime(log.created_at)}</span>
+                                    <span class="text-xs text-gray-400 block uppercase tracking-wider mb-1">เวลาที่ส่ง</span>
+                                    <span class="font-medium text-gray-900">${formatDateTime(log.created_at)}</span>
                                 </div>
                                 <div>
-                                    <span class="text-xs text-gray-400 block">สถานะ</span>
-                                    <span class="px-2 py-1 rounded-full text-xs font-medium ${['success','sent'].includes(log.status) ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                                    <span class="text-xs text-gray-400 block uppercase tracking-wider mb-1">สถานะ</span>
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium ${['success','sent'].includes(log.status) ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}">
+                                        <i class="${['success','sent'].includes(log.status) ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'}"></i>
                                         ${['success','sent'].includes(log.status) ? 'ส่งสำเร็จ' : 'ส่งไม่สำเร็จ'}
                                     </span>
                                 </div>
                             </div>
                             <div>
-                                <span class="text-xs text-gray-400 block mb-1">ผู้รับ</span>
-                                <span class="font-medium">${escapeHtml(log.recipient_email)}</span>
+                                <span class="text-xs text-gray-400 block uppercase tracking-wider mb-1">ผู้รับ</span>
+                                <span class="font-medium text-gray-900 border-b border-gray-100 pb-1 block">${escapeHtml(log.recipient_email)}</span>
                             </div>
                             <div>
-                                <span class="text-xs text-gray-400 block mb-1">หัวข้อ</span>
-                                <span class="font-medium">${escapeHtml(log.subject)}</span>
+                                <span class="text-xs text-gray-400 block uppercase tracking-wider mb-1">หัวข้อ</span>
+                                <span class="font-medium text-gray-900">${escapeHtml(log.subject)}</span>
                             </div>
+                            
+                            <!-- HTML Preview Section -->
                             <div>
-                                <span class="text-xs text-gray-400 block mb-1">ตัวอย่างเนื้อหา</span>
-                                <div class="p-3 bg-gray-50 rounded-lg text-sm text-gray-600">${escapeHtml(log.body_preview || '-')}</div>
+                                <span class="text-xs text-gray-400 block uppercase tracking-wider mb-2 flex items-center gap-2">
+                                    <i class="ri-layout-line text-primary"></i>
+                                    ตัวอย่างอีเมล (HTML Preview)
+                                </span>
+                                <div class="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-inner">
+                                    ${log.body_html ? `
+                                        <iframe id="email-preview-frame" class="w-full border-0 transition-all duration-300" style="height: 100px; min-height: 50px; max-height: 500px;" srcdoc="${log.body_html.replace(/"/g, '&quot;')}" onload="setTimeout(() => { 
+                                            try { 
+                                                const frameDoc = this.contentWindow.document;
+                                                // Inject slim scrollbar into iframe
+                                                const style = frameDoc.createElement('style');
+                                                style.textContent = '::-webkit-scrollbar { width: 4px; height: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; } ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; } * { scrollbar-width: thin; scrollbar-color: #e2e8f0 transparent; }';
+                                                frameDoc.head.appendChild(style);
+                                                
+                                                this.style.height = (frameDoc.documentElement.scrollHeight + 20) + 'px'; 
+                                            } catch(e){} 
+                                        }, 100)"></iframe>
+                                    ` : `
+                                        <div class="p-8 text-center text-gray-400 italic bg-gray-50">
+                                            <i class="ri-information-line text-2xl block mb-2"></i>
+                                            ไม่มีข้อมูล HTML (เป็นรายการเก่าหรือส่งด้วยข้อความล้วน)
+                                            <div class="mt-4 p-3 bg-white rounded border border-gray-100 text-left text-xs not-italic">
+                                                <span class="text-gray-400 block mb-1 font-bold italic">ตัวอย่างเนื้อหา (Text Only):</span>
+                                                ${escapeHtml(log.body_preview || '-')}
+                                            </div>
+                                        </div>
+                                    `}
+                                </div>
                             </div>
+
                             ${log.error_message ? `
-                            <div>
-                                <span class="text-xs text-gray-400 block mb-1">Error</span>
-                                <div class="p-3 bg-red-50 rounded-lg text-sm text-red-600">${escapeHtml(log.error_message)}</div>
+                            <div class="p-3 bg-red-50 rounded-xl border border-red-100 shadow-sm animate-pulse-subtle">
+                                <span class="text-xs text-red-400 font-bold block uppercase mb-1">รายละเอียดข้อผิดพลาด (Error Log)</span>
+                                <div class="text-sm text-red-600 font-mono break-all">${escapeHtml(log.error_message)}</div>
                             </div>
                             ` : ''}
                         </div>

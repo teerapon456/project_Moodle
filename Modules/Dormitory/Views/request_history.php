@@ -8,9 +8,36 @@ $data = $controller->getRequestHistoryData();
 extract($data);
 
 $types = ['move_in' => 'ขอเข้าพัก', 'move_out' => 'ขอย้ายออก', 'change_room' => 'ขอย้ายห้อง'];
-$statusColors = ['pending' => 'bg-yellow-100 text-yellow-700', 'approved' => 'bg-green-100 text-green-700', 'rejected' => 'bg-red-100 text-red-700', 'cancelled' => 'bg-gray-100 text-gray-700'];
-$statusLabels = ['pending' => 'รออนุมัติ', 'approved' => 'อนุมัติแล้ว', 'rejected' => 'ถูกปฏิเสธ', 'cancelled' => 'ยกเลิก'];
-$borderColors = ['pending' => 'border-l-yellow-400', 'approved' => 'border-l-green-500', 'rejected' => 'border-l-red-500', 'cancelled' => 'border-l-gray-400'];
+$statusColors = [
+    'pending' => 'bg-yellow-100 text-yellow-700',
+    'pending_supervisor' => 'bg-amber-100 text-amber-700',
+    'pending_manager' => 'bg-blue-100 text-blue-700',
+    'approved' => 'bg-green-100 text-green-700',
+    'rejected' => 'bg-red-100 text-red-700',
+    'rejected_supervisor' => 'bg-red-100 text-red-700',
+    'rejected_manager' => 'bg-red-100 text-red-700',
+    'cancelled' => 'bg-gray-100 text-gray-700'
+];
+$statusLabels = [
+    'pending' => 'รออนุมัติ',
+    'pending_supervisor' => 'รอหัวหน้าอนุมัติ',
+    'pending_manager' => 'รอ IPCD อนุมัติ',
+    'approved' => 'อนุมัติแล้ว',
+    'rejected' => 'ถูกปฏิเสธ',
+    'rejected_supervisor' => 'หัวหน้าปฏิเสธ',
+    'rejected_manager' => 'IPCD ปฏิเสธ',
+    'cancelled' => 'ยกเลิก'
+];
+$borderColors = [
+    'pending' => 'border-l-yellow-400',
+    'pending_supervisor' => 'border-l-amber-400',
+    'pending_manager' => 'border-l-blue-400',
+    'approved' => 'border-l-green-500',
+    'rejected' => 'border-l-red-500',
+    'rejected_supervisor' => 'border-l-red-500',
+    'rejected_manager' => 'border-l-red-500',
+    'cancelled' => 'border-l-gray-400'
+];
 
 $mtStatusColors = [
     'open' => 'bg-red-100 text-red-700',
@@ -75,6 +102,14 @@ $mtBorderColors = ['open' => 'border-l-red-500', 'in_progress' => 'border-l-blue
                                 <i class="ri-chat-3-line"></i> <?= htmlspecialchars($req['admin_remark'] ?? $req['cancel_reason']) ?>
                             </div>
                         <?php endif; ?>
+                        <?php if ($req['status'] === 'pending_supervisor'): ?>
+                            <div class="mt-3">
+                                <button onclick="resendEmail(<?= $req['id'] ?>)" class="w-full flex items-center justify-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg text-sm font-medium transition-colors">
+                                    <i class="ri-mail-send-line"></i>
+                                    ส่งอีเมลให้หัวหน้าอีกครั้ง
+                                </button>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 <?php endforeach; ?>
             <?php endif; ?>
@@ -89,12 +124,13 @@ $mtBorderColors = ['open' => 'border-l-red-500', 'in_progress' => 'border-l-blue
                         <th class="p-3">ประเภท</th>
                         <th class="p-3">สถานะ</th>
                         <th class="p-3">หมายเหตุ</th>
+                        <th class="p-3 text-center">จัดการ</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 text-sm">
                     <?php if (empty($myRequests)): ?>
                         <tr>
-                            <td colspan="4" class="p-8 text-center text-gray-400">
+                            <td colspan="5" class="p-8 text-center text-gray-400">
                                 <i class="ri-inbox-line text-4xl mb-2 block opacity-50"></i>
                                 ยังไม่มีประวัติคำขอ
                             </td>
@@ -112,6 +148,16 @@ $mtBorderColors = ['open' => 'border-l-red-500', 'in_progress' => 'border-l-blue
                                 <td class="p-3 text-gray-500 truncate max-w-[200px]">
                                     <?= htmlspecialchars($req['admin_remark'] ?? $req['cancel_reason'] ?? '-') ?>
                                 </td>
+                                <td class="p-3 text-center">
+                                    <?php if ($req['status'] === 'pending_supervisor'): ?>
+                                        <button onclick="resendEmail(<?= $req['id'] ?>)" class="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded text-xs font-medium transition-colors" title="ส่งอีเมลหาหัวหน้างานอีกครั้ง">
+                                            <i class="ri-mail-send-line"></i>
+                                            ส่งอีเมลอีกครั้ง
+                                        </button>
+                                    <?php else: ?>
+                                        -
+                                    <?php endif; ?>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -119,6 +165,67 @@ $mtBorderColors = ['open' => 'border-l-red-500', 'in_progress' => 'border-l-blue
             </table>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        async function resendEmail(id) {
+            const result = await Swal.fire({
+                title: 'ยืนยันการส่งอีเมล?',
+                text: "ระบบจะส่งอีเมลขออนุมัติให้หัวหน้างานอีกครั้ง",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#4f46e5',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'ตกลง, ส่งเลย',
+                cancelButtonText: 'ยกเลิก',
+                reverseButtons: true
+            });
+
+            if (!result.isConfirmed) return;
+
+            const btn = document.querySelector(`button[onclick="resendEmail(${id})"]`);
+            if (!btn) return;
+
+            try {
+                const originalContent = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> กำลังส่ง...';
+
+                const response = await apiCall('booking', 'resendSupervisorEmail', {
+                    id
+                }, 'POST');
+
+                if (response.success) {
+                    Swal.fire({
+                        title: 'สำเร็จ!',
+                        text: response.message || 'ส่งอีเมลเรียบร้อยแล้ว',
+                        icon: 'success',
+                        confirmButtonColor: '#4f46e5',
+                        timer: 2000,
+                        timerProgressBar: true
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'เกิดข้อผิดพลาด',
+                        text: response.message || 'ไม่สามารถส่งอีเมลได้',
+                        icon: 'error',
+                        confirmButtonColor: '#4f46e5'
+                    });
+                }
+            } catch (error) {
+                console.error('Resend email error:', error);
+                Swal.fire({
+                    title: 'เกิดข้อผิดพลาด',
+                    text: 'ระบบขัดข้อง กรุณาลองใหม่ภายหลัง',
+                    icon: 'error',
+                    confirmButtonColor: '#4f46e5'
+                });
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ri-mail-send-line"></i> ส่งอีเมลอีกครั้ง';
+            }
+        }
+    </script>
 
     <!-- Maintenance History -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">

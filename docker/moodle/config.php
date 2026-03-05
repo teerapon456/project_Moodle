@@ -29,10 +29,11 @@ $CFG->dboptions = array(
 //=========================================================================
 // Web Address Settings (from environment variable)
 //=========================================================================
-$CFG->wwwroot   = getenv('MOODLE_WWWROOT') ?: getenv('MOODLE_PUBLIC_URL') ?: 'https://172.17.100.55:8080/moodle';
+$CFG->wwwroot   = getenv('MOODLE_WWWROOT') ?: getenv('MOODLE_PUBLIC_URL') ?: 'https://172.17.100.55:8090/moodle';
 
 $CFG->dataroot = '/var/www/moodledata';
 $CFG->admin = 'admin';
+$CFG->siteadmins = '2,2273'; // Explicitly set site admins (admin, superadmin)
 $CFG->directorypermissions = 0777;
 
 //=========================================================================
@@ -51,6 +52,20 @@ $CFG->tempdir = '/var/www/moodledata/temp';
 
 $CFG->debug = 0;
 $CFG->debugdeveloper = false;
+
+//=========================================================================
+// Email (SMTP) Settings
+//=========================================================================
+$CFG->smtpmode = 'smtp';
+$CFG->smtphosts = getenv('SMTP_HOST') ?: '172.17.100.6';
+$CFG->smtpport = getenv('SMTP_PORT') ?: 25;
+$CFG->noreplyaddress = getenv('SMTP_FROM_EMAIL') ?: 'no-reply@inteqc.com';
+$CFG->supportemail = getenv('SMTP_FROM_EMAIL') ?: 'e-hris@inteqc.com';
+
+// If credentials are needed in the future, they can be added here
+// $CFG->smtpuser = getenv('SMTP_USERNAME');
+// $CFG->smtppass = getenv('SMTP_PASSWORD');
+// $CFG->smtpsecure = getenv('SMTP_SECURE');
 
 //=========================================================================
 // Reverse Proxy Settings

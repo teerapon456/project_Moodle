@@ -9,7 +9,7 @@ require_once __DIR__ . '/../../core/Database/Database.php';
 // Auth Check
 $user = $_SESSION['user'] ?? null;
 if (!$user) {
-    header('Location: ../../public/index.php');
+    header('Location: login.php');
     exit;
 }
 

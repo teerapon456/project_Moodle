@@ -49,8 +49,8 @@ class CarController extends CBBaseController
         }
 
         try {
-            $sql = "INSERT INTO cb_cars (name, brand, model, license_plate, type, capacity, status, created_at) 
-                    VALUES (:name, :brand, :model, :license_plate, :type, :capacity, :status, NOW())";
+            $sql = "INSERT INTO cb_cars (name, brand, model, license_plate, type, capacity, status, is_company_car, created_at) 
+                    VALUES (:name, :brand, :model, :license_plate, :type, :capacity, :status, :is_company_car, NOW())";
 
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([
@@ -60,7 +60,8 @@ class CarController extends CBBaseController
                 ':license_plate' => $data['license_plate'],
                 ':type' => $data['type'],
                 ':capacity' => $data['capacity'] ?? null,
-                ':status' => $data['status'] ?? 'available'
+                ':status' => $data['status'] ?? 'available',
+                ':is_company_car' => !empty($data['is_company_car']) ? 1 : 0
             ]);
 
             $id = $this->pdo->lastInsertId();
@@ -125,7 +126,8 @@ class CarController extends CBBaseController
                     license_plate = :license_plate,
                     type = :type,
                     capacity = :capacity,
-                    status = :status
+                    status = :status,
+                    is_company_car = :is_company_car
                     WHERE id = :id";
 
             $stmt = $this->pdo->prepare($sql);
@@ -137,7 +139,8 @@ class CarController extends CBBaseController
                 ':license_plate' => $data['license_plate'],
                 ':type' => $data['type'],
                 ':capacity' => $data['capacity'] ?? null,
-                ':status' => $data['status'] ?? 'available'
+                ':status' => $data['status'] ?? 'available',
+                ':is_company_car' => !empty($data['is_company_car']) ? 1 : 0
             ]);
 
             // Log audit

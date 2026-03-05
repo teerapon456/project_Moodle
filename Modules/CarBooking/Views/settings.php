@@ -78,8 +78,22 @@ $ccEmails = $settings['cc_emails'] ?? '';
 </div>
 
 <script>
-    let adminEmails = <?= json_encode(array_filter(array_map('trim', explode(',', $adminEmails)))) ?>;
-    let ccEmails = <?= json_encode(array_filter(array_map('trim', explode(',', $ccEmails)))) ?>;
+    // Initialize as simple string arrays from PHP, then we will use them as objects
+    let initialAdminEmails = <?= json_encode(array_filter(array_map('trim', explode(',', $adminEmails)))) ?>;
+    let initialCcEmails = <?= json_encode(array_filter(array_map('trim', explode(',', $ccEmails)))) ?>;
+
+    // Convert to objects for rich display
+    let adminEmails = initialAdminEmails.map(email => ({
+        email: email,
+        name: email,
+        type: '?'
+    }));
+    let ccEmails = initialCcEmails.map(email => ({
+        email: email,
+        name: email,
+        type: '?'
+    }));
+
     let searchTimeout;
 
     function renderEmailTags() {
@@ -87,11 +101,12 @@ $ccEmails = $settings['cc_emails'] ?? '';
         if (adminEmails.length === 0) {
             adminContainer.innerHTML = '<span class="text-gray-400 text-sm">ยังไม่มีอีเมลผู้ดูแล</span>';
         } else {
-            adminContainer.innerHTML = adminEmails.map((email, idx) => `
-                <span class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-full text-sm">
-                    <i class="ri-mail-line text-primary"></i>
-                    ${email}
-                    <button class="text-gray-400 hover:text-red-500" onclick="removeAdminEmail(${idx})">&times;</button>
+            adminContainer.innerHTML = adminEmails.map((user, idx) => `
+                <span class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-full text-sm shadow-sm group">
+                    <i class="ri-user-settings-line text-primary"></i>
+                    <span class="font-medium text-gray-700">${user.name !== user.email && user.name !== '?' ? user.name : user.email}</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded ${user.type === 'MS' ? 'bg-indigo-100 text-indigo-700' : (user.type === 'Local' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600')} font-bold uppercase">${user.type}</span>
+                    <button class="text-gray-400 hover:text-red-500 transition-colors ml-1" onclick="removeAdminEmail(${idx})" title="ลบ">&times;</button>
                 </span>
             `).join('');
         }
@@ -100,11 +115,12 @@ $ccEmails = $settings['cc_emails'] ?? '';
         if (ccEmails.length === 0) {
             ccContainer.innerHTML = '<span class="text-gray-400 text-sm">ยังไม่มีอีเมล CC</span>';
         } else {
-            ccContainer.innerHTML = ccEmails.map((email, idx) => `
-                <span class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-full text-sm">
-                    <i class="ri-mail-line text-blue-500"></i>
-                    ${email}
-                    <button class="text-gray-400 hover:text-red-500" onclick="removeCcEmail(${idx})">&times;</button>
+            ccContainer.innerHTML = ccEmails.map((user, idx) => `
+                <span class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-full text-sm shadow-sm group">
+                    <i class="ri-mail-add-line text-blue-500"></i>
+                    <span class="font-medium text-gray-700">${user.name !== user.email && user.name !== '?' ? user.name : user.email}</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded ${user.type === 'MS' ? 'bg-indigo-100 text-indigo-700' : (user.type === 'Local' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600')} font-bold uppercase">${user.type}</span>
+                    <button class="text-gray-400 hover:text-red-500 transition-colors ml-1" onclick="removeCcEmail(${idx})" title="ลบ">&times;</button>
                 </span>
             `).join('');
         }
@@ -121,25 +137,28 @@ $ccEmails = $settings['cc_emails'] ?? '';
 
         searchTimeout = setTimeout(async () => {
             try {
-                // Fetch from MS Graph only (searchUsers removed)
-                const msRes = await fetch(`${API_BASE}?controller=bookings&action=searchEmail&query=${encodeURIComponent(query)}`);
-                const msData = await msRes.json();
+                // Fetch from unified search
+                const res = await fetch(`${API_BASE}?controller=bookings&action=searchEmail&query=${encodeURIComponent(query)}`);
+                const data = await res.json();
 
-                const allUsers = msData.success ? msData.users : [];
+                const allUsers = data.success ? data.users : [];
 
                 if (allUsers.length > 0) {
                     const filtered = allUsers.filter(emp => !adminEmails.includes(emp.email));
                     if (filtered.length > 0) {
-                        resultsDiv.innerHTML = filtered.map(emp => `
-                            <div class="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0" onclick='addAdminEmail("${emp.email}", "${emp.name || emp.email}")'>
-                                <div class="w-8 h-8 bg-gradient-to-br from-primary to-red-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">${(emp.name || '?').charAt(0)}</div>
+                        resultsDiv.innerHTML = filtered.map(emp => {
+                            const empStr = encodeURIComponent(JSON.stringify(emp));
+                            return `
+                            <div class="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0" onclick="addAdminEmail('${empStr}')">
+                                <div class="w-8 h-8 bg-gradient-to-br from-primary to-blue-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">${(emp.name || '?').charAt(0)}</div>
                                 <div class="flex-1">
                                     <div class="font-medium text-gray-900">${emp.name || emp.email}</div>
                                     <div class="text-xs text-gray-500">${emp.email}</div>
                                 </div>
-                                <span class="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 uppercase">${emp.type || 'MS'}</span>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded ${emp.type === 'MS' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'} font-bold uppercase">${emp.type || 'Local'}</span>
                             </div>
-                        `).join('');
+                            `;
+                        }).join('');
                         resultsDiv.classList.remove('hidden');
                     } else {
                         resultsDiv.innerHTML = '<div class="p-3 text-center text-gray-400">อีเมลทั้งหมดถูกเพิ่มแล้ว</div>';
@@ -166,25 +185,28 @@ $ccEmails = $settings['cc_emails'] ?? '';
 
         searchTimeout = setTimeout(async () => {
             try {
-                // Fetch from MS Graph only (searchUsers removed)
-                const msRes = await fetch(`${API_BASE}?controller=bookings&action=searchEmail&query=${encodeURIComponent(query)}`);
-                const msData = await msRes.json();
+                // Fetch from unified search
+                const res = await fetch(`${API_BASE}?controller=bookings&action=searchEmail&query=${encodeURIComponent(query)}`);
+                const data = await res.json();
 
-                const allUsers = msData.success ? msData.users : [];
+                const allUsers = data.success ? data.users : [];
 
                 if (allUsers.length > 0) {
                     const filtered = allUsers.filter(emp => !ccEmails.includes(emp.email));
                     if (filtered.length > 0) {
-                        resultsDiv.innerHTML = filtered.map(emp => `
-                            <div class="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0" onclick='addCcEmail("${emp.email}", "${emp.name || emp.email}")'>
-                                <div class="w-8 h-8 bg-gradient-to-br from-primary to-red-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">${(emp.name || '?').charAt(0)}</div>
+                        resultsDiv.innerHTML = filtered.map(emp => {
+                            const empStr = encodeURIComponent(JSON.stringify(emp));
+                            return `
+                            <div class="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0" onclick="addCcEmail('${empStr}')">
+                                <div class="w-8 h-8 bg-gradient-to-br from-primary to-blue-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">${(emp.name || '?').charAt(0)}</div>
                                 <div class="flex-1">
                                     <div class="font-medium text-gray-900">${emp.name || emp.email}</div>
                                     <div class="text-xs text-gray-500">${emp.email}</div>
                                 </div>
-                                <span class="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 uppercase">${emp.type || 'MS'}</span>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded ${emp.type === 'MS' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'} font-bold uppercase">${emp.type || 'Local'}</span>
                             </div>
-                        `).join('');
+                            `;
+                        }).join('');
                         resultsDiv.classList.remove('hidden');
                     } else {
                         resultsDiv.innerHTML = '<div class="p-3 text-center text-gray-400">อีเมลทั้งหมดถูกเพิ่มแล้ว</div>';
@@ -200,28 +222,38 @@ $ccEmails = $settings['cc_emails'] ?? '';
         }, 300);
     }
 
-    function addAdminEmail(email, name) {
-        if (adminEmails.includes(email)) {
+    function addAdminEmail(empStr) {
+        const emp = JSON.parse(decodeURIComponent(empStr));
+        if (adminEmails.some(u => u.email === emp.email)) {
             showToast('อีเมลนี้มีอยู่แล้ว', 'error');
             return;
         }
-        adminEmails.push(email);
+        adminEmails.push({
+            email: emp.email,
+            name: emp.name,
+            type: emp.type || 'Local'
+        });
         document.getElementById('adminEmailSearch').value = '';
         document.getElementById('adminEmailResults').classList.add('hidden');
         renderEmailTags();
-        showToast(`เพิ่ม ${name} แล้ว`, 'success');
+        showToast(`เพิ่ม ${emp.name} แล้ว`, 'success');
     }
 
-    function addCcEmail(email, name) {
-        if (ccEmails.includes(email)) {
+    function addCcEmail(empStr) {
+        const emp = JSON.parse(decodeURIComponent(empStr));
+        if (ccEmails.some(u => u.email === emp.email)) {
             showToast('อีเมลนี้มีอยู่แล้ว', 'error');
             return;
         }
-        ccEmails.push(email);
+        ccEmails.push({
+            email: emp.email,
+            name: emp.name,
+            type: emp.type || 'Local'
+        });
         document.getElementById('ccEmailSearch').value = '';
         document.getElementById('ccEmailResults').classList.add('hidden');
         renderEmailTags();
-        showToast(`เพิ่ม ${name} แล้ว`, 'success');
+        showToast(`เพิ่ม ${emp.name} แล้ว`, 'success');
     }
 
     function removeAdminEmail(index) {
@@ -242,8 +274,8 @@ $ccEmails = $settings['cc_emails'] ?? '';
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    admin_emails: adminEmails.join(','),
-                    cc_emails: ccEmails.join(',')
+                    admin_emails: adminEmails.map(u => u.email).join(','),
+                    cc_emails: ccEmails.map(u => u.email).join(',')
                 })
             });
             const result = await response.json();

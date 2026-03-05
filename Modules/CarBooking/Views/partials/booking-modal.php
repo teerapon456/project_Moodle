@@ -25,12 +25,16 @@
                 <div class="grid md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">วันเวลาเริ่มต้น <span class="text-red-500">*</span></label>
-                        <input type="datetime-local" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" name="start_time" id="bookingStartTime" required>
+                        <input type="datetime-local" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" name="start_time" id="bookingStartTime" required onblur="checkYear(this)">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">วันเวลาสิ้นสุด <span class="text-red-500">*</span></label>
-                        <input type="datetime-local" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" name="end_time" id="bookingEndTime" required>
+                        <input type="datetime-local" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" name="end_time" id="bookingEndTime" required onblur="checkYear(this)">
                     </div>
+                </div>
+                <div class="text-xs text-amber-600 bg-amber-50 p-2 rounded-lg border border-amber-100 flex items-center gap-2">
+                    <i class="ri-information-line text-base"></i>
+                    <span>ระบบรองรับเฉพาะปี ค.ศ. (เช่น 2024) หากท่านใส่ปี พ.ศ. (เช่น 2567) ระบบจะปรับให้เป็น ค.ศ. โดยอัตโนมัติ</span>
                 </div>
 
                 <!-- Requester (Current User - readonly) -->
@@ -432,6 +436,19 @@
         const submitBtn = document.getElementById('bookingSubmitBtn');
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="ri-send-plane-line"></i> <span>ส่งคำขอ</span>';
+    }
+
+    function checkYear(input) {
+        if (!input.value) return;
+        const date = new Date(input.value);
+        let year = date.getFullYear();
+        if (year > 2400) {
+            // Auto-correct to A.D.
+            const correctedYear = year - 543;
+            const newValue = input.value.replace(year.toString(), correctedYear.toString());
+            input.value = newValue;
+            showToast(`ปรับปีจาก ${year} เป็น ${correctedYear} (ค.ศ.) ให้แล้ว`, 'info');
+        }
     }
 
     document.addEventListener('keydown', (e) => {

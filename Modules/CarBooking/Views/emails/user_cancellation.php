@@ -197,7 +197,6 @@
             </div>
 
             <div class="content">
-                <p class="greeting">สวัสดี,</p>
                 <p class="greeting" style="margin-top: -10px;">การจองรถหมายเลข <strong>#<?php echo $booking['id']; ?></strong> ของคุณได้ถูกยกเลิกเรียบร้อยแล้ว ดังรายละเอียดต่อไปนี้:</p>
 
                 <!-- Booking Details -->

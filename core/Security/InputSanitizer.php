@@ -241,7 +241,14 @@ class InputSanitizer
         $formats = ['Y-m-d\TH:i', 'Y-m-d H:i:s', 'Y-m-d H:i'];
         foreach ($formats as $fmt) {
             $dt = \DateTime::createFromFormat($fmt, $clean);
-            if ($dt) return $dt->format('Y-m-d H:i:s');
+            if ($dt) {
+                // Normalize Buddhist Era (B.E.) to A.D. if year > 2400
+                $year = (int)$dt->format('Y');
+                if ($year > 2400) {
+                    $dt->modify('-543 years');
+                }
+                return $dt->format('Y-m-d H:i:s');
+            }
         }
         return null;
     }

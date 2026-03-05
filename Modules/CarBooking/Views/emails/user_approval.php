@@ -214,7 +214,6 @@
             </div>
 
             <div class="content">
-                <p class="greeting">สวัสดี,</p>
                 <p class="greeting" style="margin-top: -10px;">คำขอใช้รถยนต์ส่วนกลางของคุณได้รับการอนุมัติเรียบร้อยแล้ว ดังรายละเอียดต่อไปนี้:</p>
 
                 <!-- Booking Details -->

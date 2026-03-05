@@ -103,12 +103,20 @@ class DeviceDetector
 
     public function getDeviceBrand()
     {
-        return $this->detector->getBrandName();
+        $brand = $this->detector->getBrandName();
+        if (empty($brand) && $this->getDeviceType() === 'desktop') {
+            return 'Desktop / PC';
+        }
+        return $brand ?: '';
     }
 
     public function getDeviceModel()
     {
-        return $this->detector->getModel();
+        $model = $this->detector->getModel();
+        if (empty($model) && $this->getDeviceType() === 'desktop') {
+            return $this->getOS();
+        }
+        return $model ?: '';
     }
 
     // Additional helper to get full detail if needed

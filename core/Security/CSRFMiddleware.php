@@ -9,53 +9,84 @@ require_once __DIR__ . '/InputSanitizer.php';
 
 class CSRFMiddleware
 {
+    private static $cachedBody = null;
+
+    /**
+     * Get the parsed request body (handles JSON)
+     */
+    public static function getParsedBody()
+    {
+        if (self::$cachedBody !== null) {
+            return self::$cachedBody;
+        }
+
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+        if (strpos($contentType, 'application/json') !== false) {
+            $input = file_get_contents('php://input');
+            self::$cachedBody = json_decode($input, true) ?? [];
+        } else {
+            self::$cachedBody = $_POST;
+        }
+
+        return self::$cachedBody;
+    }
+
     /**
      * Validate CSRF token for API requests
      */
     public static function validateRequest()
     {
         $method = $_SERVER['REQUEST_METHOD'];
-        
+
         // Skip CSRF validation for GET requests (read-only operations)
-        if ($method === 'GET') {
+        if ($method === 'GET' || $method === 'HEAD' || $method === 'OPTIONS') {
             return true;
         }
 
         // For POST, PUT, DELETE requests, validate CSRF token
         $token = null;
-        
-        // Try to get token from different sources
-        if (isset($_POST['_csrf_token'])) {
-            $token = $_POST['_csrf_token'];
-        } elseif (isset($_GET['_csrf_token'])) {
-            $token = $_GET['_csrf_token'];
-        } else {
-            // Try to get from JSON body
-            $json = json_decode(file_get_contents('php://input'), true);
-            if ($json && isset($json['_csrf_token'])) {
-                $token = $json['_csrf_token'];
+
+        // 1. Check HTTP Header (preferred for AJAX)
+        if (isset($_SERVER['HTTP_X_CSRF_TOKEN'])) {
+            $token = $_SERVER['HTTP_X_CSRF_TOKEN'];
+        }
+
+        // 2. Check POST/Body
+        if (!$token) {
+            $body = self::getParsedBody();
+            if (isset($body['_csrf_token'])) {
+                $token = $body['_csrf_token'];
             }
         }
 
-        // Also check headers
-        if (!$token && isset($_SERVER['HTTP_X_CSRF_TOKEN'])) {
-            $token = $_SERVER['HTTP_X_CSRF_TOKEN'];
+        // 3. Fallback to $_POST (for standard form submits)
+        if (!$token && isset($_POST['_csrf_token'])) {
+            $token = $_POST['_csrf_token'];
+        }
+
+        // 4. Fallback to $_GET (rarely used for state changes)
+        if (!$token && isset($_GET['_csrf_token'])) {
+            $token = $_GET['_csrf_token'];
         }
 
         if (!$token) {
             http_response_code(403);
+            header('Content-Type: application/json');
             echo json_encode([
                 'success' => false,
-                'message' => 'CSRF token missing'
+                'message' => 'CSRF token missing',
+                'code' => 'csrf_missing'
             ]);
             return false;
         }
 
         if (!InputSanitizer::validateCSRF($token)) {
             http_response_code(403);
+            header('Content-Type: application/json');
             echo json_encode([
                 'success' => false,
-                'message' => 'Invalid CSRF token'
+                'message' => 'Invalid CSRF token',
+                'code' => 'csrf_invalid'
             ]);
             return false;
         }
@@ -131,7 +162,7 @@ class CSRFMiddleware
         // Define endpoints that don't need CSRF protection
         $unprotectedEndpoints = [
             'auth/login',
-            'auth/register', 
+            'auth/register',
             'auth/me',
             'auth/logout',
             'auth/forgot-password',

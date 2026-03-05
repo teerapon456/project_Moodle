@@ -264,4 +264,11 @@ class BookingModel
         $stmt->execute([$id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
+    public function updateToken($id, $token, $expiresAt)
+    {
+        $sql = "UPDATE dorm_reservations SET approval_token = ?, token_expires_at = ? WHERE id = ?";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([$token, $expiresAt, $id]);
+    }
 }

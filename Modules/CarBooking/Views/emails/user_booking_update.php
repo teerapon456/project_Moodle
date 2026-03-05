@@ -214,7 +214,6 @@
             </div>
 
             <div class="content">
-                <p class="greeting">สวัสดี,</p>
                 <p class="greeting" style="margin-top: -10px;">การจองรถของคุณได้รับการปรับปรุงข้อมูลจากผู้ดูแลระบบ โปรดตรวจสอบรายละเอียดใหม่ ดังนี้:</p>
 
                 <!-- Booking Details -->

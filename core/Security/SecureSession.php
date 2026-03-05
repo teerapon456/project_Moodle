@@ -30,6 +30,10 @@ class SecureSession
                 session_regenerate_id(true);
                 $_SESSION['initiated'] = true;
                 $_SESSION['last_activity'] = time();
+
+                // CSRF Protection
+                require_once __DIR__ . '/CsrfHelper.php';
+                \Core\Security\CsrfHelper::generateToken();
             }
 
             // Check session timeout
@@ -108,10 +112,11 @@ class SecureSession
         }
 
         // Store user data
+        require_once __DIR__ . '/../Helpers/IpHelper.php';
         $_SESSION['user'] = $userData;
         $_SESSION['initiated'] = true;
         $_SESSION['last_activity'] = time();
-        $_SESSION['ip_address'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $_SESSION['ip_address'] = \Core\Helpers\IpHelper::getClientIp();
         $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
     }
 

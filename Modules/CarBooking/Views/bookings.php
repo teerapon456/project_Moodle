@@ -400,11 +400,11 @@ $statusLabels = [
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">วันเวลาเริ่มต้น</label>
-                    <input type="datetime-local" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" id="editStartTime">
+                    <input type="datetime-local" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" id="editStartTime" onblur="checkYear(this); loadAvailableEditAssets()">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">วันเวลาสิ้นสุด</label>
-                    <input type="datetime-local" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" id="editEndTime">
+                    <input type="datetime-local" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" id="editEndTime" onblur="checkYear(this); loadAvailableEditAssets()">
                 </div>
             </div>
 
@@ -449,10 +449,6 @@ $statusLabels = [
                 </div>
             </div>
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อคนขับ</label>
-                <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" id="editDriverName" placeholder="ระบุชื่อคนขับ">
-            </div>
         </div>
         <div class="flex justify-end gap-3 px-6 py-4 bg-gray-50">
             <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors" onclick="closeEditModal()">ยกเลิก</button>
@@ -774,7 +770,6 @@ $statusLabels = [
         const formatForInput = (dt) => dt ? dt.replace(' ', 'T').substring(0, 16) : '';
         document.getElementById('editStartTime').value = formatForInput(booking.start_time);
         document.getElementById('editEndTime').value = formatForInput(booking.end_time);
-        document.getElementById('editDriverName').value = booking.driver_name || '';
 
         if (booking.fleet_card_id) {
             document.querySelector('input[name="editAllocationType"][value="fleet"]').checked = true;
@@ -794,6 +789,7 @@ $statusLabels = [
             document.getElementById('editFleetAmount').value = '';
         }
         toggleEditAllocationType();
+        loadAvailableEditAssets();
         document.getElementById('editModal').classList.add('active');
     }
 
@@ -807,7 +803,6 @@ $statusLabels = [
         const id = document.getElementById('editBookingId').value;
         const startTime = document.getElementById('editStartTime').value;
         const endTime = document.getElementById('editEndTime').value;
-        const driverName = document.getElementById('editDriverName').value;
         const type = document.querySelector('input[name="editAllocationType"]:checked').value;
         let carId = null,
             fleetId = null,
@@ -845,8 +840,7 @@ $statusLabels = [
                     end_time: endTime,
                     assigned_car_id: carId,
                     fleet_card_id: fleetId,
-                    fleet_amount: fleetAmount,
-                    driver_name: driverName
+                    fleet_amount: fleetAmount
                 })
             });
             const result = await res.json();
@@ -1028,6 +1022,52 @@ $statusLabels = [
         }
     }
 
+    async function loadAvailableEditAssets() {
+        const id = document.getElementById('editBookingId').value;
+        const startTime = document.getElementById('editStartTime').value;
+        const endTime = document.getElementById('editEndTime').value;
+        if (!startTime || !endTime) return;
+
+        const carSelect = document.getElementById('editCarId');
+        const fleetSelect = document.getElementById('editFleetCardId');
+
+        const currentCarId = carSelect.value;
+        const currentFleetId = fleetSelect.value;
+
+        carSelect.innerHTML = '<option>กำลังโหลด...</option>';
+        fleetSelect.innerHTML = '<option>กำลังโหลด...</option>';
+
+        try {
+            const res = await fetch(`${API_BASE}?controller=bookings&action=getAvailableAssets&start=${startTime}&end=${endTime}&exclude_id=${id}`);
+            const data = await res.json();
+
+            carSelect.innerHTML = '<option value="">-- ไม่ระบุ --</option>';
+            if (data.cars?.length) {
+                data.cars.forEach(car => {
+                    const disabled = !car.is_available ? 'disabled' : '';
+                    const statusText = car.is_available ? '✅ ว่าง' : `❌ ${car.reason || 'ไม่ว่าง'}`;
+                    const text = `${car.name || (car.brand + ' ' + car.model)} (${car.license_plate}) [${statusText}]`;
+                    const selected = (car.id == currentCarId) ? 'selected' : '';
+                    carSelect.innerHTML += `<option value="${car.id}" ${disabled} ${selected}>${text}</option>`;
+                });
+            }
+
+            fleetSelect.innerHTML = '<option value="">-- ไม่ระบุ --</option>';
+            if (data.fleet_cards?.length) {
+                data.fleet_cards.forEach(fc => {
+                    const disabled = !fc.is_available ? 'disabled' : '';
+                    const statusText = fc.is_available ? '✅ ว่าง' : `❌ ${fc.reason || 'ไม่ว่าง'}`;
+                    const text = `${fc.card_number} - ${fc.department} [${statusText}]`;
+                    const selected = (fc.id == currentFleetId) ? 'selected' : '';
+                    fleetSelect.innerHTML += `<option value="${fc.id}" ${disabled} ${selected}>${text}</option>`;
+                });
+            }
+        } catch (e) {
+            carSelect.innerHTML = '<option>โหลดล้มเหลว</option>';
+            fleetSelect.innerHTML = '<option>โหลดล้มเหลว</option>';
+        }
+    }
+
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeBookingDetailModal();
@@ -1038,6 +1078,19 @@ $statusLabels = [
             if (typeof closeBookingModal === 'function') closeBookingModal();
         }
     });
+
+    function checkYear(input) {
+        if (!input.value) return;
+        const date = new Date(input.value);
+        let year = date.getFullYear();
+        if (year > 2400) {
+            // Auto-correct to A.D.
+            const correctedYear = year - 543;
+            const newValue = input.value.replace(year.toString(), correctedYear.toString());
+            input.value = newValue;
+            showToast(`ปรับปีจาก ${year} เป็น ${correctedYear} (ค.ศ.) ให้แล้ว`, 'info');
+        }
+    }
 </script>
 
 <?php include __DIR__ . '/partials/booking-modal.php'; ?>

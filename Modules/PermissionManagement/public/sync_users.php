@@ -404,6 +404,59 @@ function run_worker(array $config)
         return;
     }
 
+    // --- BEGIN SYNC POSITIONS ---
+    $pos_count = 0;
+    $pos_error = '';
+    try {
+        $send_update(['status' => 'running', 'total' => 0, 'done' => 0, 'message' => "กำลังซิงค์ข้อมูลตำแหน่ง (emPosition)..."]);
+
+        $sql_pos = "SELECT PositionID, PositionCode, PositionName, PositionNameEng, CAST(Remark AS NVARCHAR(MAX)) AS Remark, ReportTo, OrgUnitID, CreatedBy, CreatedDate, ModifiedBy, ModifiedDate, IsDeleted, IsInactive, OrgID, IsCloseDown FROM emPosition";
+        $stmt_pos = $conn_sqlsrv->query($sql_pos);
+
+        $ins_pos_stmt = $conn_mysql->prepare("
+            INSERT INTO core_positions (
+                PositionID, PositionCode, PositionName, PositionNameEng, Remark,
+                ReportTo, OrgUnitID, CreatedBy, CreatedDate, ModifiedBy, ModifiedDate,
+                IsDeleted, IsInactive, OrgID, IsCloseDown
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                PositionCode=VALUES(PositionCode), PositionName=VALUES(PositionName),
+                PositionNameEng=VALUES(PositionNameEng), Remark=VALUES(Remark),
+                ReportTo=VALUES(ReportTo), OrgUnitID=VALUES(OrgUnitID),
+                ModifiedBy=VALUES(ModifiedBy), ModifiedDate=VALUES(ModifiedDate),
+                IsDeleted=VALUES(IsDeleted), IsInactive=VALUES(IsInactive),
+                OrgID=VALUES(OrgID), IsCloseDown=VALUES(IsCloseDown)
+        ");
+
+        while ($p = $stmt_pos->fetch(PDO::FETCH_ASSOC)) {
+            $created = ($p['CreatedDate'] instanceof DateTime) ? $p['CreatedDate']->format('Y-m-d H:i:s') : (empty($p['CreatedDate']) ? null : date('Y-m-d H:i:s', strtotime($p['CreatedDate'])));
+            $modified = ($p['ModifiedDate'] instanceof DateTime) ? $p['ModifiedDate']->format('Y-m-d H:i:s') : (empty($p['ModifiedDate']) ? null : date('Y-m-d H:i:s', strtotime($p['ModifiedDate'])));
+
+            $ins_pos_stmt->execute([
+                $p['PositionID'],
+                $p['PositionCode'],
+                $p['PositionName'],
+                $p['PositionNameEng'],
+                $p['Remark'],
+                $p['ReportTo'],
+                $p['OrgUnitID'],
+                $p['CreatedBy'],
+                $created,
+                $p['ModifiedBy'],
+                $modified,
+                $p['IsDeleted'] ? 1 : 0,
+                $p['IsInactive'] ? 1 : 0,
+                $p['OrgID'],
+                $p['IsCloseDown'] ? 1 : 0
+            ]);
+            $pos_count++;
+        }
+        $send_update(['status' => 'running', 'total' => 0, 'done' => 0, 'message' => "ซิงค์ข้อมูลตำแหน่งสำเร็จ ($pos_count รายการ) กำลังเตรียมซิงค์พนักงาน..."]);
+    } catch (Exception $e) {
+        $send_update(['status' => 'error', 'total' => 0, 'done' => 0, 'message' => "เกิดข้อผิดพลาดในการซิงค์ตำแหน่ง: " . $e->getMessage()]);
+    }
+    // --- END SYNC POSITIONS ---
+
     // Count query
     $tsql_count = <<<TSQL
     SELECT COUNT(*) AS TotalRows
@@ -925,12 +978,13 @@ TSQL;
     // Build summary message
     $summary_html = "<h3>รายงานผลการดึงข้อมูลพนักงานจาก HRIS (SQL Server)</h3>";
     $summary_html .= "<ul>";
+    $summary_html .= "<li>ซิงค์ข้อมูลตำแหน่งงาน (Positions): <b>$pos_count</b> รายการ " . ($pos_error ? "(<span style='color:red'>Error: $pos_error</span>)" : "") . "</li>";
     $summary_html .= "<li>เพิ่มพนักงานใหม่: <b>$inserted_count</b> คน</li>";
     $summary_html .= "<li>อัปเดตข้อมูล: <b>$updated_count</b> คน</li>";
     $summary_html .= "<li>ข้อมูลคงเดิม: <b>$unchanged_count</b> คน</li>";
     $summary_html .= "<li>ระงับสิทธิ์ใช้งาน (ออก/ย้าย): <b>$deactivated_count</b> คน</li>";
 
-    $summary_text = "สำเร็จ! ใหม่ $inserted_count, อัปเดต $updated_count, คงเดิม $unchanged_count";
+    $summary_text = "สำเร็จ! ตำแหน่ง $pos_count, ใหม่ $inserted_count, อัปเดต $updated_count, คงเดิม $unchanged_count";
     if ($deactivated_count > 0) {
         $summary_text .= ", ปิดใช้งาน $deactivated_count";
     }

@@ -425,17 +425,6 @@ $statusLabels = [
                 closeApprovalModal();
                 if (isManagerApproval && printWindow) printWindow.location.href = MODULE_URL + '/public/print_request.php?id=' + bookingId;
 
-                fetch(`${API_BASE}?controller=bookings&action=sendEmailNotification`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        id: bookingId,
-                        type: isManagerApproval ? 'approval' : 'supervisor_approval'
-                    })
-                }).catch(e => console.error('Email failed', e));
-
                 setTimeout(() => location.reload(), 1500);
             } else {
                 if (printWindow) printWindow.close();
@@ -494,16 +483,6 @@ $statusLabels = [
 
             if (response.ok) {
                 showToast('ปฏิเสธสำเร็จ', 'success');
-                fetch(`${API_BASE}?controller=bookings&action=sendEmailNotification`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        id: bookingId,
-                        type: 'rejection'
-                    })
-                }).catch(e => console.error('Email failed', e));
                 closeRejectModal();
                 setTimeout(() => location.reload(), 1000);
             } else {

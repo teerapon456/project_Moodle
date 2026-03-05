@@ -117,6 +117,22 @@ class MicrosoftAuthController
             $this->logOauthDebug('initiateLogin: setcookie remember failed: ' . $e->getMessage());
         }
 
+        // Store redirect URL if provided (e.g., from IGA module)
+        try {
+            if (isset($_GET['redirect_to'])) {
+                $secure = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strpos($_SERVER['HTTP_X_FORWARDED_PROTO'], 'https') !== false));
+                setcookie('oauth_redirect', $_GET['redirect_to'], [
+                    'expires' => time() + 600,
+                    'path' => '/',
+                    'secure' => $secure,
+                    'httponly' => true,
+                    'samesite' => 'None'
+                ]);
+            }
+        } catch (Exception $e) {
+            $this->logOauthDebug('initiateLogin: setcookie redirect failed: ' . $e->getMessage());
+        }
+
         // Store geolocation if provided
         try {
             if (isset($_GET['lat']) && isset($_GET['lon'])) {
@@ -220,7 +236,8 @@ class MicrosoftAuthController
 
         // Rate limiting check for Microsoft login
         // Try to find user first to get user_id for consistent rate limiting
-        $msIdentifier = $userInfo['userPrincipalName'] ?? $userInfo['mail'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        require_once __DIR__ . '/../Helpers/IpHelper.php';
+        $msIdentifier = $userInfo['userPrincipalName'] ?? $userInfo['mail'] ?? \Core\Helpers\IpHelper::getClientIp();
         $userId = null;
         $displayName = $msIdentifier;
 
@@ -385,8 +402,22 @@ class MicrosoftAuthController
             // ignore
         }
 
+        // Clear oauth_redirect cookie (cleanup) and determine redirect URL
+        $redirectUrl = $_COOKIE['oauth_redirect'] ?? null;
+        try {
+            $secure = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strpos($_SERVER['HTTP_X_FORWARDED_PROTO'], 'https') !== false));
+            setcookie('oauth_redirect', '', [
+                'expires' => time() - 3600,
+                'path' => '/',
+                'secure' => $secure,
+                'httponly' => true,
+                'samesite' => 'None'
+            ]);
+        } catch (Exception $e) { /* ignore */
+        }
+
         // Redirect to frontend dashboard
-        $this->redirectToFrontend('success', null, $user);
+        $this->redirectToFrontend('success', null, $user, $redirectUrl);
     }
 
     /**
@@ -759,7 +790,7 @@ class MicrosoftAuthController
      */
     private function linkAccount()
     {
-        $data = json_decode(file_get_contents("php://input"));
+        $data = (object)\CSRFMiddleware::getParsedBody();
 
         if (!isset($_SESSION['user'])) {
             http_response_code(401);
@@ -833,7 +864,7 @@ class MicrosoftAuthController
     /**
      * Redirect to frontend with result
      */
-    private function redirectToFrontend($status, $error = null, $user = null)
+    private function redirectToFrontend($status, $error = null, $user = null, $customRedirect = null)
     {
         $basePath = rtrim(Env::get('APP_BASE_PATH', ''), '/');
         if ($basePath === '') {
@@ -846,6 +877,9 @@ class MicrosoftAuthController
         $baseRoot = rtrim($basePath, '/');
         $baseUrl = ($baseRoot ? $baseRoot : '') . '/public/';
         $moduleBase = ($baseRoot ? $baseRoot . '/' : '/') . 'Modules/HRServices/public/';
+
+        // Use custom redirect if provided, otherwise default to HR Services
+        $finalLocation = $customRedirect ?: "{$moduleBase}index.php?login_success=1";
 
         if ($status === 'success' && $user) {
             // Store user data in localStorage via JavaScript
@@ -866,7 +900,7 @@ class MicrosoftAuthController
                 <script>
                     localStorage.setItem('user', '" . addslashes($userData) . "');
                     localStorage.setItem('is_profile_incomplete', " . $isProfileIncompleteJson . ");
-                    window.location.href = '{$moduleBase}index.php?login_success=1';
+                    window.location.href = '{$finalLocation}';
                 </script>
             </body>
             </html>
@@ -930,7 +964,7 @@ class MicrosoftAuthController
                 $userId,
                 $userName ?? 'Unknown',
                 $action,
-                $this->getClientIp(),
+                \Core\Helpers\IpHelper::getClientIp(),
                 $_SERVER['HTTP_USER_AGENT'] ?? null,
                 $detector->getDeviceType(),
                 $detector->getDeviceBrand(),
@@ -948,23 +982,5 @@ class MicrosoftAuthController
         } catch (Exception $e) {
             error_log("Failed to log Microsoft activity: " . $e->getMessage());
         }
-    }
-
-    /**
-     * Get client IP address
-     */
-    private function getClientIp()
-    {
-        $headers = ['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP', 'REMOTE_ADDR'];
-        foreach ($headers as $header) {
-            if (!empty($_SERVER[$header])) {
-                $ip = $_SERVER[$header];
-                if (strpos($ip, ',') !== false) {
-                    $ip = trim(explode(',', $ip)[0]);
-                }
-                return $ip;
-            }
-        }
-        return 'unknown';
     }
 }

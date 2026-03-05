@@ -426,12 +426,36 @@ class BookingController extends DormBaseController
                     "Modules/Dormitory/?page=booking_manage"
                 );
 
-                // Send email to admin
+                // Send email to admin/manager
                 require_once __DIR__ . '/../../../core/Services/EmailService.php';
                 EmailService::sendDormRequestNotificationToAdmin([
                     'fullname' => $requesterName,
                     'request_type' => $request['request_type']
                 ]);
+
+                // Send email to requester: supervisor approved, waiting for manager
+                $requesterEmail = $fullRequest['email'] ?? null;
+                if ($requesterEmail) {
+                    EmailService::sendDormSupervisorApprovedEmail(
+                        $requesterEmail,
+                        $requesterName,
+                        $request['request_type']
+                    );
+
+                    // In-app notification to requester
+                    try {
+                        NotificationService::create(
+                            $request['requester_id'],
+                            'success',
+                            'หัวหน้างานอนุมัติคำขอหอพักแล้ว',
+                            "คำขอ #{$requestId} {$requestTypeLabel} ผ่านการอนุมัติจากหัวหน้างาน รอผู้ดูแลหอพักดำเนินการ",
+                            ['request_id' => $requestId],
+                            \Core\Helpers\UrlHelper::getBaseUrl() . '/Modules/Dormitory/?page=my-room'
+                        );
+                    } catch (Exception $notifEx) {
+                        error_log("Notification failed (supervisor_approve): " . $notifEx->getMessage());
+                    }
+                }
 
                 return $this->success([], 'หัวหน้างานอนุมัติคำขอเรียบร้อยแล้ว');
             }
@@ -925,6 +949,117 @@ class BookingController extends DormBaseController
             return $this->success([], 'บันทึกหัวหน้าเริ่มต้นแล้ว');
         } catch (Exception $e) {
             return $this->error('ไม่สามารถบันทึกได้: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * API: Resend Emails based on current status
+     * Mirrors CarBooking's resendEmails method
+     */
+    public function resendSupervisorEmail($data)
+    {
+        $this->requireAuth();
+        $requestId = $data['id'] ?? null;
+
+        if (!$requestId) {
+            return $this->error('กรุณาระบุ ID คำขอ');
+        }
+
+        try {
+            $request = $this->bookingModel->getReservationById($requestId);
+
+            if (!$request) {
+                return $this->error('ไม่พบคำขอ');
+            }
+
+            // Must be owner OR Admin
+            $isOwner = $request['requester_id'] == $this->user['id'];
+            $isAdmin = $this->hasPermission('manage');
+
+            if (!$isOwner && !$isAdmin) {
+                return $this->error('คุณไม่มีสิทธิ์ดำเนินการกับคำขอนี้');
+            }
+
+            // Re-fetch with user data for email
+            $requestData = $this->bookingModel->getReservationWithUser($requestId);
+            if (!$requestData) {
+                return $this->error('ไม่สามารถดึงข้อมูลคำขอเพื่อส่งอีเมลได้');
+            }
+
+            $status = $request['status'];
+
+            // Pending supervisor: resend approval link to supervisor
+            if ($status === 'pending_supervisor') {
+                // Generate NEW token and update
+                $token = bin2hex(random_bytes(32));
+                $expiresAt = date('Y-m-d H:i:s', strtotime('+7 days'));
+                $this->bookingModel->updateToken($requestId, $token, $expiresAt);
+
+                EmailService::sendDormSupervisorApprovalEmail($requestData, $requestData['supervisor_email'], $token);
+                $this->logAudit('resend_email', 'dorm_reservation', $requestId);
+                return $this->success([], 'ส่งอีเมลให้หัวหน้างานอีกครั้งเรียบร้อยแล้ว');
+            }
+
+            // Pending manager: resend notification to admin/manager
+            if ($status === 'pending_manager') {
+                EmailService::sendDormRequestNotificationToAdmin([
+                    'fullname' => $requestData['fullname'] ?? 'ผู้ใช้งาน',
+                    'request_type' => $requestData['request_type']
+                ]);
+                $this->logAudit('resend_email', 'dorm_reservation', $requestId);
+                return $this->success([], 'ส่งอีเมลแจ้งผู้ดูแลหอพักอีกครั้งเรียบร้อยแล้ว');
+            }
+
+            // Approved: resend approval confirmation to requester
+            if ($status === 'approved') {
+                $requesterEmail = $requestData['email'] ?? null;
+                if (empty($requesterEmail)) {
+                    return $this->error('ไม่พบอีเมลผู้ขอ');
+                }
+
+                // Get room details
+                $roomDetails = null;
+                if (!empty($requestData['room_id'])) {
+                    $stmt = $this->pdo->prepare("SELECT r.room_number, r.floor, b.name as building_name FROM dorm_rooms r JOIN dorm_buildings b ON r.building_id = b.id WHERE r.id = ?");
+                    $stmt->execute([$requestData['room_id']]);
+                    $roomDetails = $stmt->fetch(\PDO::FETCH_ASSOC);
+                }
+
+                EmailService::sendDormRequestApproved(
+                    $requesterEmail,
+                    $requestData['fullname'],
+                    $requestData['request_type'],
+                    $requestData['key_pickup_date'] ?? '',
+                    $requestData['admin_remark'] ?? '',
+                    $roomDetails['room_number'] ?? null,
+                    $roomDetails['floor'] ?? null,
+                    $roomDetails['building_name'] ?? null
+                );
+                $this->logAudit('resend_email', 'dorm_reservation', $requestId);
+                return $this->success([], 'ส่งอีเมลยืนยันอนุมัติให้ผู้ขอเรียบร้อยแล้ว');
+            }
+
+            // Rejected: resend rejection to requester
+            if (in_array($status, ['rejected_supervisor', 'rejected_manager'])) {
+                $requesterEmail = $requestData['email'] ?? null;
+                if (empty($requesterEmail)) {
+                    return $this->error('ไม่พบอีเมลผู้ขอ');
+                }
+                $rejectedBy = ($status === 'rejected_supervisor') ? 'หัวหน้างาน' : 'ผู้ดูแลหอพัก';
+                EmailService::sendDormRequestRejected(
+                    $requesterEmail,
+                    $requestData['fullname'],
+                    $requestData['request_type'],
+                    $requestData['rejection_reason'] ?? $requestData['admin_remark'] ?? '',
+                    $rejectedBy
+                );
+                $this->logAudit('resend_email', 'dorm_reservation', $requestId);
+                return $this->success([], 'ส่งอีเมลแจ้งผลปฏิเสธให้ผู้ขอเรียบร้อยแล้ว');
+            }
+
+            return $this->error('สถานะนี้ไม่รองรับการส่งอีเมลซ้ำ');
+        } catch (Exception $e) {
+            return $this->error('Error: ' . $e->getMessage());
         }
     }
 }

@@ -25,9 +25,12 @@ foreach ($approvedBookings as $b) {
         'end' => $b['end_time'],
         'requester' => $b['fullname'] ?? $b['username'] ?? '',
         'car' => trim(($b['assigned_car_brand'] ?? '') . ' ' . ($b['assigned_car_model'] ?? '')),
-        'plate' => $b['assigned_car_plate'] ?? ''
+        'plate' => $b['assigned_car_plate'] ?? '',
+        'car_id' => $b['assigned_car_id'] ?? null
     ];
 }
+
+$companyCarIds = $controller->getActiveCompanyCarIds();
 ?>
 
 <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
@@ -61,22 +64,27 @@ foreach ($approvedBookings as $b) {
     <div class="grid grid-cols-7" id="calendarBody"></div>
 </div>
 
-<!-- Event Detail Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5 opacity-0 invisible transition-all" id="eventModal">
-    <div class="bg-white rounded-xl w-full max-w-md shadow-2xl">
+<!-- Daily Events Modal -->
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5 opacity-0 invisible transition-all" id="dailyEventsModal">
+    <div class="bg-white rounded-xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-            <h3 class="font-semibold text-gray-900" id="eventModalTitle">รายละเอียดการจอง</h3>
-            <button class="text-gray-400 hover:text-gray-600 text-2xl" onclick="closeEventModal()">&times;</button>
+            <h3 class="font-semibold text-gray-900" id="dailyEventsModalTitle">รายการจองวันที่</h3>
+            <button class="text-gray-400 hover:text-gray-600 text-2xl" onclick="closeDailyEventsModal()">&times;</button>
         </div>
-        <div class="p-6" id="eventModalContent"></div>
-        <div class="flex justify-end gap-3 px-6 py-4 bg-gray-50">
-            <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors" onclick="closeEventModal()">ปิด</button>
+        <div class="p-4 overflow-y-auto bg-gray-50 flex-1" id="dailyEventsModalContent">
+            <!-- Events list will be populated here -->
+        </div>
+        <div class="flex justify-between items-center px-6 py-4 bg-white border-t border-gray-100">
+            <button class="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg font-medium transition-colors" id="btnNewBookingDaily" onclick="closeDailyEventsModal(); openBookingModal(currentDailyDate)">
+                <i class="ri-add-line"></i> จองรถวันนี้
+            </button>
+            <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors" onclick="closeDailyEventsModal()">ปิด</button>
         </div>
     </div>
 </div>
 
 <style>
-    #eventModal.active {
+    #dailyEventsModal.active {
         opacity: 1;
         visibility: visible;
     }
@@ -113,6 +121,8 @@ foreach ($approvedBookings as $b) {
 
 <script>
     const events = <?= json_encode(array_values($calendarEvents)) ?>;
+    const companyCarIds = <?= json_encode(array_map('intval', $companyCarIds)) ?>;
+    const totalCompanyCars = companyCarIds.length;
     let currentYear, currentMonth;
 
     function init() {
@@ -151,19 +161,42 @@ foreach ($approvedBookings as $b) {
             const dayEvents = events.filter(e => e.start.startsWith(dateStr));
             const dow = new Date(currentYear, currentMonth, day).getDay();
 
+            // Check company car availability for this day
+            const startOfDay = new Date(`${dateStr}T00:00:00`).getTime();
+            const endOfDay = new Date(`${dateStr}T23:59:59`).getTime();
+
+            const bookedCompanyCars = new Set();
+            events.forEach(e => {
+                if (e.car_id && companyCarIds.includes(parseInt(e.car_id))) {
+                    const eStart = new Date(e.start).getTime();
+                    const eEnd = new Date(e.end).getTime();
+                    if (eStart <= endOfDay && eEnd >= startOfDay) {
+                        bookedCompanyCars.add(e.car_id);
+                    }
+                }
+            });
+            const availableCompanyCars = totalCompanyCars - bookedCompanyCars.size;
+
             let bgClass = dow === 0 ? 'bg-red-50' : dow === 6 ? 'bg-blue-50' : '';
             let dayClass = dow === 0 ? 'text-red-500' : dow === 6 ? 'text-blue-500' : 'text-gray-700';
 
             html += `<div class="calendar-cell p-2 border-r border-b border-gray-100 cursor-pointer ${bgClass} ${isToday ? 'bg-primary/5' : ''}" onclick="onCellClick('${dateStr}', event)">`;
 
+            html += `<div class="flex justify-between items-start mb-1">`;
             if (isToday) {
-                html += `<div class="w-7 h-7 flex items-center justify-center bg-primary text-white rounded-full text-sm font-medium mb-1">${day}</div>`;
+                html += `<div class="w-7 h-7 flex items-center justify-center bg-primary text-white rounded-full text-sm font-medium">${day}</div>`;
             } else {
-                html += `<div class="text-sm font-medium ${dayClass} mb-1">${day}</div>`;
+                html += `<div class="text-sm font-medium ${dayClass}">${day}</div>`;
             }
 
+            if (totalCompanyCars > 0) {
+                const availClass = availableCompanyCars > 0 ? 'text-emerald-600' : 'text-red-500';
+                html += `<div class="text-sm font-normal flex items-center gap-0.5 ${availClass}" title="รถประจำว่าง ${availableCompanyCars} คัน"><i class="ri-car-fill"></i>${availableCompanyCars}</div>`;
+            }
+            html += `</div>`;
+
             dayEvents.slice(0, 3).forEach(evt => {
-                html += `<div class="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded mb-1 truncate cursor-pointer hover:bg-emerald-200" onclick='showEvent(${JSON.stringify(evt)}); event.stopPropagation();'>${evt.title}</div>`;
+                html += `<div class="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded mb-1 truncate">${evt.title}</div>`;
             });
 
             if (dayEvents.length > 3) {
@@ -186,12 +219,29 @@ foreach ($approvedBookings as $b) {
     }
 
     function onCellClick(dateStr, event) {
-        if (event.target.classList.contains('bg-emerald-100') || event.target.classList.contains('bg-gray-100')) return;
-        if (!canEdit) {
-            showToast('คุณไม่มีสิทธิ์สร้างคำขอ', 'error');
+        // Find events for this day
+        const dayEvents = events.filter(e => e.start.startsWith(dateStr));
+
+        // Check if the click was on an event badge
+        const clickedElement = event.target;
+        if (clickedElement.classList.contains('bg-gray-100') && clickedElement.textContent.includes('อื่นๆ')) {
+            // If "อื่นๆ" badge was clicked, show daily events
+            showDailyEvents(dateStr);
             return;
         }
-        openBookingModal(dateStr);
+
+        // If no specific event badge was clicked, proceed with default cell click behavior
+        if (dayEvents.length > 0) {
+            // If there are events, show the list modal
+            showDailyEvents(dateStr);
+        } else {
+            // Empty day, go straight to new booking if permitted
+            if (!canEdit) {
+                showToast('คุณไม่มีสิทธิ์สร้างคำขอ', 'error');
+                return;
+            }
+            openBookingModal(dateStr);
+        }
     }
 
     function prevMonth() {
@@ -219,26 +269,69 @@ foreach ($approvedBookings as $b) {
         renderCalendar();
     }
 
-    function showEvent(evt) {
-        document.getElementById('eventModalTitle').textContent = evt.title;
-        document.getElementById('eventModalContent').innerHTML = `
-            <div class="space-y-3 text-sm">
-                <div><span class="text-gray-500 block">ผู้ขอ</span><span class="font-medium">${evt.requester}</span></div>
-                <div><span class="text-gray-500 block">รถ</span><span class="font-medium">${evt.car || '-'} ${evt.plate ? '(' + evt.plate + ')' : ''}</span></div>
-                <div><span class="text-gray-500 block">เริ่มต้น</span><span class="font-medium">${formatDateTime(evt.start)}</span></div>
-                <div><span class="text-gray-500 block">สิ้นสุด</span><span class="font-medium">${formatDateTime(evt.end)}</span></div>
-            </div>
-        `;
-        document.getElementById('eventModal').classList.add('active');
+    let currentDailyDate = null;
+
+    function showDailyEvents(dateStr) {
+        currentDailyDate = dateStr;
+        const dayEvents = events.filter(e => e.start.startsWith(dateStr));
+
+        // Format Thai Datetime
+        const dateObj = new Date(dateStr);
+        const thaiDate = dateObj.toLocaleDateString('th-TH', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+
+        document.getElementById('dailyEventsModalTitle').textContent = `รายการจองวันที่ ${thaiDate}`;
+
+        if (!canEdit) {
+            document.getElementById('btnNewBookingDaily').style.display = 'none';
+        } else {
+            document.getElementById('btnNewBookingDaily').style.display = 'inline-flex';
+        }
+
+        const contentDiv = document.getElementById('dailyEventsModalContent');
+
+        if (dayEvents.length === 0) {
+            contentDiv.innerHTML = `<div class="text-center py-8 text-gray-500"><i class="ri-calendar-event-line text-4xl mb-2 block"></i>ไม่มีรายการจองรถในวันนี้</div>`;
+        } else {
+            let html = '<div class="space-y-3">';
+            dayEvents.forEach(evt => {
+                const safeEvt = JSON.stringify(evt).replace(/'/g, "&apos;");
+                const carText = evt.car ? `<i class="ri-car-fill"></i> ${evt.car} ${evt.plate ? '(' + evt.plate + ')' : ''}` : '';
+                html += `
+                    <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm transition-all">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-medium text-gray-900">${evt.title}</h4>
+                            <span class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">#${evt.id}</span>
+                        </div>
+                        <div class="text-xs text-gray-600 space-y-1">
+                            <div><i class="ri-user-line text-gray-400 mr-1"></i> ${evt.requester}</div>
+                            <div><i class="ri-time-line text-gray-400 mr-1"></i> ${formatDateTime(evt.start)} - ${formatDateTime(evt.end)}</div>
+                            ${carText ? `<div class="text-primary font-medium mt-1">${carText}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            contentDiv.innerHTML = html;
+        }
+
+        const modal = document.getElementById('dailyEventsModal');
+        if (modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+        modal.classList.add('active');
     }
 
-    function closeEventModal() {
-        document.getElementById('eventModal').classList.remove('active');
+    function closeDailyEventsModal() {
+        document.getElementById('dailyEventsModal').classList.remove('active');
     }
 
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
-            closeEventModal();
+            closeDailyEventsModal();
             if (typeof closeBookingModal === 'function') closeBookingModal();
         }
     });

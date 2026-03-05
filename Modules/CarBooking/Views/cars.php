@@ -82,7 +82,14 @@ $statusLabels = [
                 <?php else: ?>
                     <?php foreach ($cars as $car): ?>
                         <tr data-status="<?= $car['status'] ?>" class="hover:bg-gray-50 transition-colors">
-                            <td class="px-4 py-3 font-medium text-gray-900"><?= htmlspecialchars($car['name'] ?: '-') ?></td>
+                            <td class="px-4 py-3 font-medium text-gray-900">
+                                <?= htmlspecialchars($car['name'] ?: '-') ?>
+                                <?php if (!empty($car['is_company_car'])): ?>
+                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                        <i class="ri-building-4-line mr-1"></i> รถประจำ
+                                    </span>
+                                <?php endif; ?>
+                            </td>
                             <td class="px-4 py-3 text-gray-600"><?= htmlspecialchars(($car['brand'] ?? '') . ' ' . ($car['model'] ?? '')) ?></td>
                             <td class="px-4 py-3"><code class="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm"><?= htmlspecialchars($car['license_plate']) ?></code></td>
                             <td class="px-4 py-3 text-gray-600"><?= $car['capacity'] ?? '-' ?></td>
@@ -154,13 +161,22 @@ $statusLabels = [
                         <input type="number" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" name="capacity" id="carCapacity" value="4" min="1">
                     </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">สถานะ</label>
-                    <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" name="status" id="carStatus">
-                        <option value="available">พร้อมใช้งาน</option>
-                        <option value="maintenance">ซ่อมบำรุง</option>
-                        <option value="retired">ปลดระวาง</option>
-                    </select>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">สถานะ</label>
+                        <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" name="status" id="carStatus">
+                            <option value="available">พร้อมใช้งาน</option>
+                            <option value="maintenance">ซ่อมบำรุง</option>
+                            <option value="retired">ปลดระวาง</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ตั้งเป็นรถประจำ</label>
+                        <label class="inline-flex items-center mt-2 cursor-pointer">
+                            <input type="checkbox" name="is_company_car" id="carIsCompanyCar" class="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary">
+                            <span class="ml-2 text-sm text-gray-700">ใช่, เป็นรถประจำสำนักงาน</span>
+                        </label>
+                    </div>
                 </div>
             </form>
         </div>
@@ -198,6 +214,7 @@ $statusLabels = [
         document.getElementById('carModalTitle').textContent = 'เพิ่มรถใหม่';
         document.getElementById('carForm').reset();
         document.getElementById('carId').value = '';
+        document.getElementById('carIsCompanyCar').checked = false;
         document.getElementById('carModal').classList.add('active');
     }
 
@@ -216,6 +233,7 @@ $statusLabels = [
         document.getElementById('carPlate').value = car.license_plate || '';
         document.getElementById('carCapacity').value = car.capacity || 4;
         document.getElementById('carStatus').value = car.status || 'available';
+        document.getElementById('carIsCompanyCar').checked = !!parseInt(car.is_company_car);
         document.getElementById('carModal').classList.add('active');
     }
 

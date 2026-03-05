@@ -116,14 +116,14 @@ class EmailService
      * @param string|null $textBody Plain text body
      * @param array|string|null $ccEmails CC email(s) - can be array or comma-separated string
      */
-    private static function sendMail($to, $subject, $htmlBody, $textBody = null, $ccEmails = null)
+    public static function sendMail($to, $subject, $htmlBody, $textBody = null, $ccEmails = null)
     {
-        // [DISABLED FOR PRODUCTION] error_log("=== EmailService::sendMail START === To: $to, Subject: $subject");
-
-        // Check if emails are enabled
-        $enabledEmails = true; // Default to true
-        if (method_exists('EmailConfig', 'getEnableEmails')) {
-            $enabledEmails = EmailConfig::getEnableEmails();
+        $enabledEmails = EmailConfig::getEnableEmails();
+        // Check recipient
+        if (empty($to) || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            error_log("Email skipped: Invalid or empty recipient '$to' for subject: $subject");
+            self::logEmail($to, $subject, $htmlBody, 'skipped', 'Invalid or empty recipient');
+            return false;
         }
 
         if (!$enabledEmails) {
@@ -342,17 +342,42 @@ class EmailService
             $db = new Database();
             $conn = $db->getConnection();
 
-            $bodyPreview = substr(strip_tags($body), 0, 200);
+            // Ensure connection uses utf8mb4 to support emoji characters in email templates
+            $conn->exec("SET NAMES utf8mb4");
 
-            $query = "INSERT INTO email_logs (recipient_email, subject, body_preview, status, error_message) 
-                      VALUES (:recipient, :subject, :body_preview, :status, :error)";
+            $bodyPreview = mb_substr(strip_tags($body), 0, 150);
+
+            $query = "INSERT INTO email_logs (recipient_email, subject, body_preview, body_html, status, error_message) 
+                      VALUES (:recipient, :subject, :body_preview, :body, :status, :error)";
             $stmt = $conn->prepare($query);
             $stmt->bindParam(':recipient', $to);
             $stmt->bindParam(':subject', $subject);
             $stmt->bindParam(':body_preview', $bodyPreview);
+            $stmt->bindParam(':body', $body);
             $stmt->bindParam(':status', $status);
             $stmt->bindParam(':error', $error);
-            $stmt->execute();
+
+            try {
+                $stmt->execute();
+            } catch (\PDOException $utf8Err) {
+                // Fallback: strip 4-byte UTF-8 characters (emoji) and retry
+                if (strpos($utf8Err->getMessage(), '1366') !== false || strpos($utf8Err->getMessage(), 'Incorrect string value') !== false) {
+                    $cleanBody = preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $body);
+                    $cleanSubject = preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $subject);
+                    $cleanPreview = mb_substr(strip_tags($cleanBody), 0, 150);
+
+                    $stmt2 = $conn->prepare($query);
+                    $stmt2->bindParam(':recipient', $to);
+                    $stmt2->bindParam(':subject', $cleanSubject);
+                    $stmt2->bindParam(':body_preview', $cleanPreview);
+                    $stmt2->bindParam(':body', $cleanBody);
+                    $stmt2->bindParam(':status', $status);
+                    $stmt2->bindParam(':error', $error);
+                    $stmt2->execute();
+                } else {
+                    throw $utf8Err;
+                }
+            }
         } catch (Exception $e) {
             error_log("Failed to log email to database: " . $e->getMessage());
         }
@@ -383,7 +408,7 @@ class EmailService
      */
     public static function sendSupervisorApprovalEmail($booking, $supervisorEmail, $token, $additionalCc = null)
     {
-        $baseUrl = Env::getBaseUrl();
+        $baseUrl = rtrim(Env::getBaseUrl(), '/');
         $reviewUrl = $baseUrl . "/Modules/CarBooking/index.php?page=manage&id=" . $booking['id'];
 
         $userName = $booking['user_fullname'] ?? $booking['fullname'] ?? $booking['username'] ?? 'Unknown User';
@@ -437,9 +462,9 @@ class EmailService
         $department = !empty($booking['user_department']) ? " - {$booking['user_department']}" : "";
         $subject = "คำขอจองรถใหม่ - {$userName}{$department}";
 
-        $baseUrl = Env::getBaseUrl();
+        $baseUrl = rtrim(Env::getBaseUrl(), '/');
         // Point to new Module structure
-        $manageUrl = rtrim($baseUrl, '/') . "/?page=manage";
+        $manageUrl = $baseUrl . "/Modules/CarBooking/index.php?page=manage&id=" . $booking['id'];
 
         $html = self::renderTemplate('manager_notification', [
             'booking' => $booking,
@@ -596,7 +621,7 @@ class EmailService
         $html = self::renderTemplate('request_received', [
             'userName' => $userName,
             'type' => $type
-        ]);
+        ], 'Dormitory');
         $settings = self::getModuleSettings(20); // Dormitory Module ID
         return self::sendMail($userEmail, $subject, $html, null, $settings['cc_emails']);
     }
@@ -615,7 +640,7 @@ class EmailService
             'roomNumber' => $roomNumber,
             'floor' => $floor,
             'building' => $building
-        ]);
+        ], 'Dormitory');
         $settings = self::getModuleSettings(20);
         return self::sendMail($userEmail, $subject, $html, null, $settings['cc_emails']);
     }
@@ -623,14 +648,30 @@ class EmailService
     /**
      * Send Dorm Request Rejected Email
      */
-    public static function sendDormRequestRejected($userEmail, $userName, $type, $reason)
+    public static function sendDormRequestRejected($userEmail, $userName, $type, $reason, $rejectedBy = 'ผู้ดูแลระบบ')
     {
         $subject = "คำขอหอพักของคุณถูกปฏิเสธ";
         $html = self::renderTemplate('request_rejected', [
             'userName' => $userName,
             'type' => $type,
-            'reason' => $reason
-        ]);
+            'reason' => $reason,
+            'rejectedBy' => $rejectedBy
+        ], 'Dormitory');
+        $settings = self::getModuleSettings(20);
+        return self::sendMail($userEmail, $subject, $html, null, $settings['cc_emails']);
+    }
+
+    /**
+     * Send supervisor approved notification to requester (Dormitory)
+     * Notify user that supervisor has approved, now waiting for manager/IPCD
+     */
+    public static function sendDormSupervisorApprovedEmail($userEmail, $userName, $type)
+    {
+        $subject = "หัวหน้างานอนุมัติคำขอหอพักของคุณแล้ว - รอผู้ดูแลดำเนินการ";
+        $html = self::renderTemplate('supervisor_approved', [
+            'userName' => $userName,
+            'type' => $type
+        ], 'Dormitory');
         $settings = self::getModuleSettings(20);
         return self::sendMail($userEmail, $subject, $html, null, $settings['cc_emails']);
     }
@@ -651,7 +692,7 @@ class EmailService
             'token' => $token,
             'baseUrl' => $baseUrl,
             'review_url' => $reviewUrl
-        ]);
+        ], 'Dormitory');
 
         $settings = self::getModuleSettings(20);
         return self::sendMail($supervisorEmail, $subject, $html, null, $settings['cc_emails']);
@@ -673,7 +714,7 @@ class EmailService
         $html = self::renderTemplate('admin_notification', [
             'booking' => $bookingData,
             'manageUrl' => $manageUrl
-        ]);
+        ], 'Dormitory');
 
         $settings = self::getModuleSettings(20);
         $adminEmails = $settings['admin_emails'];
@@ -696,13 +737,14 @@ class EmailService
     /**
      * Render email template
      */
-    private static function renderTemplate($templateName, $data)
+    private static function renderTemplate($templateName, $data, $module = 'CarBooking')
     {
-        $templatePath = __DIR__ . "/../../Modules/CarBooking/Views/emails/$templateName.php";
+        $templatePath = __DIR__ . "/../../Modules/$module/Views/emails/$templateName.php";
 
-        // Fallback to Dormitory Templates
+        // Fallback to other module if not found (legacy support)
         if (!file_exists($templatePath)) {
-            $templatePath = __DIR__ . "/../../Modules/Dormitory/Views/emails/$templateName.php";
+            $otherModule = ($module === 'CarBooking') ? 'Dormitory' : 'CarBooking';
+            $templatePath = __DIR__ . "/../../Modules/$otherModule/Views/emails/$templateName.php";
         }
 
         if (!file_exists($templatePath)) {

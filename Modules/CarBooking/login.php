@@ -23,71 +23,23 @@ $error = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';
+    $csrfToken = $_POST['_csrf_token'] ?? '';
 
-    if (!empty($username) && !empty($password)) {
-        try {
-            $db = new Database();
-            $conn = $db->getConnection();
+    require_once __DIR__ . '/../../core/Security/CsrfHelper.php';
+    require_once __DIR__ . '/../../core/Auth/AuthService.php';
 
-            $stmt = $conn->prepare("SELECT u.*, r.name as role_name 
-                                    FROM users u 
-                                    LEFT JOIN roles r ON u.role_id = r.id 
-                                    WHERE (u.username = :u OR u.email = :e) 
-                                    AND u.is_active = 1 
-                                    LIMIT 1");
-            $stmt->execute([':u' => $username, ':e' => $username]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!\Core\Security\CsrfHelper::validateToken($csrfToken)) {
+        $error = "Session expired or invalid token. Please try again.";
+    } elseif (!empty($username) && !empty($password)) {
+        $auth = new \Core\Auth\AuthService();
+        $result = $auth->authenticate($username, $password, 'CAR_BOOKING');
 
-            if ($user && password_verify($password, $user['password_hash'])) {
-
-                // Permission Check
-                $moduleCode = 'CAR_BOOKING';
-                $roleId = $user['role_id'];
-
-                $permStmt = $conn->prepare("
-                    SELECT 1 
-                    FROM core_modules cm 
-                    JOIN core_module_permissions cmp ON cm.id = cmp.module_id 
-                    WHERE cm.code = :code AND cmp.role_id = :role_id AND cmp.can_view = 1
-                ");
-                $permStmt->execute([':code' => $moduleCode, ':role_id' => $roleId]);
-
-                if (!$permStmt->fetchColumn()) {
-                    $error = "คุณไม่มีสิทธิ์เข้าใช้งานระบบจองรถ";
-                } else {
-                    // Login Success
-                    $_SESSION['user'] = [
-                        'id' => $user['id'],
-                        'username' => $user['username'],
-                        'email' => $user['email'],
-                        'fullname' => $user['fullname'],
-                        'role_id' => $user['role_id'],
-                        'role' => $user['role_name'],
-                        'department' => $user['Level3Name'], // Use Level3Name for department
-                        'position' => $user['PositionName'], // Use PositionName
-                        'default_supervisor_id' => $user['default_supervisor_id']
-                    ];
-
-                    // Log login
-                    try {
-                        $logStmt = $conn->prepare("INSERT INTO user_logins (user_id, user_name, action, ip_address, user_agent, created_at) VALUES (?, ?, 'login', ?, ?, NOW())");
-                        $logStmt->execute([
-                            $user['id'],
-                            $user['username'],
-                            $_SERVER['REMOTE_ADDR'],
-                            $_SERVER['HTTP_USER_AGENT'] ?? ''
-                        ]);
-                    } catch (Exception $e) { /* Ignore log error */
-                    }
-
-                    header("Location: index.php");
-                    exit;
-                }
-            } else {
-                $error = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
-            }
-        } catch (Exception $e) {
-            $error = "เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล";
+        if ($result['success']) {
+            $auth->initializeSession($result['user']);
+            header("Location: index.php");
+            exit;
+        } else {
+            $error = $result['message'];
         }
     } else {
         $error = "กรุณากรอกชื่อผู้ใช้และรหัสผ่าน";
@@ -107,6 +59,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         body {
             font-family: 'Kanit', sans-serif;
         }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 1.5rem 0;
+            color: #94a3b8;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e2e8f0;
+        }
+
+        .divider span {
+            padding: 0 1rem;
+        }
+
+        .sso-link {
+            color: #64748b;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            text-decoration: none;
+        }
+
+        .sso-link:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+            color: #1e293b;
+        }
     </style>
 </head>
 
@@ -124,6 +119,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form method="POST" action="">
+            <?php
+            require_once __DIR__ . '/../../core/Security/CsrfHelper.php';
+            \Core\Security\CsrfHelper::insertField();
+            ?>
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="username">
                     ชื่อผู้ใช้ / อีเมล
@@ -142,7 +141,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </button>
             </div>
         </form>
-        <div class="text-center mt-4 text-sm text-gray-500">
+
+        <div class="divider">
+            <span>หรือ (OR)</span>
+        </div>
+
+        <a href="/auth/microsoft/login?redirect_to=/Modules/CarBooking/" class="sso-link">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft" class="w-4 h-4">
+            <span>เข้าสู่ระบบผ่าน Microsoft SSO</span>
+        </a>
+
+        <div class="text-center mt-6 text-sm text-gray-500">
             <a href="/" class="text-blue-500 hover:text-blue-800">กลับหน้าหลัก Portal</a>
         </div>
     </div>

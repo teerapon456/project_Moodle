@@ -391,8 +391,8 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                             <tr class="hover:bg-gray-50">
                                 <td class="px-4 py-3 font-medium text-gray-900">${escapeHtml(rt.name)}</td>
                                 <td class="px-4 py-3 text-gray-500 text-sm">${escapeHtml(rt.code || '-')}</td>
-                                <td class="px-4 py-3 text-center">${rt.capacity || 1} คน</td>
-                                <td class="px-4 py-3 text-right">${formatCurrency(rt.monthly_rent || 0)}</td>
+                                <td class="px-4 py-3 text-center">${rt.max_person || 1} คน</td>
+                                <td class="px-4 py-3 text-right">${formatCurrency(rt.price_month || 0)}</td>
                                 <td class="px-4 py-3 text-center">
                                     <span class="px-2 py-1 rounded-full text-xs font-medium ${rt.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}">
                                         ${rt.status === 'active' ? 'ใช้งาน' : 'ไม่ใช้งาน'}
@@ -430,9 +430,9 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
         document.getElementById('rtId').value = rt.id;
         document.getElementById('rtName').value = rt.name || '';
         document.getElementById('rtCode').value = rt.code || '';
-        document.getElementById('rtCapacity').value = rt.capacity || 1;
-        document.getElementById('rtRent').value = rt.monthly_rent || 0;
-        document.getElementById('rtDesc').value = rt.description || '';
+        document.getElementById('rtCapacity').value = rt.max_person || 1;
+        document.getElementById('rtRent').value = rt.price_month || 0;
+        document.getElementById('rtDesc').value = rt.amenities || '';
         document.getElementById('rtStatus').value = rt.status || 'active';
         document.getElementById('rtStatusField').classList.remove('hidden');
         document.getElementById('roomTypeModal').classList.add('active');
@@ -454,9 +454,9 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
         const data = {
             name: name,
             code: document.getElementById('rtCode').value.trim(),
-            capacity: parseInt(document.getElementById('rtCapacity').value) || 1,
-            monthly_rent: parseFloat(document.getElementById('rtRent').value) || 0,
-            description: document.getElementById('rtDesc').value.trim()
+            max_person: parseInt(document.getElementById('rtCapacity').value) || 1,
+            price_month: parseFloat(document.getElementById('rtRent').value) || 0,
+            amenities: document.getElementById('rtDesc').value.trim()
         };
 
         try {

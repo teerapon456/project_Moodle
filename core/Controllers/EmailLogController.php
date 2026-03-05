@@ -71,6 +71,7 @@ class EmailLogController
                     `recipient_email` VARCHAR(255) NOT NULL,
                     `subject` VARCHAR(500),
                     `body_preview` TEXT,
+                    `body_html` LONGTEXT,
                     `status` VARCHAR(20) DEFAULT 'pending',
                     `error_message` TEXT,
                     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

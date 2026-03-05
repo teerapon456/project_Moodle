@@ -179,11 +179,10 @@
             </div>
 
             <div class="content">
-                <p class="greeting">สวัสดี,</p>
                 <?php
                 $rejectorName = 'หัวหน้างาน';
                 if (isset($rejectedBy) && $rejectedBy === 'manager') {
-                    $rejectorName = 'สายงานบัญชีและการเงิน';
+                    $rejectorName = 'สายงาน IPCD';
                 }
                 ?>
                 <p class="greeting" style="margin-top: -10px;">ขออภัย การจองรถของคุณไม่ผ่านการอนุมัติโดย <strong><?php echo $rejectorName; ?></strong></p>

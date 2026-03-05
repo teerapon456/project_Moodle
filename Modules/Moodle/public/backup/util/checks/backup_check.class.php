@@ -30,9 +30,11 @@
  *
  * TODO: Finish phpdocs
  */
-abstract class backup_check {
+abstract class backup_check
+{
 
-    public static function check_format_and_type($format, $type) {
+    public static function check_format_and_type($format, $type)
+    {
         global $CFG;
 
         $file = $CFG->dirroot . '/backup/' . $format . '/backup_plan_builder.class.php';
@@ -47,7 +49,8 @@ abstract class backup_check {
         require_once($CFG->dirroot . '/backup/moodle2/backup_plan_builder.class.php');
     }
 
-    public static function check_id($type, $id) {
+    public static function check_id($type, $id)
+    {
         global $DB;
         switch ($type) {
             case backup::TYPE_1ACTIVITY:
@@ -74,7 +77,8 @@ abstract class backup_check {
         return true;
     }
 
-    public static function check_user($userid) {
+    public static function check_user($userid)
+    {
         global $DB;
         // userid must exist in user table
         if (! $DB->record_exists('user', array('id' => $userid))) {
@@ -83,7 +87,8 @@ abstract class backup_check {
         return true;
     }
 
-    public static function check_security($backup_controller, $apply) {
+    public static function check_security($backup_controller, $apply)
+    {
         global $DB;
 
         if (! $backup_controller instanceof backup_controller) {
@@ -95,7 +100,7 @@ abstract class backup_check {
         $type     = $backup_controller->get_type();
         $mode     = $backup_controller->get_mode();
         $courseid = $backup_controller->get_courseid();
-        $coursectx= context_course::instance($courseid);
+        $coursectx = context_course::instance($courseid);
         $userid   = $backup_controller->get_userid();
         $id       = $backup_controller->get_id(); // courseid / sectionid / cmid
 
@@ -108,20 +113,20 @@ abstract class backup_check {
         // one capability => context array structure
         $typecapstocheck = array();
         switch ($type) {
-            case backup::TYPE_1COURSE :
+            case backup::TYPE_1COURSE:
                 $DB->get_record('course', array('id' => $id), '*', MUST_EXIST); // course exists
                 $typecapstocheck['moodle/backup:backupcourse'] = $coursectx;
                 break;
-            case backup::TYPE_1SECTION :
+            case backup::TYPE_1SECTION:
                 $DB->get_record('course_sections', array('course' => $courseid, 'id' => $id), '*', MUST_EXIST); // sec exists
                 $typecapstocheck['moodle/backup:backupsection'] = $coursectx;
                 break;
-            case backup::TYPE_1ACTIVITY :
+            case backup::TYPE_1ACTIVITY:
                 get_coursemodule_from_id(null, $id, $courseid, false, MUST_EXIST); // cm exists
                 $modulectx = context_module::instance($id);
                 $typecapstocheck['moodle/backup:backupactivity'] = $modulectx;
                 break;
-            default :
+            default:
                 throw new backup_controller_exception('backup_unknown_backup_type', $type);
         }
 
@@ -167,7 +172,6 @@ abstract class backup_check {
                 $a->value = $prevvalue;
                 $a->capability = 'moodle/backup:userinfo';
                 throw new backup_controller_exception('backup_setting_value_wrong_for_capability', $a);
-
             } else { // Can apply changes
                 // If it is already false, we don't want to try and set it again, because if it is
                 // already locked, and exception will occur. The side benifit is if it is true and locked
@@ -175,7 +179,7 @@ abstract class backup_check {
                 if ($prevvalue) {
                     $userssetting->set_value(false);                              // Set the value to false
                 }
-                $userssetting->set_status(base_setting::LOCKED_BY_PERMISSION);// Set the status to locked by perm
+                $userssetting->set_status(base_setting::LOCKED_BY_PERMISSION); // Set the status to locked by perm
             }
         }
 
@@ -195,12 +199,11 @@ abstract class backup_check {
                 $a->value = $prevvalue;
                 $a->capability = 'moodle/backup:anonymise';
                 throw new backup_controller_exception('backup_setting_value_wrong_for_capability', $a);
-
             } else { // Can apply changes
                 if ($prevvalue) { // If we try and set it back to false and it has already been locked, error will occur
                     $anonsetting->set_value(false);                              // Set the value to false
                 }
-                $anonsetting->set_status(base_setting::LOCKED_BY_PERMISSION);// Set the status to locked by perm
+                $anonsetting->set_status(base_setting::LOCKED_BY_PERMISSION); // Set the status to locked by perm
             }
         }
 
@@ -210,7 +213,7 @@ abstract class backup_check {
             $userssetting = $backup_controller->get_plan()->get_setting('users');
             if ($userssetting->get_value()) {
                 $userssetting->set_value(false);                              // Set the value to false
-                $userssetting->set_status(base_setting::LOCKED_BY_PERMISSION);// Set the status to locked by perm
+                $userssetting->set_status(base_setting::LOCKED_BY_PERMISSION); // Set the status to locked by perm
             }
         }
 

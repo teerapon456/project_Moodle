@@ -13,90 +13,45 @@ if (function_exists('startOptimizedSession')) {
     }
 }
 
-require_once __DIR__ . '/../core/Config/Env.php';
-require_once __DIR__ . '/../core/Database/Database.php';
+require_once __DIR__ . '/../core/Auth/AuthService.php';
+require_once __DIR__ . '/../core/Security/CsrfHelper.php';
 
-$user = $_SESSION['user'] ?? null;
+use Core\Auth\AuthService;
+use Core\Security\CsrfHelper;
 
-// If we were sent here with an error, clear session ONLY if it's a critical error
-if (isset($_GET['error'])) {
-    $errorType = $_GET['error'];
-    // Only destroy session for critical errors, not for session_expired
-    if (in_array($errorType, ['no_permission', 'role_inactive'])) {
-        session_destroy();
-        $user = null;
-    }
-    // For session_expired, keep the session to allow debugging
-}
+$auth = new AuthService();
 
-// Minimal permission check to avoid looping on stale sessions
-function canViewHrPortal($roleId)
-{
-    try {
-        $db = new Database();
-        $conn = $db->getConnection();
-        if (!$conn) return false;
-        $sql = "SELECT COALESCE(p.can_view, 0) as can_view
-                FROM core_modules cm
-                LEFT JOIN core_module_permissions p ON p.module_id = cm.id AND p.role_id = :role_id
-                WHERE cm.code = 'HR_PORTAL'
-                LIMIT 1";
-        $stmt = $conn->prepare($sql);
-        $stmt->bindValue(':role_id', $roleId, PDO::PARAM_INT);
-        $stmt->execute();
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        // If module not configured, do not block login to avoid loops
-        return $row ? (bool)$row['can_view'] : true;
-    } catch (Exception $e) {
-        return true;
-    }
-}
-
+// Path Calculation (restored for assets/links)
 $basePathEnv = rtrim(Env::get('APP_BASE_PATH', ''), '/');
 $basePath = $basePathEnv;
 if ($basePath === '') {
-    $scriptDir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
+    $scriptDir = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? ''), '/');
     $basePath = preg_replace('#/public$#', '', $scriptDir);
 }
 if ($basePath === '') {
     $basePath = '/';
 }
 $baseRoot = rtrim($basePath, '/');
-// Determine asset base: prefer /assets when DOCUMENT_ROOT points to project/public
+$linkBase = ($baseRoot ? $baseRoot . '/' : '/');
+
 $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/');
 if ($docRoot && is_dir($docRoot . '/assets')) {
     $assetBase = ($baseRoot ? $baseRoot : '') . '/';
 } else {
     $assetBase = ($baseRoot ? $baseRoot : '') . '/public/';
 }
-$linkBase = ($baseRoot ? $baseRoot . '/' : '/');
 
 // If logged-in and active + has HR portal view, redirect to HR services
-if ($user && !empty($user['role_id']) && !isset($_GET['error'])) {
-    $userActive = $user['user_active'] ?? 1;
-    $roleActive = $user['role_active'] ?? 1;
-    if ($userActive && $roleActive && canViewHrPortal((int)$user['role_id'])) {
+$user = $_SESSION['user'] ?? null;
+if ($user && !isset($_GET['error'])) {
+    $roleId = $user['role_id'] ?? null;
+    if ($roleId && $auth->hasModulePermission($roleId, 'HR_PORTAL')) {
         header('Location: ' . $linkBase . 'Modules/HRServices/public/index.php');
         exit;
     }
 }
 
-// Fetch System Settings for mandatory geolocation
-$mandatoryGeolocation = true; // Default to true for safety
-try {
-    $db = new Database();
-    $conn = $db->getConnection();
-    if ($conn) {
-        $stmt = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'mandatory_geolocation' LIMIT 1");
-        $stmt->execute();
-        $val = $stmt->fetchColumn();
-        if ($val === '0') {
-            $mandatoryGeolocation = false;
-        }
-    }
-} catch (Exception $e) {
-    // ignore
-}
+$mandatoryGeolocation = $auth->isGeoMandatory();
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -658,6 +613,7 @@ try {
                 <img class="brand-logo" src="assets/images/brand/inteqc-logo.png" alt="INTEQC logo">
             </div>
             <form id="loginForm" style="width: 100%; display: flex; flex-direction: column; gap: 14px;">
+                <?php \Core\Security\CsrfHelper::insertField(); ?>
                 <input type="hidden" id="latitude" name="latitude">
                 <input type="hidden" id="longitude" name="longitude">
                 <div id="locationStatus" style="text-align: center; font-size: 0.85rem; padding: 4px; min-height: 24px;"></div>
@@ -1247,6 +1203,7 @@ try {
                             username,
                             password,
                             'remember-me': rememberMe,
+                            '_csrf_token': document.querySelector('input[name="_csrf_token"]')?.value,
                             latitude: document.getElementById('latitude')?.value || null,
                             longitude: document.getElementById('longitude')?.value || null
                         })

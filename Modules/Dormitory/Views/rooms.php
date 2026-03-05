@@ -53,7 +53,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 </div>
 
 <!-- Room Detail Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 opacity-0 invisible transition-all duration-200 p-5" id="roomModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[52] opacity-0 invisible transition-all duration-200 p-5" id="roomModal">
     <div class="bg-white rounded-xl w-full max-w-[700px] max-h-[calc(100vh-40px)] flex flex-col shadow-2xl transform -translate-y-5 transition-transform">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="text-lg font-semibold text-gray-900" id="roomModalTitle">รายละเอียดห้อง</h3>
@@ -66,7 +66,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 </div>
 
 <!-- Add Room Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 opacity-0 invisible transition-all duration-200 p-5" id="addRoomModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[52] opacity-0 invisible transition-all duration-200 p-5" id="addRoomModal">
     <div class="bg-white rounded-xl w-full max-w-lg max-h-[calc(100vh-40px)] flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="text-lg font-semibold text-gray-900">เพิ่มห้องพักใหม่</h3>
@@ -119,7 +119,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 </div>
 
 <!-- Edit Room Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 opacity-0 invisible transition-all duration-200 p-5" id="editRoomModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[55] opacity-0 invisible transition-all duration-200 p-5" id="editRoomModal">
     <div class="bg-white rounded-xl w-full max-w-lg max-h-[calc(100vh-40px)] flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="text-lg font-semibold text-gray-900">แก้ไขข้อมูลห้องพัก</h3>
@@ -182,7 +182,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 </div>
 
 <!-- Check-in Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 opacity-0 invisible transition-all duration-200 p-5" id="checkInModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[55] opacity-0 invisible transition-all duration-200 p-5" id="checkInModal">
     <div class="bg-white rounded-xl w-full max-w-lg max-h-[calc(100vh-40px)] flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="text-lg font-semibold text-gray-900">Check-in ผู้พักอาศัย</h3>
@@ -282,7 +282,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 </div>
 
 <!-- Check-out Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 opacity-0 invisible transition-all duration-200 p-5" id="checkOutModal">
+<div class="fixed inset-0 bg-black/40 flex items-start justify-center z-[55] opacity-0 invisible transition-all duration-200 p-5 pt-16" id="checkOutModal">
     <div class="bg-white rounded-xl w-full max-w-lg max-h-[calc(100vh-40px)] flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="text-lg font-semibold text-gray-900">Check-out ผู้พักอาศัย</h3>
@@ -819,34 +819,25 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
     }
 
     async function handleCheckOut(roomId, occupants) {
-        if (occupants && occupants.length > 1) {
-            const list = document.getElementById('checkOutOccupantsList');
-            list.innerHTML = occupants.map(occ => `
-                <label class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer border border-gray-200 hover:border-primary transition-colors">
-                    <input type="checkbox" name="occupancy_ids[]" value="${occ.id}" class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary">
-                    <div class="flex-1">
-                        <div class="font-medium text-gray-900">${escapeHtml(occ.employee_name)}</div>
-                        <div class="text-xs text-gray-500">${occ.employee_id} • Check-in: ${formatDate(occ.check_in_date)}</div>
-                    </div>
-                </label>
-            `).join('');
-
-            document.querySelector('#checkOutForm input[name="check_out_date"]').value = new Date().toISOString().split('T')[0];
-            openModal('checkOutModal');
-        } else {
-            const occupancyId = occupants[0]?.id || roomId;
-            const confirmed = await showConfirm('ยืนยันการ Check-out?', 'Check-out');
-            if (!confirmed) return;
-
-            try {
-                await apiCall('rooms', 'checkOut', {
-                    occupancy_id: occupancyId
-                }, 'POST');
-                showToast('Check-out สำเร็จ', 'success');
-                closeModal('roomModal');
-                await loadRooms();
-            } catch (error) {}
+        if (!occupants || occupants.length === 0) {
+            showToast('ไม่พบผู้พักอาศัยในห้องนี้', 'error');
+            return;
         }
+
+        const list = document.getElementById('checkOutOccupantsList');
+        list.innerHTML = occupants.map(occ => `
+            <label class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer border border-gray-200 hover:border-primary transition-colors">
+                <input type="checkbox" name="occupancy_ids[]" value="${occ.id}" class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary" ${occupants.length === 1 ? 'checked' : ''}>
+                <div class="flex-1">
+                    <div class="font-medium text-gray-900">${escapeHtml(occ.employee_name)}</div>
+                    <div class="text-xs text-gray-500">${occ.employee_id} • Check-in: ${formatDate(occ.check_in_date)}</div>
+                </div>
+            </label>
+        `).join('');
+
+        document.querySelector('#checkOutForm input[name="check_out_date"]').value = new Date().toISOString().split('T')[0];
+        closeModal('roomModal');
+        setTimeout(() => openModal('checkOutModal'), 200);
     }
 
     async function handleCheckOutSubmit(e) {
@@ -898,7 +889,12 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
     }
 
     function openModal(id) {
-        document.getElementById(id).classList.add('active');
+        const modal = document.getElementById(id);
+        // Move modal to body to escape main-wrapper stacking context
+        if (modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+        modal.classList.add('active');
     }
 
     function closeModal(id) {

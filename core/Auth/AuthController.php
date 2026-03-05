@@ -76,29 +76,19 @@ class AuthController
 
     private function login()
     {
-        if (!$this->conn) {
-            http_response_code(500);
-            echo json_encode(["message" => "Database connection failed"]);
-            return;
-        }
+        // Use CSRFMiddleware to get the body (handles JSON and caching)
+        $data = (object)CSRFMiddleware::getParsedBody();
+        $username = $data->username ?? '';
+        $password = $data->password ?? '';
+        $rememberMe = !empty($data->{'remember-me'});
+        $latitude = $data->latitude ?? null;
+        $longitude = $data->longitude ?? null;
+
+        require_once __DIR__ . '/AuthService.php';
+        $authService = new \Core\Auth\AuthService();
 
         // Rate limiting check
-        // Get identifier from login attempt (username/email) instead of just IP
-        $data = json_decode(file_get_contents("php://input"));
-        $loginIdentifier = $data->username ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-
-        // Sanitize identifier for storage - support both username and email
-        if (filter_var($loginIdentifier, FILTER_VALIDATE_EMAIL)) {
-            $identifier = InputSanitizer::sanitize($loginIdentifier, 'email');
-        } else {
-            $identifier = InputSanitizer::sanitize($loginIdentifier, 'alphanum');
-        }
-
-        // Fallback to IP if identifier is empty or invalid
-        if (empty($identifier) || $identifier === 'unknown') {
-            $identifier = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-        }
-
+        $identifier = $username ?: ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
         if (!SecureSession::checkRateLimit($identifier, 5, 900)) {
             $lockoutTime = SecureSession::getLockoutTime($identifier, 5, 900);
             http_response_code(429);
@@ -108,203 +98,51 @@ class AuthController
             return;
         }
 
-        $portalModuleCode = 'HR_SERVICES';
+        $result = $authService->authenticate($username, $password, 'HR_SERVICES', [
+            'latitude' => $latitude,
+            'longitude' => $longitude
+        ]);
 
-        $hasPortalView = function ($roleId) use ($portalModuleCode) {
-            try {
-                $sql = "SELECT COALESCE(p.can_view, 0) as can_view
-                        FROM core_modules cm
-                        LEFT JOIN core_module_permissions p ON p.module_id = cm.id AND p.role_id = :role_id
-                        WHERE cm.code = :code
-                        LIMIT 1";
-                $stmt = $this->conn->prepare($sql);
-                $stmt->bindValue(':role_id', $roleId, PDO::PARAM_INT);
-                $stmt->bindValue(':code', $portalModuleCode);
-                $stmt->execute();
-                $row = $stmt->fetch(PDO::FETCH_ASSOC);
-                return $row ? (bool)$row['can_view'] : false;
-            } catch (Exception $e) {
-                return false;
-            }
-        };
+        if ($result['success']) {
+            $user = $result['user'];
+            $authService->initializeSession($user, [
+                'latitude' => $latitude,
+                'longitude' => $longitude
+            ]);
 
-        $isGeoMandatory = function () {
-            try {
-                $stmt = $this->conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'mandatory_geolocation' LIMIT 1");
-                $stmt->execute();
-                $val = $stmt->fetchColumn();
-                return $val !== '0'; // Default to mandatory if not set or set to 1
-            } catch (Exception $e) {
-                return true;
-            }
-        };
+            // Profile completion check
+            $isProfileIncomplete = empty($user['fullname']) || empty($user['Level3Name']);
 
-        // Sanitize input
-        $data = json_decode(file_get_contents("php://input"));
-
-        if (!empty($data->username) && !empty($data->password)) {
-
-            // Use original username for rate limiting (not sanitized)
-            $username = $data->username;
-
-            // Try to find user first to get user_id for rate limiting
-            $userId = null;
-            $displayName = $username; // Default to username
-
-            // Sanitize for database query (different from rate limit)
-            if (filter_var($data->username, FILTER_VALIDATE_EMAIL)) {
-                $dbUsername = InputSanitizer::sanitize($data->username, 'email');
-            } else {
-                $dbUsername = InputSanitizer::sanitize($data->username, 'alphanum');
+            // Handle Remember Me
+            if ($rememberMe) {
+                $this->createRememberToken($user['id']);
             }
 
-            // Quick query to get user_id for rate limiting
-            $userQuery = "SELECT id, username, email FROM users u 
-                          WHERE u.username = :username1 
-                             OR u.email = :username2
-                          LIMIT 1";
-            $userStmt = $this->conn->prepare($userQuery);
-            $userStmt->bindParam(":username1", $username);
-            $userStmt->bindParam(":username2", $username);
-            $userStmt->execute();
-
-            if ($userStmt->rowCount() > 0) {
-                $userRow = $userStmt->fetch(PDO::FETCH_ASSOC);
-                $userId = $userRow['id'];
-                // Use email for display if available, otherwise username
-                $displayName = !empty($userRow['email']) ? $userRow['email'] : $userRow['username'];
-            }
-
-
-
-            // Rate limiting check with user_id and display name
-            if (!SecureSession::checkRateLimit($username, 5, 900, $userId, $displayName)) {
-                $lockoutTime = SecureSession::getLockoutTime($username, 5, 900);
-                http_response_code(429);
-                echo json_encode([
-                    "message" => "Too many login attempts. Try again in " . ceil($lockoutTime / 60) . " minutes."
-                ]);
-                return;
-            }
-
-            // Check Geolocation Requirement
-            if ($isGeoMandatory()) {
-                if (empty($data->latitude) || empty($data->longitude)) {
-                    http_response_code(403);
-                    echo json_encode([
-                        "message" => "กรุณาระบุตำแหน่งที่ตั้งก่อนเข้าสู่ระบบ",
-                        "code" => "location_required"
-                    ]);
-                    // Optional: Log this failure too?
-                    $this->logActivity('login_failed', null, $username, null, null, 'Location required');
-                    return;
-                }
-            }
-
-
-
-            // Now do the actual authentication with password
-            $query = "SELECT u.id, u.username, u.password_hash, u.role_id, u.is_active as user_is_active, r.name as role, r.is_active as role_is_active, u.email, u.default_supervisor_id, u.fullname, u.Level3Name 
-                      FROM users u 
-                      LEFT JOIN roles r ON u.role_id = r.id 
-                      WHERE u.username = :username1 
-                         OR u.email = :username2
-                      ORDER BY CASE WHEN u.username = :username1 THEN 1 ELSE 2 END
-                      LIMIT 1";
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(":username1", $username);
-            $stmt->bindParam(":username2", $username);
-            $stmt->execute();
-
-
-
-            if ($stmt->rowCount() > 0) {
-                $row = $stmt->fetch(PDO::FETCH_ASSOC);
-                if (password_verify($data->password, $row['password_hash'])) {
-                    if (isset($row['user_is_active']) && !$row['user_is_active']) {
-                        http_response_code(403);
-                        echo json_encode(["message" => "บัญชีผู้ใช้นี้ถูกปิดใช้งาน"]);
-                        $this->logActivity('login_failed', $row['id'], $row['fullname'] ?? $row['username'], $data->latitude ?? null, $data->longitude ?? null, 'User inactive');
-                        return;
-                    }
-                    if (isset($row['role_is_active']) && $row['role_is_active'] === '0') {
-                        http_response_code(403);
-                        echo json_encode(["message" => "Role นี้ถูกปิดใช้งาน"]);
-                        $this->logActivity('login_failed', $row['id'], $row['fullname'] ?? $row['username'], $data->latitude ?? null, $data->longitude ?? null, 'Role inactive');
-                        return;
-                    }
-
-                    if (!$hasPortalView($row['role_id'])) {
-                        http_response_code(403);
-                        echo json_encode(["message" => "ไม่มีสิทธิ์เข้าถึง HR Portal"]);
-                        $this->logActivity('login_failed', $row['id'], $row['fullname'] ?? $row['username'], $data->latitude ?? null, $data->longitude ?? null, 'No portal permissions');
-                        return;
-                    }
-
-                    // Use secure session login
-                    $userData = [
-                        "id" => $row['id'],
-                        "username" => $row['username'],
-                        "role_id" => $row['role_id'],
-                        "role" => $row['role'], // Keep role name for backward compatibility
-                        "role_active" => isset($row['role_is_active']) ? (int)$row['role_is_active'] : 1,
-                        "user_active" => isset($row['user_is_active']) ? (int)$row['user_is_active'] : 1,
-                        "email" => $row['email'],
-                        "default_supervisor_id" => $row['default_supervisor_id'],
-                        "fullname" => $row['fullname'],
-                        "department" => $row['Level3Name']
-                    ];
-
-                    // Use regular session for now
-                    if (function_exists('startOptimizedSession')) {
-                        startOptimizedSession();
-                    } else {
-                        if (session_status() === PHP_SESSION_NONE) session_start();
-                    }
-
-                    $_SESSION['user'] = $userData;
-
-                    $isProfileIncomplete = empty($row['fullname']) || empty($row['Level3Name']);
-
-                    // Log login activity
-                    $this->logActivity('login', $row['id'], $row['fullname'] ?? $row['username'], $data->latitude ?? null, $data->longitude ?? null);
-
-                    // Handle Remember Me
-                    if (!empty($data->{'remember-me'})) {
-                        $this->createRememberToken($row['id']);
-                    }
-
-                    http_response_code(200);
-                    echo json_encode([
-                        "message" => "Login successful",
-                        "user" => $userData,
-                        "is_profile_incomplete" => $isProfileIncomplete
-                    ]);
-                } else {
-                    // Log failed login (invalid password)
-                    $this->logActivity('login_failed', $row['id'], $row['fullname'] ?? $row['username'], $data->latitude ?? null, $data->longitude ?? null, 'Invalid credentials');
-
-                    // Unified error for invalid password
-                    http_response_code(401);
-                    echo json_encode(["code" => "invalid_credentials"]);
-                }
-            } else {
-                // Log failed login (user not found)
-                $this->logActivity('login_failed', null, $username, $data->latitude ?? null, $data->longitude ?? null, 'User not found');
-
-                // Unified error for user not found
-                http_response_code(401);
-                echo json_encode(["code" => "invalid_credentials"]);
-            }
+            echo json_encode([
+                "message" => "Login successful",
+                "user" => $_SESSION['user'],
+                "is_profile_incomplete" => $isProfileIncomplete
+            ]);
         } else {
-            http_response_code(400);
-            echo json_encode(["message" => "Incomplete data"]);
+            // Check for specific error codes
+            if (($result['code'] ?? '') === 'location_required') {
+                http_response_code(403);
+            } elseif (($result['code'] ?? '') === 'invalid_credentials') {
+                http_response_code(401);
+            } else {
+                http_response_code(403);
+            }
+
+            echo json_encode([
+                "message" => $result['message'],
+                "code" => $result['code'] ?? 'error'
+            ]);
         }
     }
 
     private function register()
     {
-        $data = json_decode(file_get_contents("php://input"));
+        $data = (object)CSRFMiddleware::getParsedBody();
 
         if (!empty($data->username) && !empty($data->password) && !empty($data->email)) {
             // Get default role id for 'user'
@@ -418,6 +256,7 @@ class AuthController
 
         try {
             // Updated: Log to dedicated user_logins table instead of cb_audit_logs
+            require_once __DIR__ . '/../Helpers/IpHelper.php';
             require_once __DIR__ . '/../Services/DeviceDetector.php';
             $detector = new \DeviceDetector($_SERVER['HTTP_USER_AGENT'] ?? '');
 
@@ -437,7 +276,7 @@ class AuthController
                 $userId,
                 $userName ?? 'Unknown',
                 $action,
-                $this->getClientIp(),
+                \Core\Helpers\IpHelper::getClientIp(),
                 $_SERVER['HTTP_USER_AGENT'] ?? null,
                 $detector->getDeviceType(),
                 $detector->getDeviceBrand(),
@@ -457,24 +296,6 @@ class AuthController
         }
     }
 
-    /**
-     * Get client IP address
-     * @todo REFACTOR: This method is duplicated in ModuleController.php. Consider consolidating into a shared Helper.
-     */
-    private function getClientIp()
-    {
-        $headers = ['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP', 'REMOTE_ADDR'];
-        foreach ($headers as $header) {
-            if (!empty($_SERVER[$header])) {
-                $ip = $_SERVER[$header];
-                if (strpos($ip, ',') !== false) {
-                    $ip = trim(explode(',', $ip)[0]);
-                }
-                return $ip;
-            }
-        }
-        return 'unknown';
-    }
 
     /**
      * Get all rate limits (admin only)
@@ -520,7 +341,7 @@ class AuthController
             return;
         }
 
-        $data = json_decode(file_get_contents("php://input"));
+        $data = (object)CSRFMiddleware::getParsedBody();
         $sessionKey = $data->session_key ?? null;
 
         if (!$sessionKey) {
@@ -591,7 +412,7 @@ class AuthController
     {
         header('Content-Type: application/json');
 
-        $data = json_decode(file_get_contents("php://input"));
+        $data = (object)CSRFMiddleware::getParsedBody();
         $email = trim($data->email ?? '');
 
         // Always return success message to prevent email enumeration
@@ -729,7 +550,7 @@ class AuthController
     {
         header('Content-Type: application/json');
 
-        $data = json_decode(file_get_contents("php://input"));
+        $data = (object)CSRFMiddleware::getParsedBody();
         $token = trim($data->token ?? '');
         $password = $data->password ?? '';
         $confirmPassword = $data->confirm_password ?? '';

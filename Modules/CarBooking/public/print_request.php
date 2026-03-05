@@ -176,7 +176,7 @@ ob_start();
         .guard-box h3 {
             text-align: center;
             margin: 0 0 18px 0;
-            font-size: 11pt;
+            font-size: 10pt;
             text-transform: uppercase;
             border-bottom: 1px solid #000;
             padding-bottom: 10px;

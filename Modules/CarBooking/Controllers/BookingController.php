@@ -149,8 +149,8 @@ class BookingController extends CBBaseController
             // ':driver_email' => $driverEmail, // Removed: Column dropped
             // ':approver_email' => trim($data['approver_email']), // Removed: Column dropped
             ':approver_user_id' => $approverUserId ?: null,
-            ':start_time' => $data['start_time'],
-            ':end_time' => $data['end_time'],
+            ':start_time' => InputSanitizer::datetime($data['start_time']),
+            ':end_time' => InputSanitizer::datetime($data['end_time']),
             ':destination' => $data['destination'],
             ':purpose' => $data['purpose'] ?? null,
             ':passengers' => $passengerCount,
@@ -162,11 +162,11 @@ class BookingController extends CBBaseController
         $id = $this->bookingModel->createBooking($bookingData);
         $id = (int)$id;
 
-        // If user has no default supervisor email yet, save the chosen approver as default (only once)
-        if (!empty($data['approver_email'])) {
-            $currentDefault = $this->bookingModel->getDefaultSupervisorEmail($this->user['id']);
+        // If user has no default supervisor yet, save the chosen approver as default (only once)
+        if (!empty($approverUserId)) {
+            $currentDefault = $this->bookingModel->getDefaultSupervisor($this->user['id']);
             if (empty($currentDefault)) {
-                $this->bookingModel->updateDefaultSupervisorEmail($this->user['id'], trim($data['approver_email']));
+                $this->bookingModel->updateDefaultSupervisor($this->user['id'], $approverUserId);
             }
         }
 
@@ -198,7 +198,7 @@ class BookingController extends CBBaseController
                 'info',
                 'มีคำขอจองรถรอการอนุมัติ',
                 "คำขอ #{$id} จาก {$this->user['fullname']} รอการอนุมัติ",
-                "Modules/CarBooking/?page=approvals"
+                "Modules/CarBooking/index.php?page=approvals"
             );
 
             // Send notification to admins
@@ -206,7 +206,7 @@ class BookingController extends CBBaseController
                 'info',
                 'มีคำขอจองรถใหม่',
                 "คำขอ #{$id} ไปที่ {$data['destination']}",
-                "Modules/CarBooking/?page=pending"
+                "Modules/CarBooking/index.php?page=pending"
             );
         }
 
@@ -326,6 +326,9 @@ class BookingController extends CBBaseController
 
         $this->bookingModel->approveByToken($booking['id'], $booking['approver_email'], $booking['approver_user_id']);
 
+        // Send email notification (Backend trigger)
+        $this->notifyAfterSupervisorDecision($this->bookingModel->getById($booking['id']), true);
+
         // Log audit
         $this->logAudit('supervisor_approve_token', 'booking', $booking['id'], ['status' => 'pending_supervisor'], ['status' => 'pending_manager']);
 
@@ -395,6 +398,9 @@ class BookingController extends CBBaseController
 
         $this->bookingModel->rejectByToken($booking['id'], $reason, $booking['approver_email']);
 
+        // Send email notification (Backend trigger)
+        $this->notifyAfterSupervisorDecision($this->bookingModel->getById($booking['id']), false, $reason);
+
         // Log audit
         $this->logAudit('supervisor_reject_token', 'booking', $booking['id'], ['status' => 'pending_supervisor'], [
             'status' => 'rejected',
@@ -452,6 +458,9 @@ class BookingController extends CBBaseController
             $approverId = $this->user['id'] ?? null;
             $this->bookingModel->supervisorApprove($bookingId, $approverEmail, $approverId);
 
+            // Send email notification (Backend trigger)
+            $this->notifyAfterSupervisorDecision($this->bookingModel->getById($bookingId), true);
+
             // Log audit
             $this->logAudit('supervisor_approve', 'booking', $bookingId, ['status' => 'pending_supervisor'], ['status' => 'pending_manager']);
 
@@ -481,6 +490,12 @@ class BookingController extends CBBaseController
 
             $this->bookingModel->managerApprove($bookingId, $approverEmail, $approverId, $carId, $fleetCardId, $fleetAmount);
 
+            // Send email notification (Backend trigger)
+            $updatedBooking = $this->bookingModel->getById($bookingId);
+            if ($updatedBooking && !empty($updatedBooking['user_email'])) {
+                EmailService::sendUserApprovalEmail($updatedBooking, $updatedBooking['user_email']);
+            }
+
             // Log audit
             $this->logAudit('manager_approve', 'booking', $bookingId, ['status' => 'pending_manager'], [
                 'status' => 'approved',
@@ -489,7 +504,7 @@ class BookingController extends CBBaseController
             ]);
 
             // Real-time notification to requester
-            $carInfo = $carId ? ' รถ: ' . ($booking['license_plate'] ?? '') : '';
+            $carInfo = $carId ? ' รถ: ' . ($updatedBooking['assigned_car_plate'] ?? '') : '';
             NotificationService::create(
                 $booking['user_id'],
                 'success',
@@ -554,6 +569,9 @@ class BookingController extends CBBaseController
 
         $rejectedBy = $this->user['email'] ?? $this->user['username'];
         $this->bookingModel->rejectBooking($bookingId, $newStatus, $reason, $rejectedBy);
+
+        // Send email notification (Backend trigger)
+        EmailService::sendUserRejectionEmail($this->bookingModel->getById($bookingId), $booking['user_email'], $reason, ($newStatus === 'rejected_manager' ? 'manager' : 'supervisor'));
 
         // Log audit
         $this->logAudit('reject_booking', 'booking', $bookingId, ['status' => $booking['status']], [
@@ -631,7 +649,7 @@ class BookingController extends CBBaseController
                 'success',
                 'คำขอจองรถได้รับอนุมัติแล้ว',
                 "คำขอ #{$bookingId} ได้รับการอนุมัติและมอบหมายรถเรียบร้อย",
-                "Modules/CarBooking/?page=request_history"
+                "Modules/CarBooking/index.php?page=request_history"
             );
         }
 
@@ -670,7 +688,7 @@ class BookingController extends CBBaseController
                 'error',
                 'คำขอจองรถถูกเพิกถอน',
                 "คำขอ #{$id} ถูกเพิกถอน" . ($reason ? ": {$reason}" : ""),
-                "Modules/CarBooking/?page=bookings"
+                "Modules/CarBooking/index.php?page=bookings"
             );
         }
 
@@ -700,14 +718,54 @@ class BookingController extends CBBaseController
         $updates = [];
         $params = [':id' => $id];
 
+        $newStart = InputSanitizer::datetime($data['start_time'] ?? $booking['start_time']);
+        $newEnd = InputSanitizer::datetime($data['end_time'] ?? $booking['end_time']);
+
         // Update dates
         if (!empty($data['start_time'])) {
             $updates[] = 'start_time = :start_time';
-            $params[':start_time'] = $data['start_time'];
+            $params[':start_time'] = $newStart;
         }
         if (!empty($data['end_time'])) {
             $updates[] = 'end_time = :end_time';
-            $params[':end_time'] = $data['end_time'];
+            $params[':end_time'] = $newEnd;
+        }
+
+        // Determine allocation type and clear the other
+        $targetCarId = $data['assigned_car_id'] ?? (empty($data['fleet_card_id']) ? $booking['assigned_car_id'] : null);
+        $targetFleetId = $data['fleet_card_id'] ?? (empty($data['assigned_car_id']) ? $booking['fleet_card_id'] : null);
+
+        // If dates changed OR car/fleet changed, we MUST validate availability
+        if (!empty($data['start_time']) || !empty($data['end_time']) || isset($data['assigned_car_id']) || isset($data['fleet_card_id'])) {
+            $availability = $this->getAvailableAssets($newStart, $newEnd, $id);
+
+            if ($targetCarId) {
+                $found = false;
+                foreach ($availability['cars'] as $c) {
+                    if ((int)$c['id'] === (int)$targetCarId) {
+                        if (!$c['is_available']) {
+                            return $this->jsonError('รถที่เลือกไม่ว่างในวันเวลาที่กำหนด: ' . $c['reason']);
+                        }
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found && $targetCarId) return $this->jsonError('ไม่พบข้อมูลรถที่เลือก');
+            }
+
+            if ($targetFleetId) {
+                $found = false;
+                foreach ($availability['fleet_cards'] as $f) {
+                    if ((int)$f['id'] === (int)$targetFleetId) {
+                        if (!$f['is_available']) {
+                            return $this->jsonError('บัตรเติมน้ำมันที่เลือกไม่ว่างในวันเวลาที่กำหนด: ' . $f['reason']);
+                        }
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found && $targetFleetId) return $this->jsonError('ไม่พบข้อมูลบัตรที่เลือก');
+            }
         }
 
         // Determine allocation type and clear the other
@@ -760,7 +818,7 @@ class BookingController extends CBBaseController
                 'info',
                 'คำขอจองรถถูกแก้ไข',
                 "คำขอ #{$id} มีการเปลี่ยนแปลง",
-                "Modules/CarBooking/?page=bookings"
+                "Modules/CarBooking/index.php?page=bookings"
             );
         }
 
@@ -863,7 +921,7 @@ class BookingController extends CBBaseController
                     'success',
                     'หัวหน้างานอนุมัติแล้ว',
                     "คำขอ #{$bookingId} ผ่านการอนุมัติจากหัวหน้า รอผู้ดูแลรถ",
-                    \Core\Helpers\UrlHelper::getBaseUrl() . "/Modules/CarBooking/?page=request_history"
+                    Env::getBaseUrl() . "/Modules/CarBooking/index.php?page=request_history&id=" . $bookingId
                 );
             }
 
@@ -879,7 +937,7 @@ class BookingController extends CBBaseController
                         'info',
                         'มีคำขอรอการอนุมัติ',
                         "คำขอ #{$bookingId} รอการอนุมัติจากผู้ดูแล",
-                        \Core\Helpers\UrlHelper::getBaseUrl() . "/Modules/CarBooking/?page=pending"
+                        Env::getBaseUrl() . "/Modules/CarBooking/index.php?page=pending&id=" . $bookingId
                     );
                 }
             }
@@ -893,7 +951,7 @@ class BookingController extends CBBaseController
                     'error',
                     'หัวหน้างานไม่อนุมัติ',
                     "คำขอ #{$bookingId} ไม่ผ่านการอนุมัติ" . ($reason ? ": {$reason}" : ""),
-                    "Modules/CarBooking/?page=request_history"
+                    "Modules/CarBooking/index.php?page=request_history&id=" . $bookingId
                 );
             }
         }
@@ -992,14 +1050,6 @@ class BookingController extends CBBaseController
                     // Skip the booking being approved
                     if ((int)$booking['id'] === (int)$excludeBookingId) continue;
 
-                    // PRIORITY CHECK: If car is in_use or pending_return = NOT available until returned!
-                    if ($booking['status'] === 'in_use' || $booking['status'] === 'pending_return') {
-                        $isAvailable = false;
-                        $statusLabel = $booking['status'] === 'in_use' ? 'กำลังใช้งาน' : 'รอยืนยันคืน';
-                        $reason = $statusLabel . ' (ยังไม่คืนรถ)';
-                        break;
-                    }
-
                     // Check time overlap for approved status
                     $bookingStart = strtotime($booking['start_time']);
                     $bookingEnd = strtotime($booking['end_time']);
@@ -1032,14 +1082,6 @@ class BookingController extends CBBaseController
                     if (empty($booking['fleet_card_id'])) continue;
                     if ((int)$booking['fleet_card_id'] !== $fleetId) continue;
                     if ((int)$booking['id'] === (int)$excludeBookingId) continue;
-
-                    // PRIORITY CHECK: If fleet is in_use or pending_return = NOT available until returned!
-                    if ($booking['status'] === 'in_use' || $booking['status'] === 'pending_return') {
-                        $isAvailable = false;
-                        $statusLabel = $booking['status'] === 'in_use' ? 'กำลังใช้งาน' : 'รอยืนยันคืน';
-                        $reason = $statusLabel . ' (ยังไม่คืน)';
-                        break;
-                    }
 
                     // Check time overlap for approved status
                     $bookingStart = strtotime($booking['start_time']);
@@ -1091,7 +1133,7 @@ class BookingController extends CBBaseController
                         'success',
                         'คำขอจองรถได้รับอนุมัติ',
                         "คำขอ #{$id} ได้รับการอนุมัติแล้ว",
-                        "Modules/CarBooking/?page=request_history"
+                        "Modules/CarBooking/index.php?page=request_history&id=" . $id
                     );
                 }
             } elseif ($type === 'supervisor_approval') {
@@ -1112,7 +1154,7 @@ class BookingController extends CBBaseController
                         'error',
                         'คำขอจองรถไม่ได้รับอนุมัติ',
                         "คำขอ #{$id} ถูกปฏิเสธ" . ($reason ? ": {$reason}" : ""),
-                        \Core\Helpers\UrlHelper::getBaseUrl() . "/Modules/CarBooking/?page=request_history"
+                        Env::getBaseUrl() . "/Modules/CarBooking/index.php?page=request_history&id=" . $id
                     );
                 }
             }
@@ -1193,7 +1235,7 @@ class BookingController extends CBBaseController
             'info',
             'มีผู้แจ้งคืนรถ',
             "คำขอ #{$bookingId} แจ้งคืนรถแล้ว รอยืนยัน",
-            "Modules/CarBooking/?page=in-use"
+            "Modules/CarBooking/index.php?page=in-use"
         );
 
         // Notify requester that we received their return report
@@ -1205,7 +1247,7 @@ class BookingController extends CBBaseController
                     'รับการแจ้งคืนรถแล้ว',
                     "คำขอ #{$bookingId} ระบบรับการแจ้งคืนรถแล้ว รอ IPCD ยืนยัน",
                     ['booking_id' => $bookingId],
-                    'Modules/CarBooking/?page=request_history'
+                    'Modules/CarBooking/index.php?page=request_history'
                 );
             } catch (\Exception $e) {
                 error_log("Notification failed (report_return): " . $e->getMessage());
@@ -1266,7 +1308,7 @@ class BookingController extends CBBaseController
                         'คืนรถเรียบร้อยแล้ว',
                         "คำขอจอง #{$bookingId} ได้รับการยืนยันคืนรถแล้ว",
                         [],
-                        "Modules/CarBooking/?page=request_history"
+                        "Modules/CarBooking/index.php?page=request_history"
                     );
                 }
             }
@@ -1316,7 +1358,7 @@ class BookingController extends CBBaseController
                     'warning',
                     'คำขอจองรถถูกยกเลิก',
                     "คำขอ #{$id} ถูกยกเลิก" . ($reason ? ": {$reason}" : ""),
-                    "Modules/CarBooking/?page=request_history"
+                    "Modules/CarBooking/index.php?page=request_history"
                 );
             }
 
@@ -1325,9 +1367,18 @@ class BookingController extends CBBaseController
                 'warning',
                 'มีผู้ยกเลิกคำขอจองรถ',
                 "คำขอ #{$id} ถูกยกเลิกโดยผู้ขอ" . ($reason ? ": " . mb_substr($reason, 0, 50) : ""),
-                "Modules/CarBooking/?page=pending"
+                "Modules/CarBooking/index.php?page=pending"
             );
         }
         return ['success' => true];
+    }
+
+    /**
+     * Get IDs of all active company cars
+     */
+    public function getActiveCompanyCarIds()
+    {
+        $stmt = $this->pdo->query("SELECT id FROM cb_cars WHERE status = 'available' AND is_company_car = 1");
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 }

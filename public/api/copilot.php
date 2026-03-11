@@ -1,15 +1,20 @@
 <?php
-
-/**
- * AI Copilot Backend Proxy (Optimized for low token usage)
- * Uses Groq API with minimal prompt
- */
-
 header('Content-Type: application/json');
+header('Cache-Control: no-cache, must-revalidate');
+
+// Log request for debugging
+@file_put_contents('/tmp/copilot_requests.log', date('Y-m-d H:i:s') . " - Request Received: " . ($_SERVER['REQUEST_URI'] ?? 'N/A') . " from " . ($_SERVER['REMOTE_ADDR'] ?? 'N/A') . "\n", FILE_APPEND);
+
+// Ensure script keeps running even if browser disconnects
+ignore_user_abort(true);
+set_time_limit(60);
 
 // Load Env class and Database
 require_once __DIR__ . '/../../core/Config/Env.php';
 require_once __DIR__ . '/../../core/Database/Database.php';
+
+$db = new Database();
+$conn = $db->getConnection();
 
 // 1. Get API Key
 $apiKey = Env::get('GROQ_API_KEY', '');
@@ -30,152 +35,253 @@ if (empty(trim($userMessage))) {
     exit;
 }
 
-// 3. Build Detailed Context (Real-time Data)
-$contextData = [];
-$userName = $userInfo['name'] ?? 'คุณ';
+// 3. Build Tools Definition
+$tools = [
+    [
+        'type' => 'function',
+        'function' => [
+            'name' => 'get_my_user_info',
+            'description' => 'ค้นหาข้อมูลส่วนตัวของผู้ใช้งานปัจจุบัน เช่น รหัสพนักงาน, แผนก, อีเมล, เบอร์โทรศัพท์',
+            'parameters' => [
+                'type' => 'object',
+                'properties' => (object)[]
+            ]
+        ]
+    ],
+    [
+        'type' => 'function',
+        'function' => [
+            'name' => 'search_hr_knowledge',
+            'description' => 'ค้นหาข้อมูลกฎระเบียบ สวัสดิการ หรือประกาศต่างๆ จากฐานข้อมูล HR (ข่าวสารและบริการ)',
+            'parameters' => [
+                'type' => 'object',
+                'properties' => [
+                    'query' => [
+                        'type' => 'string',
+                        'description' => 'คำค้นหาที่เกี่ยวข้องกับกฎระเบียบหรือสวัสดิการ'
+                    ]
+                ],
+                'required' => ['query']
+            ]
+        ]
+    ]
+];
 
-// Try to fetch pending approvals count if user is logged in
-if (!empty($userInfo)) {
+/**
+ * Tool Execution Functions
+ */
+function execute_tool($name, $args, $userInfo)
+{
+    global $conn;
+    if (!$conn) return "เชื่อมต่อฐานข้อมูลล้มเหลว";
+
+    switch ($name) {
+        case 'get_my_user_info':
+            if (empty($userInfo['id'])) return "ไม่พบข้อมูลผู้ใช้งานในระบบ";
+            try {
+                $stmt = $conn->prepare("SELECT id, username, email, fullname, EmpCode, OrgUnitName, PositionName FROM users WHERE id = ?");
+                $stmt->execute([$userInfo['id']]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                return $user ? json_encode($user, JSON_UNESCAPED_UNICODE) : "ไม่พบข้อมูลโปรไฟล์ของคุณ";
+            } catch (Exception $e) {
+                return "ขออภัย ระบบไม่สามารถดึงข้อมูลส่วนตัวได้ในขณะนี้";
+            }
+
+        case 'search_hr_knowledge':
+            $queryStr = trim($args['query'] ?? '');
+            $isGeneric = in_array(strtolower($queryStr), ['', 'latest', 'news', 'services', 'ข่าว', 'บริการ', 'ประกาศ', 'สรุป']);
+            $queryParam = "%" . $queryStr . "%";
+
+            try {
+                // 1. Search News
+                $news = [];
+                if (!$isGeneric) {
+                    $stmt = $conn->prepare("SELECT title, content, created_at FROM hr_news WHERE (title LIKE ? OR content LIKE ?) AND status = 'published' ORDER BY created_at DESC LIMIT 3");
+                    $stmt->execute([$queryParam, $queryParam]);
+                    $news = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                }
+
+                // Fallback or generic: get latest
+                if ($isGeneric || empty($news)) {
+                    $stmt = $conn->query("SELECT title, content, created_at FROM hr_news WHERE status = 'published' ORDER BY created_at DESC LIMIT 3");
+                    $news = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                }
+
+                // 2. Search Services
+                $services = [];
+                if (!$isGeneric) {
+                    $stmt = $conn->prepare("SELECT name, description FROM hr_services WHERE (name LIKE ? OR description LIKE ?) AND status = 'ready' LIMIT 3");
+                    $stmt->execute([$queryParam, $queryParam]);
+                    $services = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                }
+
+                // Fallback or generic: get latest
+                if ($isGeneric || empty($services)) {
+                    $stmt = $conn->query("SELECT name, description FROM hr_services WHERE status = 'ready' LIMIT 3");
+                    $services = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                }
+
+                return json_encode([
+                    'from_news' => $news,
+                    'from_services' => $services,
+                    'note' => $isGeneric ? "Showing latest items (generic query)" : "Filtered results"
+                ], JSON_UNESCAPED_UNICODE);
+            } catch (Exception $e) {
+                return "ขออภัย ระบบไม่สามารถค้นหาข้อมูลได้ในขณะนี้";
+            }
+
+        default:
+            return "ไม่รู้จักคำสั่งนี้";
+    }
+}
+
+/**
+ * Log AI Usage to Database
+ */
+function log_usage($conn, $userId, $query, $toolCalled, $tokensUsed, $model)
+{
     try {
-        $db = new Database();
-        $conn = $db->getConnection();
-
-        // Count pending bookings for this user (as approver)
-        // Note: Logic simplified for specific user context injection
-        $userEmail = $userInfo['email'] ?? ''; // Assuming email is available in user info or handle via ID if possible
-        // Ideally we need user ID from session/token but here we rely on what frontend sends or session if available
-        // For now, let's just use static text to prompt AI to ask user to check
+        $stmt = $conn->prepare("INSERT INTO copilot_usage_logs (user_id, `query`, tool_called, tokens_used, model) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$userId, $query, $toolCalled, $tokensUsed, $model]);
     } catch (Exception $e) {
-        // Ignore DB errors in chat
+        // Silently fail to not disrupt AI service
+        error_log("Copilot Logging Error: " . $e->getMessage());
     }
 }
 
 // System Prompt with Project Knowledge
+$userName = ($userInfo['name'] ?? 'ผู้ใช้งาน');
+$userId = ($userInfo['id'] ?? 'N/A');
+
 $systemPrompt = "คุณคือ 'HR Assistant' ผู้ช่วยอัจฉริยะของ MyHR Portal (INTEQC Group)
 หน้าที่ของคุณคือช่วยเหลือพนักงานในการใช้งานระบบ ตอบคำถาม และนำทางไปยังโมดูลต่างๆ
 
 ข้อมูลผู้ใช้งานปัจจุบัน:
-- ชื่อ: center
-- (AI ควรตอบโดยใช้ชื่อผู้ใช้ถ้ารู้จัก)
+- ชื่อ: $userName
+- ID: $userId
 
-ความรู้เกี่ยวกับระบบ (Modules):
+คุณมีความสามารถในการเข้าถึงฐานข้อมูลผ่านเครื่องมือ (Tools) ดังนี้:
+1. หากผู้ใช้ถามเกี่ยวกับข้อมูลส่วนตัว (เช่น รหัสพนักงาน) ให้ใช้ `get_my_user_info`
+2. หากผู้ใช้ถามเกี่ยวกับกฎระเบียบ สวัสดิการ ประกาศ หรือต้องการสรุปข่าวสารล่าสุด ให้ใช้ `search_hr_knowledge` (หากต้องการดูข่าวทั้งหมดให้ส่งคำว่า 'latest' หรือ 'ข่าว')
 
-1. **ระบบจองรถ (Car Booking)**
-   - URL: `Modules/CarBooking/`
-   - ใช้สำหรับ: จองรถบริษัทเพื่อไปปฏิบัติงาน, จองรถรับ-ส่ง, ดูสถานะคำขอ
-   - ใครใช้ได้: พนักงานทุกคน (ต้องได้รับการอนุมัติจากหัวหน้า)
-   - ฟีเจอร์: จองรถ, อนุมัติ (สำหรับหัวหน้า), จัดการรถ (สำหรับ Admin/IPCD)
+ข้อมูลโมดูล (สำหรับนำทาง):
+- ระบบจองรถ: `Modules/CarBooking/`
+- ระบบหอพัก: `Modules/Dormitory/`
+- ข่าวสาร: `Modules/HRNews/public/`
+- บริการ: `Modules/HRServices/public/`
+- Moodle: `https://172.17.100.55:8090/moodle/`
 
-2. **ระบบหอพัก (Dormitory)**
-   - URL: `Modules/Dormitory/`
-   - ใช้สำหรับ: ขอเข้าพักอาศัยในหอพักบริษัท, แจ้งซ่อมแซม, ดูบิลค่าน้ำ/ไฟ
-   - ใครใช้ได้: พนักงานที่มีสิทธิ์พักหอพัก
-
-3. **ข่าวสาร HR (HR News)**
-   - URL: `Modules/HRNews/public/`
-   - ใช้สำหรับ: ติดตามประกาศสำคัญจากฝ่ายบุคคล, กิจกรรมบริษัท, นโยบายใหม่
-
-4. **บริการ HR (HR Services/Portal Hub)**
-   - URL: `Modules/HRServices/public/`
-   - ใช้สำหรับ: ศูนย์รวมบริการต่างๆ, ลิงก์ไปยังระบบภายนอกอื่นๆ
-
-5. **ระบบจัดการสิทธิ์ (Permission Management)**
-   - URL: `Modules/PermissionManagement/public/`
-   - ใช้สำหรับ: กำหนดสิทธิ์การเข้าถึงเมนูต่างๆ (สำหรับ Admin)
-
-6. **กิจกรรมประจำปี (Yearly Activity)**
-   - URL: `Modules/YearlyActivity/`
-   - ใช้สำหรับ: บันทึกและติดตามกิจกรรม/KPI ประจำปี, ประเมินผลงาน
-   - ฟีเจอร์: บันทึก Milestone, ดูปฏิทินกิจกรรม
-
-7. **ระบบ IGA (Identity Governance & Administration)**
-   - URL: `Modules/IGA/` (หรือลิงก์เฉพาะถ้ามี)
-   - ใช้สำหรับ: จัดการบัญชีผู้ใช้, รหัสผ่าน, และการเข้าถึงระบบต่างๆ
-
-8. **Moodle (E-Learning)**
-   - URL: `https://172.17.100.55:8090/moodle/`
-   - ใช้สำหรับ: บทเรียนออนไลน์, อบรมพนักงาน, ทำแบบทดสอบ
-
-9. **ระบบรายงาน (Reports)**
-   - URL: `Modules/HRServices/public/` (หรือเมนูย่อยในแต่ละโมดูล)
-
-กฎการตอบคำถาม:
-1. **ตอบสั้น กระชับ และเป็นกันเอง** (ใช้ภาษาไทยเป็นหลัก)
-2. **ถ้าผู้ใช้ถามหาบริการ/โมดูล**: ให้บอกข้อมูลย่อๆ และถามว่า 'ต้องการให้พาไปที่หน้า[ชื่อโมดูล]ไหมครับ?'
-3. **การนำทาง (Navigation)**:
-   - หากผู้ใช้ยืนยัน (เช่น ใช่, ไปเลย, ok, ขอลิ้งค์): ให้แนบ Action Tag ท้ายข้อความ เช่น `[ACTION:Modules/CarBooking/]`
-   - ห้ามแนบ Action Tag ถ้าผู้ใช้ยังไม่ยืนยัน
-   - ใช้ URL ที่ระบุไว้ด้านบนเท่านั้น (เช่น `Modules/CarBooking/`, `Modules/Dormitory/`)
-
-ตัวอย่างการโต้ตอบ:
-User: จองรถยังไง
-AI: คุณสามารถจองรถได้ที่เมนู Car Booking ครับ จะให้ผมพาไปที่หน้าจองรถเลยไหมครับ?
-User: ไปเลย
-AI: ได้เลยครับ กำลังพาไปที่หน้าจองรถครับ [ACTION:Modules/CarBooking/]
-
-User: มีข่าวอะไรใหม่บ้าง
-AI: คุณสามารถดูประกาศล่าสุดได้ที่หน้า HR News ครับ [ACTION:Modules/HRNews/public/]
+กฎการตอบ:
+1. ตอบเป็นภาษาไทย สุภาพ เป็นกันเอง
+2. ห้ามคิดคำตอบหรือข่าวสารเองโดยเด็ดขาด (No hallucinations) หากต้องการข้อมูลข่าวสาร กฎระเบียบ หรือสวัสดิการ ให้เรียกใช้ `search_hr_knowledge` เสมอ
+3. หากเรียกใช้เครื่องมือแล้วไม่พบข้อมูล ให้แจ้งผู้ใช้ตามตรงว่า 'ไม่พบข้อมูลในระบบ' ห้ามแต่งเรื่องขึ้นมา
+4. หากใช้เรียกเครื่องมือแล้วได้ข้อมูลมา ให้อ้างอิงข้อมูลนั้นในการตอบ
+5. หากผู้ใช้ถามหาบริการที่ระบุ URL ไว้ ให้ถามว่าต้องการให้พาไปไหม และใช้ [ACTION:URL] เมื่อได้รับคำยืนยัน
 ";
 
-// 4. Build messages (keep only last 4 for context)
+// 4. Build messages
 $messages = [['role' => 'system', 'content' => $systemPrompt]];
-
-// Add limited history (save tokens)
 $recentHistory = array_slice($history, -4);
 foreach ($recentHistory as $msg) {
     if (isset($msg['role']) && isset($msg['content'])) {
         $messages[] = ['role' => $msg['role'], 'content' => $msg['content']];
     }
 }
-
 $messages[] = ['role' => 'user', 'content' => $userMessage];
 
-// 5. Call Groq API
-$url = "https://api.groq.com/openai/v1/chat/completions";
+// 5. Call AI with Recursive Tool Handling
+function callGroq($messages, $tools, $apiKey, $model = 'llama-3.3-70b-versatile')
+{
+    $url = "https://api.groq.com/openai/v1/chat/completions";
+    $data = [
+        'model' => $model,
+        'messages' => $messages,
+        'tools' => $tools,
+        'tool_choice' => 'auto',
+        'temperature' => $model === 'llama-3.1-8b-instant' ? 0.3 : 0.1,
+        'max_tokens' => 1000
+    ];
 
-$data = [
-    'model' => 'llama-3.1-8b-instant',
-    'messages' => $messages,
-    'temperature' => 0.5,
-    'max_tokens' => 300  // Increased slightly for better explanations
-];
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $apiKey
+    ]);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 45); // Total timeout (seconds)
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10); // Connection timeout
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
 
-$ch = curl_init($url);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Content-Type: application/json',
-    'Authorization: Bearer ' . $apiKey
-]);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-
-$response = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
-
-// 6. Handle Response
-if ($httpCode !== 200) {
-    // Error handling...
-    $errorBody = json_decode($response, true);
-    // ... (Use same error handling as before or simplified)
-    echo json_encode(['reply' => 'ระบบ AI กำลังประมวลผลงานหนัก กรุณาลองใหม่สักครู่ครับ']);
-    exit;
+    if ($httpCode !== 200) {
+        @file_put_contents('/tmp/copilot_raw.log', date('Y-m-d H:i:s') . " - Error Code $httpCode: $response\n", FILE_APPEND);
+        return ['error' => true, 'response' => $response];
+    }
+    @file_put_contents('/tmp/copilot_raw.log', date('Y-m-d H:i:s') . " - Response: $response\n", FILE_APPEND);
+    return json_decode($response, true);
 }
 
-$decoded = json_decode($response, true);
-$aiReply = $decoded['choices'][0]['message']['content'] ?? 'ขออภัย ไม่สามารถตอบได้';
+try {
+    $decoded = callGroq($messages, $tools, $apiKey);
 
-// 7. Extract ACTION (only if user confirmed)
+    // Fallback to 8b if 70b fails (Rate Limit 429 or Model Error 400)
+    if (isset($decoded['error']) || empty($decoded['choices'])) {
+        $decoded = callGroq($messages, $tools, $apiKey, 'llama-3.1-8b-instant');
+    }
+
+    // Call AI with tool results
+    if (isset($decoded['choices'][0]['message']['tool_calls'])) {
+        $toolMessages = [$decoded['choices'][0]['message']];
+        $toolsUsed = [];
+
+        foreach ($decoded['choices'][0]['message']['tool_calls'] as $toolCall) {
+            $functionName = $toolCall['function']['name'];
+            $functionArgs = json_decode($toolCall['function']['arguments'], true);
+            $toolsUsed[] = $functionName;
+
+            $toolResult = execute_tool($functionName, $functionArgs, $userInfo);
+
+            $toolMessages[] = [
+                'role' => 'tool',
+                'tool_call_id' => $toolCall['id'],
+                'name' => $functionName,
+                'content' => $toolResult
+            ];
+        }
+
+        // Call AI again with tool results
+        $finalMessages = array_merge($messages, $toolMessages);
+        $decoded = callGroq($finalMessages, $tools, $apiKey);
+
+        // Fallback for second call
+        if (isset($decoded['error']) || empty($decoded['choices'])) {
+            $decoded = callGroq($finalMessages, $tools, $apiKey, 'llama-3.1-8b-instant');
+        }
+
+        // Cumulative logging
+        $totalTokens = ($decoded['usage']['total_tokens'] ?? 0);
+        log_usage($conn, $userInfo['id'] ?? null, $userMessage, implode(', ', $toolsUsed), $totalTokens, $decoded['model'] ?? 'unknown');
+    } else {
+        // Direct response logging
+        $totalTokens = ($decoded['usage']['total_tokens'] ?? 0);
+        log_usage($conn, $userInfo['id'] ?? null, $userMessage, null, $totalTokens, $decoded['model'] ?? 'unknown');
+    }
+} catch (Exception $e) {
+    @file_put_contents('/tmp/copilot_error.log', date('Y-m-d H:i:s') . " - " . $e->getMessage() . "\n", FILE_APPEND);
+    $decoded = ['choices' => [['message' => ['content' => 'ขออภัย ระบบขัดข้องกรุณาลองใหม่ (Internal Error)']]]];
+}
+
+// 6. Final Response
+$aiReply = $decoded['choices'][0]['message']['content'] ?? 'ขออภัย ระบบขัดข้องกรุณาลองใหม่';
+
+// 7. Extract ACTION
 $action = null;
 if (preg_match('/\[ACTION:\s*([^\]]+)\]/i', $aiReply, $matches)) {
-    $potentialAction = trim($matches[1]);
-
-    // Trust the AI's decision to include the action tag
-    // The system prompt already instructs it to only include it upon confirmation.
-    $action = $potentialAction;
-
-    // Remove ACTION from display
+    $action = trim($matches[1]);
     $aiReply = trim(preg_replace('/\[ACTION:\s*[^\]]+\]/i', '', $aiReply));
 }
 

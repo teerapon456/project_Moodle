@@ -161,13 +161,14 @@ class Copilot {
 
             // Get user info for AI context
             const userInfo = typeof USER !== 'undefined' ? {
+                id: USER.id,
                 name: USER.name,
                 department: USER.department,
                 permissions: USER.permissions
             } : null;
 
-            const assetBase = window.ASSET_BASE || (window.APP_BASE_PATH + '/public/');
-            const response = await fetch(assetBase + 'api/copilot.php', {
+            const apiBase = (window.APP_BASE_PATH || '').replace(/\/+$/, '') + '/api/copilot.php';
+            const response = await fetch(apiBase, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -176,6 +177,11 @@ class Copilot {
                     user: userInfo
                 })
             });
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`Server Error: ${response.status} - ${text.substring(0, 100)}`);
+            }
 
             const data = await response.json();
             let reply = data.reply || "ขออภัย ระบบมีปัญหา กรุณาลองใหม่";

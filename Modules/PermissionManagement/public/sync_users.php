@@ -654,7 +654,7 @@ TSQL;
         $updated_at = $r['updated_at'];
         $is_active = $r['is_active'];
 
-        $empcode_for_col = phash($r['EmpCode']);
+        $empcode_for_col = trim((string)$r['EmpCode']);
         $personnel_hashed = phash(strtolower(trim((string)$r['PersonnelEmail'])));
         $identity_hashed = phash(only_digits($r['IdentityCard']));
 

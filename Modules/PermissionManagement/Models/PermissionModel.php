@@ -9,10 +9,32 @@ class PermissionModel
         $this->conn = $dbConnection;
     }
 
+    public function logActivity($tableName, $recordId, $columnName, $oldValue, $newValue, $actionType)
+    {
+        if (!$this->conn) return false;
+        try {
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            $user = $_SESSION['user']['username'] ?? $_SESSION['user']['fullname'] ?? 'system';
+            $sql = "INSERT INTO audit_log (table_name, record_id, column_name, old_value, new_value, action_type, performed_by) 
+                    VALUES (:table, :id, :column, :old, :new, :action, :user)";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindValue(':table', $tableName);
+            $stmt->bindValue(':id', $recordId);
+            $stmt->bindValue(':column', $columnName);
+            $stmt->bindValue(':old', (string)$oldValue);
+            $stmt->bindValue(':new', (string)$newValue);
+            $stmt->bindValue(':action', $actionType);
+            $stmt->bindValue(':user', $user);
+            return $stmt->execute();
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
     public function getModulePermissionByCode($moduleCode, $roleId)
     {
         if (!$this->conn) return false;
-        
+
         $sql = "
             SELECT cm.id,
                    COALESCE(p.can_view, 0) as can_view,
@@ -178,7 +200,11 @@ class PermissionModel
     {
         if (!$this->conn) throw new Exception('Database connection failed');
 
+        $oldData = null;
         if ($id > 0) {
+            $stmt = $this->conn->prepare("SELECT name, description, is_active FROM roles WHERE id = ?");
+            $stmt->execute([$id]);
+            $oldData = $stmt->fetch(PDO::FETCH_ASSOC);
             $sql = "UPDATE roles SET name = :name, description = :description, is_active = :is_active WHERE id = :id";
         } else {
             $sql = "INSERT INTO roles (name, description, is_active) VALUES (:name, :description, :is_active)";
@@ -192,12 +218,30 @@ class PermissionModel
             $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         }
 
-        return $stmt->execute();
+        $result = $stmt->execute();
+        if ($result) {
+            $recordId = $id > 0 ? $id : $this->conn->lastInsertId();
+            $action = $id > 0 ? 'UPDATE' : 'CREATE';
+            if ($id > 0 && $oldData) {
+                if ($oldData['name'] !== $name) $this->logActivity('roles', $recordId, 'name', $oldData['name'], $name, 'UPDATE');
+                if ($oldData['description'] !== $description) $this->logActivity('roles', $recordId, 'description', $oldData['description'], $description, 'UPDATE');
+                if ((int)$oldData['is_active'] !== (int)$isActive) $this->logActivity('roles', $recordId, 'is_active', $oldData['is_active'], $isActive, 'UPDATE');
+            } else {
+                $this->logActivity('roles', $recordId, 'name', null, $name, 'CREATE');
+                $this->logActivity('roles', $recordId, 'is_active', null, $isActive, 'CREATE');
+            }
+        }
+        return $result;
     }
 
     public function savePermission($roleId, $moduleId, $canView, $canEdit, $canDelete, $canManage)
     {
         if (!$this->conn) throw new Exception('Database connection failed');
+
+        // Get old values
+        $stmt = $this->conn->prepare("SELECT can_view, can_edit, can_delete, can_manage FROM core_module_permissions WHERE module_id = ? AND role_id = ?");
+        $stmt->execute([$moduleId, $roleId]);
+        $old = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $sql = "
             INSERT INTO core_module_permissions (module_id, role_id, can_view, can_edit, can_delete, can_manage)
@@ -217,24 +261,48 @@ class PermissionModel
         $stmt->bindValue(':can_delete', $canDelete, PDO::PARAM_INT);
         $stmt->bindValue(':can_manage', $canManage, PDO::PARAM_INT);
 
-        return $stmt->execute();
+        $result = $stmt->execute();
+        if ($result) {
+            $label = "permission:role#$roleId:mod#$moduleId";
+            if ($old) {
+                if ((int)$old['can_view'] !== (int)$canView) $this->logActivity('core_module_permissions', $moduleId, "can_view($roleId)", $old['can_view'], $canView, 'UPDATE');
+                if ((int)$old['can_edit'] !== (int)$canEdit) $this->logActivity('core_module_permissions', $moduleId, "can_edit($roleId)", $old['can_edit'], $canEdit, 'UPDATE');
+                if ((int)$old['can_delete'] !== (int)$canDelete) $this->logActivity('core_module_permissions', $moduleId, "can_delete($roleId)", $old['can_delete'], $canDelete, 'UPDATE');
+                if ((int)$old['can_manage'] !== (int)$canManage) $this->logActivity('core_module_permissions', $moduleId, "can_manage($roleId)", $old['can_manage'], $canManage, 'UPDATE');
+            } else {
+                $this->logActivity('core_module_permissions', $moduleId, "all_perms($roleId)", null, "V:$canView,E:$canEdit,D:$canDelete,M:$canManage", 'CREATE');
+            }
+        }
+        return $result;
     }
 
     public function updateUserRole($userId, $roleId)
     {
         if (!$this->conn) throw new Exception('Database connection failed');
 
+        $stmt = $this->conn->prepare("SELECT role_id FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $oldRoleId = $stmt->fetchColumn();
+
         $sql = "UPDATE users SET role_id = :role_id WHERE id = :user_id";
         $stmt = $this->conn->prepare($sql);
         $stmt->bindValue(':role_id', $roleId, PDO::PARAM_INT);
         $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
 
-        return $stmt->execute();
+        $result = $stmt->execute();
+        if ($result && (int)$oldRoleId !== (int)$roleId) {
+            $this->logActivity('users', $userId, 'role_id', $oldRoleId, $roleId, 'UPDATE');
+        }
+        return $result;
     }
 
     public function updateUser($userId, $roleId = null, $userActive = null)
     {
         if (!$this->conn) throw new Exception('Database connection failed');
+
+        $stmt = $this->conn->prepare("SELECT role_id, is_active FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $old = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $fields = [];
         $params = [':id' => $userId];
@@ -257,7 +325,12 @@ class PermissionModel
             $stmt->bindValue($k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
         }
 
-        return $stmt->execute();
+        $result = $stmt->execute();
+        if ($result && $old) {
+            if ($roleId !== null && (int)$old['role_id'] !== (int)$roleId) $this->logActivity('users', $userId, 'role_id', $old['role_id'], $roleId, 'UPDATE');
+            if ($userActive !== null && (int)$old['is_active'] !== (int)$userActive) $this->logActivity('users', $userId, 'is_active', $old['is_active'], $userActive, 'UPDATE');
+        }
+        return $result;
     }
 
     public function checkUserExists($username, $email)
@@ -279,7 +352,10 @@ class PermissionModel
         ");
 
         if ($stmt->execute([$username, $email, $fullname, $hashedPassword, $roleId])) {
-            return $this->conn->lastInsertId();
+            $newId = $this->conn->lastInsertId();
+            $this->logActivity('users', $newId, 'username', null, $username, 'CREATE');
+            $this->logActivity('users', $newId, 'role_id', null, $roleId, 'CREATE');
+            return $newId;
         }
         return false;
     }
@@ -356,21 +432,7 @@ class PermissionModel
         $result = $stmt->execute();
 
         if ($result && (string)$oldValue !== (string)$value) {
-            // Log to audit_log
-            try {
-                if (session_status() === PHP_SESSION_NONE) session_start();
-                $user = $_SESSION['user']['username'] ?? $_SESSION['user']['fullname'] ?? 'system';
-                $logSql = "INSERT INTO audit_log (table_name, record_id, column_name, old_value, new_value, action_type, performed_by) 
-                          VALUES ('system_settings', :mid, :column, :old, :new, 'UPDATE', :user)";
-                $logStmt = $this->conn->prepare($logSql);
-                $logStmt->bindValue(':mid', $moduleId, PDO::PARAM_INT);
-                $logStmt->bindValue(':column', $key);
-                $logStmt->bindValue(':old', (string)$oldValue);
-                $logStmt->bindValue(':new', (string)$value);
-                $logStmt->bindValue(':user', $user);
-                $logStmt->execute();
-            } catch (Exception $e) { /* Ignore logging errors */
-            }
+            $this->logActivity('system_settings', $moduleId, $key, $oldValue, $value, 'UPDATE');
         }
 
         return $result;
@@ -381,14 +443,13 @@ class PermissionModel
         $limit = (int)$limit;
         $offset = ((int)$page - 1) * $limit;
 
-        // Get total count
-        $countStmt = $this->conn->query("SELECT COUNT(*) FROM audit_log WHERE table_name = 'system_settings'");
+        // Get total count (all permission related tables)
+        $countStmt = $this->conn->query("SELECT COUNT(*) FROM audit_log");
         $total = (int)$countStmt->fetchColumn();
 
         // Get logs
         $stmt = $this->conn->prepare("
             SELECT * FROM audit_log 
-            WHERE table_name = 'system_settings' 
             ORDER BY performed_at DESC 
             LIMIT :limit OFFSET :offset
         ");

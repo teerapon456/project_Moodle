@@ -224,6 +224,14 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                         </div>
                         <div class="absolute bottom-0 left-0 w-full h-0.5 bg-primary transform scale-x-0 transition-transform duration-200 origin-left group-hover:scale-x-100 opacity-50"></div>
                     </button>
+
+                    <button class="nav-tab group relative pb-4 px-4 min-w-[120px] text-center" data-tab="ai-usage">
+                        <div class="flex items-center justify-center gap-2 text-sm font-semibold transition-colors duration-200 text-gray-500 hover:text-gray-700">
+                            <i class="ri-robot-2-line text-lg"></i>
+                            <span>AI Usage</span>
+                        </div>
+                        <div class="absolute bottom-0 left-0 w-full h-0.5 bg-primary transform scale-x-0 transition-transform duration-200 origin-left group-hover:scale-x-100 opacity-50"></div>
+                    </button>
                 </div>
             </div>
 
@@ -402,6 +410,70 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                     <?php endif; ?>
                 </div>
 
+                <!-- AI Usage Tab -->
+                <div class="tab-panel hidden animate-fade-in" data-tab="ai-usage">
+                    <div class="px-6 py-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h4 class="font-bold text-gray-800 text-lg">AI Copilot Usage Dashboard</h4>
+                            <p class="text-gray-500 text-sm">ติดตามการใช้งาน AI และ Token ของพนักงาน</p>
+                        </div>
+                        <button onclick="loadAIUsage()" class="btn-secondary flex items-center gap-2 px-3 py-2 rounded-lg text-sm">
+                            <i class="ri-refresh-line"></i> อัปเดตข้อมูล
+                        </button>
+                    </div>
+                    <div id="ai-usage-container" class="p-6">
+                        <!-- Chart Section -->
+                        <div class="bg-gray-50 border border-gray-100 rounded-xl p-6 mb-8">
+                            <h5 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                                <i class="ri-bar-chart-line text-primary"></i> ปริมาณการใช้งานย้อนหลัง 7 วัน
+                            </h5>
+                            <div class="h-[250px] w-full relative">
+                                <canvas id="ai-usage-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <div class="bg-blue-50 border border-blue-100 rounded-xl p-6 text-center">
+                                <i class="ri-chat-voice-line text-3xl text-blue-500 mb-2"></i>
+                                <div class="text-2xl font-bold text-blue-900" id="total-requests">-</div>
+                                <div class="text-sm text-blue-600">Total Requests</div>
+                            </div>
+                            <div class="bg-purple-50 border border-purple-100 rounded-xl p-6 text-center">
+                                <i class="ri-flashlight-line text-3xl text-purple-500 mb-2"></i>
+                                <div class="text-2xl font-bold text-purple-900" id="total-tokens">-</div>
+                                <div class="text-sm text-purple-600">Total Tokens Used</div>
+                            </div>
+                            <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-6 text-center">
+                                <i class="ri-user-smile-line text-3xl text-emerald-500 mb-2"></i>
+                                <div class="text-2xl font-bold text-emerald-900" id="active-users">-</div>
+                                <div class="text-sm text-emerald-600">Unique Users</div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+                            <div class="px-4 py-3 bg-gray-50/50 border-b border-gray-100 font-semibold text-gray-700">ประวัติการใช้งานล่าสุด</div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm text-left">
+                                    <thead class="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold">
+                                        <tr>
+                                            <th class="px-4 py-3">พนักงาน</th>
+                                            <th class="px-4 py-3">คำถาม</th>
+                                            <th class="px-4 py-3">เครื่องมือที่ใช้</th>
+                                            <th class="px-4 py-3 text-center">Tokens</th>
+                                            <th class="px-4 py-3 text-right">เวลา</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ai-usage-table-body" class="divide-y divide-gray-50">
+                                        <tr>
+                                            <td colspan="5" class="py-10 text-center text-gray-400">กำลังโหลดข้อมูล...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- System & Security Tab -->
                 <div id="tab-system-security" class="tab-panel hidden animate-fade-in" data-tab="system-security">
                     <?php if (!empty($canManage)): ?>
@@ -492,11 +564,11 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
     <?php endif; ?>
     </div>
 
-    <!-- End Tab Content -->
+    <!-- Sync Progress Modal -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     </div>
-    </div>
-    </div>
-    </div>
+
+    <!-- Sync Progress Modal -->
 
     <!-- Sync Progress Modal -->
     <div id="sync-modal" class="fixed inset-0 z-50 hidden">
@@ -583,6 +655,152 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
         const CAN_MANAGE = <?= !empty($canManage) ? 'true' : 'false' ?>;
         const LOGIN_URL = '<?= $linkBase ?>'; // Go to root
         window.currentModuleId = 3; // Permission Management Module ID
+
+        // --- AI Usage Dashboard Logic ---
+        let aiUsageChart = null;
+        window.loadAIUsage = async function() {
+            const body = document.getElementById('ai-usage-table-body');
+            const canvas = document.getElementById('ai-usage-chart');
+            if (!body || !canvas) return;
+
+            try {
+                const res = await fetch(window.location.pathname.replace(/\/index\.php$/, '') + '/ai_usage_stats.php');
+                if (!res.ok) throw new Error('Network response was not ok');
+                const data = await res.json();
+
+                // Update stats
+                document.getElementById('total-requests').textContent = (data.stats.total_requests || 0).toLocaleString();
+                document.getElementById('total-tokens').textContent = (data.stats.total_tokens || 0).toLocaleString();
+                document.getElementById('active-users').textContent = (data.stats.unique_users || 0).toLocaleString();
+
+                // Update chart
+                if (aiUsageChart) aiUsageChart.destroy();
+
+                const labels = [];
+                const requestData = [];
+                const tokenData = [];
+
+                // Last 7 days
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    const dateStr = d.toISOString().split('T')[0];
+                    const label = d.toLocaleDateString('th-TH', {
+                        day: 'numeric',
+                        month: 'short'
+                    });
+                    labels.push(label);
+
+                    const dayData = data.chartData ? data.chartData.find(cd => cd.date === dateStr) : null;
+                    requestData.push(dayData ? parseInt(dayData.requests) : 0);
+                    tokenData.push(dayData ? parseInt(dayData.tokens) : 0);
+                }
+
+                aiUsageChart = new Chart(canvas, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                                label: 'Requests',
+                                data: requestData,
+                                borderColor: '#3b82f6',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                tension: 0.4,
+                                fill: true,
+                                yAxisID: 'y'
+                            },
+                            {
+                                label: 'Tokens',
+                                data: tokenData,
+                                borderColor: '#a855f7',
+                                backgroundColor: 'transparent',
+                                borderDash: [5, 5],
+                                tension: 0.4,
+                                yAxisID: 'y1'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Requests',
+                                    font: {
+                                        size: 10
+                                    }
+                                },
+                                beginAtZero: true
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Tokens',
+                                    font: {
+                                        size: 10
+                                    }
+                                },
+                                grid: {
+                                    drawOnChartArea: false
+                                },
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+
+                // Update table
+                body.innerHTML = data.logs.length ? data.logs.map(log => `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-4 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 border border-gray-200">
+                                    <i class="ri-user-line"></i>
+                                </div>
+                                <div>
+                                    <div class="font-semibold text-gray-900">${log.fullname || 'Guest'}</div>
+                                    <div class="text-[10px] text-gray-400">${log.username || 'N/A'}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 max-w-[250px] truncate" title="${log.query}">
+                            <div class="text-gray-700">${log.query || '-'}</div>
+                        </td>
+                        <td class="px-4 py-4">
+                            <div class="flex flex-wrap gap-1">
+                                ${log.tool_called ? log.tool_called.split(', ').map(t => `
+                                    <span class="px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-[10px] border border-blue-100 font-medium">
+                                        ${t}
+                                    </span>
+                                `).join('') : '<span class="text-gray-400">-</span>'}
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            <span class="font-mono text-xs font-bold text-gray-600">${log.tokens_used.toLocaleString()}</span>
+                        </td>
+                        <td class="px-4 py-4 text-right">
+                            <div class="text-gray-500 text-xs">${new Date(log.created_at).toLocaleString('th-TH')}</div>
+                        </td>
+                    </tr>
+                `).join('') : `<tr><td colspan="5" class="py-10 text-center text-gray-400">ยังไม่มีข้อมูลการใช้งาน AI ในขณะนี้</td></tr>`;
+
+            } catch (e) {
+                console.error(e);
+                body.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-red-400">ไม่สามารถโหลดข้อมูลได้: ${e.message}</td></tr>`;
+            }
+        };
 
         // --- Security Settings Logic (Global) ---
         window.loadSecuritySettings = async function() {
@@ -1370,7 +1588,14 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
 
                     // Load Audit Logs if needed
                     if (tab === 'audit-log') {
-                        loadAuditLogs();
+                        if (typeof window.loadAuditLogs === 'function') {
+                            window.loadAuditLogs();
+                        }
+                    }
+
+                    // Load AI Usage if needed
+                    if (tab === 'ai-usage') {
+                        loadAIUsage();
                     }
                 });
             });
@@ -2375,6 +2600,8 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                     tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-red-500">เกิดข้อผิดพลาด: ${e.message}</td></tr>`;
                 }
             };
+            // Expose globally for onclick handlers
+            window.loadAuditLogs = window.loadAuditLogs;
 
             function renderAuditLogs(logs) {
                 const tbody = document.querySelector('#audit-log-table tbody');
@@ -2391,12 +2618,13 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-2">
                                 <div class="w-7 h-7 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-[10px] font-bold">
-                                    ${log.performed_by.charAt(0).toUpperCase()}
+                                    ${(log.performed_by || 'S').charAt(0).toUpperCase()}
                                 </div>
-                                <span class="text-sm font-medium text-gray-900">${escapeHtml(log.performed_by)}</span>
+                                <span class="text-sm font-medium text-gray-900">${escapeHtml(log.performed_by || 'System')}</span>
                             </div>
                         </td>
                         <td class="px-6 py-4">
+                            <span class="text-[10px] uppercase text-gray-400 block mb-0.5">${escapeHtml(log.table_name)}</span>
                             <span class="text-sm text-gray-700 font-mono bg-gray-100 px-1.5 py-0.5 rounded">${escapeHtml(log.column_name)}</span>
                         </td>
                         <td class="px-6 py-4 text-sm text-gray-500">
@@ -2440,6 +2668,7 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
             }
         });
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 
 </html>

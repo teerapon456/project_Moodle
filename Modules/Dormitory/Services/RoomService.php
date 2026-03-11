@@ -26,7 +26,7 @@ class RoomService
         if (!$room) throw new Exception('ไม่พบห้องพัก');
 
         $currentOccupants = $this->countActiveOccupants($roomId);
-        $newPersonsCount = 1 + ($userData['accompanying_persons'] ?? 0);
+        $newPersonsCount = 1; // นับเฉพาะคนเข้าพักหลัก ไม่รวมญาติ
 
         if (($currentOccupants + $newPersonsCount) > $room['capacity']) {
             throw new Exception("ห้องพักไม่เพียงพอ (ปัจจุบัน: {$currentOccupants} คน, ต้องการเพิ่ม: {$newPersonsCount} คน, ความจุ: {$room['capacity']} คน)");
@@ -149,25 +149,13 @@ class RoomService
     }
 
     /**
-     * Count total active occupants including accompanying persons
+     * Count total active primary occupants (EXCLUDING accompanying persons)
      */
     private function countActiveOccupants($roomId)
     {
-        // Try with accompanying_persons first, fall back to simple count if column doesn't exist
-        try {
-            $stmt = $this->pdo->prepare("
-                SELECT COALESCE(SUM(1 + COALESCE(accompanying_persons, 0)), 0) 
-                FROM dorm_occupancies 
-                WHERE room_id = ? AND status = 'active'
-            ");
-            $stmt->execute([$roomId]);
-            return (int)$stmt->fetchColumn();
-        } catch (PDOException $e) {
-            // Column doesn't exist yet - fall back to simple count
-            $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM dorm_occupancies WHERE room_id = ? AND status = 'active'");
-            $stmt->execute([$roomId]);
-            return (int)$stmt->fetchColumn();
-        }
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM dorm_occupancies WHERE room_id = ? AND status = 'active'");
+        $stmt->execute([$roomId]);
+        return (int)$stmt->fetchColumn();
     }
     /**
      * Change Room
@@ -240,21 +228,10 @@ class RoomService
         $allRelatives = array_merge($existingRelatives, $newRelatives);
         $totalRelativesCount = count($allRelatives);
 
-        // 3. Check Capacity
-        // Current occupants in room (excluding this user's OLD count, adding NEW count)
-        // Optimization: just check if (room.capacity - current_occupants + old_relative_count) >= (1 + new_relative_count)
-        // Or simpler: verify room capacity vs (current active occupants in room + newly added count)
-        // wait, 'countActiveOccupants' returns total. 
-        // We are increasing the count for THIS occupancy by (new - old).
-        $increase = count($newRelatives); // We are ADDING these people.
+        // 3. Skip Capacity Check for Relatives
+        // As per new requirement, relatives (accompanying persons) do not count towards room capacity.
+        // Therefore, we can skip checking if adding a relative exceeds room capacity.
 
-        $currentRoomOccupants = $this->countActiveOccupants($roomId);
-
-        if (($currentRoomOccupants + $increase) > $room['capacity']) {
-            throw new Exception("ห้องพักเต็ม ไม่สามารถเพิ่มญาติได้ (ว่าง: " . ($room['capacity'] - $currentRoomOccupants) . ", ต้องการเพิ่ม: $increase)");
-        }
-
-        // 4. Update Occupancy
         $stmt = $this->pdo->prepare("
             UPDATE dorm_occupancies 
             SET accompanying_persons = ?, accompanying_details = ? 
@@ -264,6 +241,25 @@ class RoomService
             $totalRelativesCount,
             json_encode($allRelatives, JSON_UNESCAPED_UNICODE),
             $occupancyId
+        ]);
+
+        // 4.5 Insert History Log Row
+        $stmtLog = $this->pdo->prepare("
+            INSERT INTO dorm_occupancies 
+            (room_id, employee_id, employee_name, employee_email, department, check_in_date, check_out_date, notes, accompanying_persons, accompanying_details, created_by, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'relative_added')
+        ");
+        $stmtLog->execute([
+            $roomId,
+            $occupancy['employee_id'],
+            $occupancy['employee_name'],
+            $occupancy['employee_email'],
+            $occupancy['department'],
+            date('Y-m-d'),
+            date('Y-m-d'),
+            "ระบบบันทึก: เพิ่มญาติ/ผู้ติดตาม",
+            $totalRelativesCount,
+            json_encode($allRelatives, JSON_UNESCAPED_UNICODE)
         ]);
 
         // 5. Update Room Status

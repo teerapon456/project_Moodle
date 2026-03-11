@@ -179,33 +179,12 @@ class BookingController extends DormBaseController
         if ($requestType === 'add_relative' && !empty($input['add_relatives_json'])) {
             $relativesData = json_decode($input['add_relatives_json'], true);
             if (is_array($relativesData) && count($relativesData) > 0) {
-                // Check Capacity BEFORE accepting request
-                $occupancy = $this->bookingModel->getCurrentOccupancy($userId);
-                if ($occupancy) {
-                    require_once __DIR__ . '/../Services/RoomService.php';
-                    $roomService = new RoomService($this->pdo); // Just to reuse getRoom/count logic if public, or manual check
-                    // Manual check for efficiency
-                    $roomId = $occupancy['room_id'];
-                    $room = $this->bookingModel->getRoomById($roomId); // Need this method in model or use raw query
-                    if ($room) {
-                        // Get current occupants count
-                        // Quick query to count occupants in this room
-                        $stmt = $this->pdo->prepare("SELECT COALESCE(SUM(1 + COALESCE(accompanying_persons, 0)), 0) FROM dorm_occupancies WHERE room_id = ? AND status = 'active'");
-                        $stmt->execute([$roomId]);
-                        $currentCount = $stmt->fetchColumn();
-
-                        $addCount = count($relativesData);
-
-                        if (($currentCount + $addCount) > $room['capacity']) {
-                            return $this->error("ห้องพักของคุณเต็มแล้ว (ความจุ: {$room['capacity']}, ปัจจุบัน: $currentCount) ไม่สามารถเพิ่มญาติได้");
-                        }
-                    }
-                }
-
+                // Relatives are allowed regardless of room capacity.
                 $hasRelative = 1;
                 $relativeDetails = $input['add_relatives_json'];
                 $relativesCount = count($relativesData);
             }
+
             // Store reason
             if (!empty($input['add_relative_reason'])) {
                 $reason = $input['add_relative_reason'];
@@ -226,8 +205,8 @@ class BookingController extends DormBaseController
 
                 $ext = pathinfo($_FILES[$key]['name'], PATHINFO_EXTENSION);
 
-                // Naming: Username_Date_DocType_Unique
-                $username = !empty($this->user['username']) ? $this->user['username'] : $userId;
+                // Naming: EmpCode_Date_DocType_Unique
+                $username = !empty($this->user['EmpCode']) ? $this->user['EmpCode'] : (!empty($this->user['username']) ? $this->user['username'] : $userId);
                 $cleanName = preg_replace('/[^a-zA-Z0-9]/', '', $username);
                 $date = date('Y-m-d');
                 $unique = uniqid();
@@ -316,17 +295,17 @@ class BookingController extends DormBaseController
         }
 
         $status = $_GET['status'] ?? 'pending_supervisor';
+        $search = $_GET['search'] ?? null;
+        $type = $_GET['type'] ?? 'all';
 
         // If not admin, force status to pending_supervisor and filter by their email
         if (!$isAdmin) {
-            if ($status !== 'pending_supervisor') {
-                // Returning empty array if supervisor tries to view other statuses right now (simplification)
-                // Optionally we can return their past approvals
+            if ($status !== 'pending_supervisor' && $status !== 'all') {
                 return $this->success(['requests' => []]);
             }
-            $requests = $this->bookingModel->getRequestsBySupervisor($this->user['email'], 'pending_supervisor');
+            $requests = $this->bookingModel->getRequestsList($status, $this->user['email'], $search, $type);
         } else {
-            $requests = $this->bookingModel->getRequestsByStatus($status);
+            $requests = $this->bookingModel->getRequestsList($status, null, $search, $type);
         }
 
         // Enrich change_room and move_out requests with current occupancy relative data
@@ -494,7 +473,7 @@ class BookingController extends DormBaseController
                 }
 
                 $userData = [
-                    'employee_id' => $request['requester_id'],
+                    'employee_id' => $request['EmpCode'] ?? $request['requester_id'],
                     'employee_name' => $request['fullname'],
                     'employee_email' => $request['email'],
                     'department' => $request['department'],

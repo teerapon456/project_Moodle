@@ -1,0 +1,273 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Strings for component 'core_plugin', language 'en'.
+ *
+ * @package    core
+ * @subpackage plugin
+ * @copyright  2011 David Mudrak <david@moodle.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+defined('MOODLE_INTERNAL') || die();
+
+$string['actions'] = 'การดำเนินการ';
+$string['availability'] = 'ความพร้อมใช้งาน';
+$string['cancelinstallall'] = 'ยกเลิกการติดตั้งใหม่ ({$a})';
+$string['cancelinstallone'] = 'ยกเลิกการติดตั้งนี้';
+$string['cancelinstallhead'] = 'กำลังยกเลิกการติดตั้งปลั๊กอิน';
+$string['cancelinstallinfo'] = 'ปลั๊กอินดังต่อไปนี้ยังติดตั้งไม่เสร็จสมบูรณ์ ดังนั้นการติดตั้งจึงอาจถูกยกเลิกได้ ในการดำเนินการดังกล่าวต้องลบโฟลเดอร์ปลั๊กอินออกจากเซิร์ฟเวอร์ทันที โปรดตรวจสอบให้แน่ใจว่านี่คือสิ่งที่คุณต้องการจริง ๆ เพื่อป้องกันข้อมูลสูญหายโดยไม่ตั้งใจ (เช่น การแก้ไขโค้ดของคุณเอง)';
+$string['cancelinstallinfodir'] = 'โฟลเดอร์ที่จะถูกลบ: {$a}';
+$string['cancelupgradeall'] = 'ยกเลิกการอัปเกรด ({$a})';
+$string['cancelupgradehead'] = 'กำลังกู้คืนปลั๊กอินเวอร์ชันก่อนหน้า';
+$string['cancelupgradeone'] = 'ยกเลิกการอัปเกรดนี้';
+$string['checkforupdates'] = 'ตรวจสอบการอัปเดตที่มีอยู่';
+$string['checkforupdateslast'] = 'ตรวจสอบล่าสุดเมื่อ {$a}';
+$string['detectedmisplacedplugin'] = 'ปลั๊กอิน "{$a->component}" ถูกติดตั้งในตำแหน่งที่ไม่ถูกต้อง "{$a->current}" ตำแหน่งที่ควรจะเป็นคือ "{$a->expected}"';
+$string['dependencyavailable'] = 'สามารถใช้งานได้';
+$string['dependencyfails'] = 'ล้มเหลว';
+$string['dependencyinstall'] = 'ติดตั้ง';
+$string['dependencyinstallhead'] = 'กำลังติดตั้งส่วนประกอบที่จำเป็นที่ขาดหายไป';
+$string['dependencyinstallmissing'] = 'ติดตั้งส่วนประกอบที่จำเป็นที่ขาดหายไป ({$a})';
+$string['dependencymissing'] = 'ขาดหายไป';
+$string['dependencyunavailable'] = 'ไม่สามารถใช้งานได้';
+$string['dependencyupload'] = 'อัปโหลด';
+$string['dependencyuploadmissing'] = 'อัปโหลดไฟล์ ZIP';
+$string['deprecated_type'] = "ประเภทปลั๊กอินที่เลิกใช้งานแล้ว";
+$string['displayname'] = 'ชื่อปลั๊กอิน';
+$string['err_response_curl'] = 'ไม่สามารถดึงข้อมูลการอัปเดตที่มีอยู่ได้ - เกิดข้อผิดพลาด cURL ที่ไม่คาดคิด';
+$string['err_response_format_version'] = 'เวอร์ชันของรูปแบบการตอบสนองไม่ถูกต้อง โปรดลองตรวจสอบการอัปเดตที่มีอยู่อีกครั้ง';
+$string['err_response_http_code'] = 'ไม่สามารถดึงข้อมูลการอัปเดตที่มีอยู่ได้ - รหัสการตอบสนอง HTTP ที่ไม่คาดคิด';
+$string['filterall'] = 'แสดงทั้งหมด';
+$string['filtercontribonly'] = 'แสดงเฉพาะปลั๊กอินเพิ่มเติม';
+$string['filtermissingonly'] = 'แสดงเฉพาะที่ขาดหายไปจากดิสก์';
+$string['filternewpluginsonly'] = 'แสดงเฉพาะปลั๊กอินที่จะติดตั้ง';
+$string['filterupdatesonly'] = 'แสดงเฉพาะที่สามารถอัปเดตได้';
+$string['incompatibleversion'] = 'เวอร์ชัน Moodle ไม่รองรับ: {$a}';
+$string['isenabled'] = 'เปิดใช้งานหรือไม่?';
+$string['misdepinfoplugin'] = 'ข้อมูลปลั๊กอิน';
+$string['misdepinfoversion'] = 'ข้อมูลเวอร์ชัน';
+$string['misdepsavail'] = 'ส่วนประกอบที่จำเป็นที่ขาดหายไปซึ่งสามารถใช้งานได้';
+$string['misdepsunavail'] = 'ส่วนประกอบที่จำเป็นที่ขาดหายไปซึ่งไม่สามารถใช้งานได้';
+$string['misdepsunavaillist'] = 'ไม่พบเวอร์ชันที่ตรงตามข้อกำหนดของส่วนประกอบที่จำเป็น: {$a}';
+$string['misdepsunknownlist'] = 'ไม่อยู่ในไดเรกทอรีปลั๊กอิน: <strong>{$a}</strong>';
+$string['moodlebranch'] = 'Moodle {$a->min} - {$a->max}';
+$string['moodleversion'] = 'Moodle {$a}';
+$string['noneinstalled'] = 'ไม่ได้ติดตั้งปลั๊กอินประเภทนี้';
+$string['notes'] = 'หมายเหตุ';
+$string['notdownloadable'] = 'ไม่สามารถดาวน์โหลดแพ็กเกจได้';
+$string['notdownloadable_help'] = 'ไม่สามารถดาวน์โหลดแพ็กเกจ ZIP พร้อมการอัปเดตได้โดยอัตโนมัติ';
+$string['notdownloadable_link'] = 'admin/mdeploy/notdownloadable';
+$string['notsupported'] = 'ปลั๊กอินอาจไม่รองรับกับ Moodle เวอร์ชัน {$a}';
+$string['notwritable'] = 'ไฟล์ปลั๊กอินไม่สามารถเขียนข้อมูลทับได้';
+$string['notwritable_help'] = 'เว็บเซิร์ฟเวอร์ไม่สามารถเขียนไฟล์ปลั๊กอินได้ กระบวนการของเว็บเซิร์ฟเวอร์ต้องมีสิทธิ์เข้าถึงเพื่อเขียนข้อมูลลงในโฟลเดอร์ปลั๊กอินและเนื้อหาทั้งหมด และอาจจำเป็นต้องมีสิทธิ์เข้าถึงเพื่อเขียนข้อมูลลงในโฟลเดอร์รูทของประเภทปลั๊กอินที่ระบุด้วย';
+$string['otherplugin'] = '{$a->component}';
+$string['otherpluginversion'] = '{$a->component} ({$a->version})';
+$string['overviewall'] = 'ปลั๊กอินทั้งหมด';
+$string['overviewext'] = 'ปลั๊กอินเพิ่มเติม';
+$string['overviewupdatable'] = 'การอัปเดตที่มีอยู่';
+$string['packagesdebug'] = 'เปิดใช้งานการแสดงผล Debugging แล้ว';
+$string['packagesdownloading'] = 'กำลังดาวน์โหลด {$a}';
+$string['packagesextracting'] = 'กำลังแตกไฟล์ {$a}';
+$string['packagesvalidating'] = 'กำลังตรวจสอบความถูกต้อง {$a}';
+$string['packagesvalidatingfailed'] = 'การติดตั้งถูกยกเลิกเนื่องจากการตรวจสอบความถูกต้องล้มเหลว';
+$string['packagesvalidatingok'] = 'การตรวจสอบความถูกต้องสำเร็จ สามารถดำเนินการติดตั้งต่อได้';
+$string['plugincheckall'] = 'ปลั๊กอินทั้งหมด';
+$string['plugincheckattention'] = 'ปลั๊กอินที่ต้องให้ความสนใจ';
+$string['pluginchecknone'] = 'ขณะนี้ไม่มีปลั๊กอินที่ต้องให้ความสนใจ';
+$string['pluginchecknotice'] = 'หน้านี้แสดงปลั๊กอินที่อาจต้องให้ความสนใจในระหว่างการอัปเกรด เช่น ปลั๊กอินใหม่ที่จะติดตั้ง ปลั๊กอินที่จะอัปเกรด ปลั๊กอินที่หายไป เป็นต้น ปลั๊กอินเพิ่มเติมจะปรากฏขึ้นหากมีการอัปเดต ขอแนะนำให้คุณตรวจสอบว่ามีปลั๊กอินเวอร์ชันล่าสุดหรือไม่ และอัปเดตซอร์สโค้ดก่อนที่จะดำเนินการอัปเกรด Moodle ต่อไป';
+$string['plugindisable'] = 'ปิดใช้งาน';
+$string['plugindisabled'] = 'ปิดใช้งานแล้ว';
+$string['pluginenable'] = 'เปิดใช้งาน';
+$string['pluginenabled'] = 'เปิดใช้งานแล้ว';
+$string['release'] = 'รุ่น';
+$string['requiredby'] = 'จำเป็นสำหรับ: {$a}';
+$string['requires'] = 'ต้องการ';
+$string['rootdir'] = 'ไดเรกทอรี';
+$string['settings'] = 'การตั้งค่า';
+$string['source'] = 'แหล่งที่มา';
+$string['sourceext'] = 'เพิ่มเติม';
+$string['sourcestd'] = 'มาตรฐาน';
+$string['status'] = 'สถานะ';
+$string['status_delete'] = 'กำลังจะถูกลบ';
+$string['status_downgrade'] = 'มีการติดตั้งเวอร์ชันที่สูงกว่าแล้ว!';
+$string['status_missing'] = 'หายไปจากดิสก์!';
+$string['status_new'] = 'กำลังจะติดตั้ง';
+$string['status_nodb'] = 'ไม่มีฐานข้อมูล';
+$string['status_upgrade'] = 'กำลังจะอัปเกรด';
+$string['status_uptodate'] = 'ติดตั้งแล้ว';
+$string['supportedmoodleversions'] = 'เวอร์ชัน Moodle ที่รองรับ';
+$string['supportedconversions'] = 'การแปลงเอกสารที่รองรับ';
+$string['systemname'] = 'ตัวระบุ';
+$string['type_aiplacement'] = 'ปลั๊กอินการจัดวาง AI';
+$string['type_aiplacement_plural'] = 'ปลั๊กอินการจัดวาง AI';
+$string['type_aiprovider'] = 'ปลั๊กอินผู้ให้บริการ AI';
+$string['type_aiprovider_plural'] = 'ปลั๊กอินผู้ให้บริการ AI';
+$string['type_antivirus'] = 'ปลั๊กอินแอนตี้ไวรัส';
+$string['type_antivirus_plural'] = 'ปลั๊กอินแอนตี้ไวรัส';
+$string['type_auth'] = 'วิธีการยืนยันตัวตน';
+$string['type_auth_plural'] = 'วิธีการยืนยันตัวตน';
+$string['type_availability'] = 'ข้อจำกัดการเข้าถึง';
+$string['type_availability_plural'] = 'ข้อจำกัดการเข้าถึง';
+$string['type_block'] = 'บล็อก';
+$string['type_block_plural'] = 'บล็อก';
+$string['type_cachelock'] = 'ตัวจัดการการล็อกแคช';
+$string['type_cachelock_plural'] = 'ตัวจัดการการล็อกแคช';
+$string['type_cachestore'] = 'แหล่งเก็บแคช';
+$string['type_cachestore_plural'] = 'แหล่งเก็บแคช';
+$string['type_calendartype'] = 'ประเภทปฏิทิน';
+$string['type_calendartype_plural'] = 'ประเภทปฏิทิน';
+$string['type_communication'] = 'ผู้ให้บริการสื่อสาร';
+$string['type_communication_plural'] = 'ผู้ให้บริการสื่อสาร';
+$string['type_contenttype'] = 'คลังเนื้อหา';
+$string['type_contenttype_plural'] = 'ปลั๊กอินคลังเนื้อหา';
+$string['type_core'] = 'ระบบย่อยหลัก';
+$string['type_core_plural'] = 'ระบบย่อยหลัก';
+$string['type_customfield'] = 'ฟิลด์ที่กำหนดเอง';
+$string['type_customfield_plural'] = 'ฟิลด์ที่กำหนดเอง';
+$string['type_coursereport'] = 'รายงานรายวิชา';
+$string['type_coursereport_plural'] = 'รายงานรายวิชา';
+$string['type_dataformat'] = 'รูปแบบข้อมูล';
+$string['type_dataformat_plural'] = 'รูปแบบข้อมูล';
+$string['type_editor'] = 'ตัวแก้ไขข้อมูล (Editor)';
+$string['type_editor_plural'] = 'ตัวแก้ไขข้อมูล (Editor)';
+$string['type_enrol'] = 'วิธีการลงทะเบียน';
+$string['type_enrol_plural'] = 'วิธีการลงทะเบียน';
+$string['type_fileconverter'] = 'ตัวแปลงเอกสาร';
+$string['type_fileconvertermanage'] = 'จัดการตัวแปลงเอกสาร';
+$string['type_fileconverter_plural'] = 'ตัวแปลงเอกสาร';
+$string['type_filter'] = 'ตัวกรองข้อความ';
+$string['type_filter_plural'] = 'ตัวกรองข้อความ';
+$string['type_format'] = 'รูปแบบรายวิชา';
+$string['type_format_plural'] = 'รูปแบบรายวิชา';
+$string['type_gradeexport'] = 'วิธีการส่งออกคะแนน';
+$string['type_gradeexport_plural'] = 'วิธีการส่งออกคะแนน';
+$string['type_gradeimport'] = 'วิธีการนำเข้าคะแนน';
+$string['type_gradeimport_plural'] = 'วิธีการนำเข้าคะแนน';
+$string['type_gradepenalty'] = 'คะแนนที่ถูกหัก';
+$string['type_gradepenalty_plural'] = 'คะแนนที่ถูกหัก';
+$string['type_gradereport'] = 'รายงานสมุดคะแนน';
+$string['type_gradereport_plural'] = 'รายงานสมุดคะแนน';
+$string['type_gradingform'] = 'วิธีการให้คะแนนขั้นสูง';
+$string['type_gradingform_plural'] = 'วิธีการให้คะแนนขั้นสูง';
+$string['type_h5plib'] = 'เฟรมเวิร์ก H5P';
+$string['type_h5plib_plural'] = 'เฟรมเวิร์ก H5P';
+$string['type_mlbackend'] = 'ระบบหลังบ้านของการเรียนรู้ของเครื่อง (Machine learning)';
+$string['type_mlbackend_plural'] = 'ระบบหลังบ้านของการเรียนรู้ของเครื่อง (Machine learning)';
+$string['type_local'] = 'ปลั๊กอินส่วนตัว (Local)';
+$string['type_local_plural'] = 'ปลั๊กอินส่วนตัว (Local)';
+$string['type_media'] = 'ตัวเล่นสื่อหน้าเว็บ';
+$string['type_media_plural'] = 'ตัวเล่นสื่อหน้าเว็บ';
+$string['type_message'] = 'ปลั๊กอินการแจ้งเตือน';
+$string['type_message_plural'] = 'ปลั๊กอินการแจ้งเตือน';
+$string['type_mnetservice'] = 'บริการ MNet';
+$string['type_mnetservice_plural'] = 'บริการ MNet';
+$string['type_mod'] = 'โมดูลกิจกรรม';
+$string['type_mod_plural'] = 'โมดูลกิจกรรม';
+$string['type_paygwmanage'] = 'จัดการผู้ให้บริการชำระเงิน';
+$string['type_paygw'] = 'ผู้ให้บริการชำระเงิน';
+$string['type_paygw_plural'] = 'ผู้ให้บริการชำระเงิน';
+$string['type_plagiarism'] = 'ปลั๊กอินการตรวจสอบการคัดลอกผลงาน';
+$string['type_plagiarism_plural'] = 'ปลั๊กอินการตรวจสอบการคัดลอกผลงาน';
+$string['type_portfolio'] = 'พอร์ตโฟลิโอ';
+$string['type_portfolio_plural'] = 'พอร์ตโฟลิโอ';
+$string['type_profilefield'] = 'ประเภทฟิลด์โปรไฟล์';
+$string['type_profilefield_plural'] = 'ประเภทฟิลด์โปรไฟล์';
+$string['type_qbehaviour'] = 'พฤติกรรมของคำถาม';
+$string['type_qbehaviour_plural'] = 'พฤติกรรมของคำถาม';
+$string['type_qformat'] = 'รูปแบบการนำเข้า/ส่งออกคำถาม';
+$string['type_qformat_plural'] = 'รูปแบบการนำเข้า/ส่งออกคำถาม';
+$string['type_qtype'] = 'ประเภทคำถาม';
+$string['type_qtype_plural'] = 'ประเภทคำถาม';
+$string['type_report'] = 'รายงานไซต์';
+$string['type_report_plural'] = 'รายงานไซต์';
+$string['type_repository'] = 'ตัวจัดการไฟล์ (Repository)';
+$string['type_repository_plural'] = 'ตัวจัดการไฟล์ (Repository)';
+$string['type_search'] = 'เครื่องมือค้นหา';
+$string['type_search_plural'] = 'เครื่องมือค้นหา';
+$string['type_smsgateway'] = 'เกตเวย์ SMS';
+$string['type_smsgateway_plural'] = 'เกตเวย์ SMS';
+$string['type_theme'] = 'ธีม';
+$string['type_theme_plural'] = 'ธีม';
+$string['type_tool'] = 'เครื่องมือผู้ดูแลระบบ';
+$string['type_tool_plural'] = 'เครื่องมือผู้ดูแลระบบ';
+$string['type_webservice'] = 'โปรโตคอลเว็บเซอร์วิส';
+$string['type_webservice_plural'] = 'โปรโตคอลเว็บเซอร์วิส';
+$string['type_qbank'] = 'ปลั๊กอินคลังข้อสอบ';
+$string['type_qbank_plural'] = 'ปลั๊กอินคลังข้อสอบ';
+$string['updateavailable'] = 'มีเวอร์ชันใหม่ {$a} พร้อมใช้งาน!';
+$string['updateavailable_moreinfo'] = 'ข้อมูลเพิ่มเติม...';
+$string['updateavailable_release'] = 'รุ่น {$a}';
+$string['updatepluginconfirm'] = 'การยืนยันการอัปเดตปลั๊กอิน';
+$string['updatepluginconfirminfo'] = 'คุณกำลังติดตั้งปลั๊กอิน <strong>{$a->name}</strong> เวอร์ชันใหม่ ระบบจะดาวน์โหลดแพ็กเกจ zip เวอร์ชัน {$a->version} จาก <a href="{$a->url}">{$a->url}</a> และแตกไฟล์ไปยังโฟลเดอร์ Moodle ของคุณเพื่ออัปเกรด';
+$string['updatepluginconfirmexternal'] = 'ดูเหมือนว่าปลั๊กอินเวอร์ชันปัจจุบันถูกดึงมาจากระบบจัดการซอร์สโค้ด ({$a}) หากคุณติดตั้งการอัปเดตนี้ คุณจะไม่สามารถรับการอัปเดตจากระบบจัดการซอร์สโค้ดได้อีก โปรดตรวจสอบให้แน่ใจว่าคุณต้องการอัปเดตปลั๊กอินนี้จริง ๆ ก่อนดำเนินการต่อ';
+$string['updatepluginconfirmwarning'] = 'โปรดทราบว่า Moodle จะไม่ทำการสำรองข้อมูลฐานข้อมูลของคุณโดยอัตโนมัติก่อนการอัปเกรด เราขอแนะนำให้คุณทำการสำรองข้อมูลแบบเต็มทันที เพื่อรับมือกับกรณีที่โค้ดใหม่อาจมีข้อผิดพลาดซึ่งทำให้ไซต์ของคุณใช้งานไม่ได้หรือฐานข้อมูลเสียหาย ดำเนินการโดยยอมรับความเสี่ยงด้วยตนเอง';
+$string['uninstall'] = 'ถอนการติดตั้ง';
+$string['uninstallconfirm'] = 'คุณกำลังจะถอนการติดตั้งปลั๊กอิน <em>{$a->name}</em> การดำเนินการนี้จะลบข้อมูลทั้งหมดในฐานข้อมูลที่เกี่ยวข้องกับปลั๊กอินนี้ รวมถึงการกำหนดค่า บันทึก ประวัติการใช้งาน ไฟล์งานของผู้ใช้ที่จัดการโดยปลั๊กอิน เป็นต้น ซึ่งไม่สามารถกู้คืนได้ และ Moodle ไม่มีการสำรองข้อมูลเพื่อกู้คืน คุณแน่ใจหรือไม่ที่จะดำเนินการต่อ?';
+$string['uninstalldelete'] = 'ข้อมูลทั้งหมดที่เกี่ยวข้องกับปลั๊กอิน <em>{$a->name}</em> ได้ถูกลบออกจากฐานข้อมูลแล้ว เพื่อป้องกันไม่ให้ปลั๊กอินติดตั้งใหม่โดยอัตโนมัติ คุณต้องลบโฟลเดอร์ <em>{$a->rootdir}</em> ออกจากเซิร์ฟเวอร์ด้วยตนเอง เนื่องจาก Moodle ไม่มีสิทธิ์ในการลบโฟลเดอร์ดังกล่าว';
+$string['uninstalldeleteconfirm'] = 'ข้อมูลทั้งหมดที่เกี่ยวข้องกับปลั๊กอิน <em>{$a->name}</em> ได้ถูกลบออกจากฐานข้อมูลแล้ว เพื่อป้องกันไม่ให้ปลั๊กอินติดตั้งใหม่โดยอัตโนมัติ คุณต้องลบโฟลเดอร์ <em>{$a->rootdir}</em> ออกจากเซิร์ฟเวอร์ คุณต้องการลบโฟลเดอร์ปลั๊กอินตอนนี้เลยหรือไม่?';
+$string['uninstalldeleteconfirmexternal'] = 'ดูเหมือนว่าปลั๊กอินเวอร์ชันปัจจุบันถูกดึงมาจากระบบจัดการซอร์สโค้ด ({$a}) หากคุณลบโฟลเดอร์ปลั๊กอิน คุณอาจสูญเสียการแก้ไขโค้ดที่สำคัญ โปรดตรวจสอบให้แน่ใจว่าคุณต้องการลบโฟลเดอร์ปลั๊กอินนี้จริง ๆ ก่อนดำเนินการต่อ';
+$string['uninstallextraconfirmblock'] = 'มีบล็อกนี้ใช้งานอยู่ {$a->instances} แห่ง';
+$string['uninstallextraconfirmenrol'] = 'มีการลงทะเบียนของผู้ใช้จำนวน {$a->enrolments} รายการ';
+$string['uninstallextraconfirmmod'] = 'มีโมดูลนี้ใช้งานอยู่ {$a->instances} แห่งในรายวิชา {$a->courses} รายวิชา';
+$string['uninstalling'] = 'กำลังถอนการติดตั้ง {$a->name}';
+$string['validationmsg_componentmatch'] = 'ชื่อส่วนประกอบแบบเต็ม';
+$string['validationmsg_componentmismatchname'] = 'ชื่อปลั๊กอินไม่ตรงกัน';
+$string['validationmsg_componentmismatchname_help'] = 'แพ็กเกจ ZIP บางรายการ เช่น แพ็กเกจที่สร้างโดย Github อาจมีชื่อไดเรกทอรีรูทที่ไม่ถูกต้อง คุณต้องแก้ไขชื่อไดเรกทอรีรูทให้ตรงกับชื่อปลั๊กอินที่ประกาศไว้';
+$string['validationmsg_componentmismatchname_info'] = 'ปลั๊กอินระบุชื่อเป็น \'{$a}\' แต่ไม่ตรงกับชื่อของไดเรกทอรีรูท';
+$string['validationmsg_componentmismatchtype'] = 'ประเภทปลั๊กอินไม่ตรงกัน';
+$string['validationmsg_componentmismatchtype_info'] = 'คาดว่าเป็นประเภท \'{$a->expected}\' แต่ปลั๊กอินระบุประเภทเป็น \'{$a->found}\'';
+$string['validationmsg_filenotexists'] = 'ไม่พบไฟล์ที่แตกออกมา';
+$string['validationmsg_filesnumber'] = 'พบไฟล์ในแพ็กเกจไม่เพียงพอ';
+$string['validationmsg_filestatus'] = 'ไม่สามารถแตกไฟล์ทั้งหมดได้';
+$string['validationmsg_filestatus_info'] = 'พยายามแตกไฟล์ {$a->file} แต่เกิดข้อผิดพลาด \'{$a->status}\'';
+$string['validationmsg_foundlangfile'] = 'พบไฟล์ภาษา';
+$string['validationmsg_maturity'] = 'ระดับความสมบูรณ์ที่ประกาศไว้';
+$string['validationmsg_maturity_help'] = 'ปลั๊กอินสามารถระบุระดับความสมบูรณ์ได้ หากแพ็กเกจมีความเสถียร ระดับความสมบูรณ์จะเป็น MATURITY_STABLE ระดับความสมบูรณ์อื่น ๆ (เช่น alpha หรือ beta) ควรถือว่ายังไม่เสถียรและจะมีการแจ้งเตือน';
+$string['validationmsg_missingcomponent'] = 'ปลั๊กอินไม่ได้ประกาศชื่อส่วนประกอบ';
+$string['validationmsg_missingcomponent_help'] = 'ปลั๊กอินทั้งหมดต้องระบุชื่อส่วนประกอบแบบเต็มผ่านการประกาศ `$plugin->component` ในไฟล์ version.php';
+$string['validationmsg_missingcomponent_link'] = 'การพัฒนา:version.php';
+$string['validationmsg_missingexpectedlangenfile'] = 'ชื่อไฟล์ภาษาอังกฤษไม่ตรงกัน';
+$string['validationmsg_missingexpectedlangenfile_info'] = 'ปลั๊กอินประเภทนี้ไม่มีไฟล์ภาษาอังกฤษที่ควรจะมี {$a}';
+$string['validationmsg_missinglangenfile'] = 'ไม่พบไฟล์ภาษาอังกฤษ';
+$string['validationmsg_missinglangenfolder'] = 'ไม่พบโฟลเดอร์ภาษาอังกฤษ';
+$string['validationmsg_missingversion'] = 'ปลั๊กอินไม่ได้ระบุเวอร์ชัน';
+$string['validationmsg_missingversionphp'] = 'ไม่พบไฟล์ version.php';
+$string['validationmsg_multiplelangenfiles'] = 'พบไฟล์ภาษาอังกฤษหลายไฟล์';
+$string['validationmsg_onedir'] = 'โครงสร้างของแพ็กเกจ ZIP ไม่ถูกต้อง';
+$string['validationmsg_onedir_help'] = 'แพ็กเกจ ZIP ต้องประกอบด้วยไดเรกทอรีรูทเพียงไดเรกทอรีเดียวที่เก็บโค้ดปลั๊กอิน ชื่อของไดเรกทอรีรูทนั้นต้องตรงกับชื่อของปลั๊กอิน';
+$string['validationmsg_pathwritable'] = 'ตรวจสอบสิทธิ์ในการเขียนข้อมูล (Write access)';
+$string['validationmsg_pluginversion'] = 'เวอร์ชันของปลั๊กอิน';
+$string['validationmsg_pluginversiontoolow'] = 'มีการติดตั้งปลั๊กอินนี้ในเวอร์ชันที่สูงกว่าแล้ว';
+$string['validationmsg_release'] = 'รุ่นของปลั๊กอิน';
+$string['validationmsg_requiresmoodle'] = 'เวอร์ชัน Moodle ที่ต้องการ';
+$string['validationmsg_rootdir'] = 'ชื่อของปลั๊กอินที่จะติดตั้ง';
+$string['validationmsg_rootdir_help'] = 'ชื่อของไดเรกทอรีรูทในแพ็กเกจ ZIP จะเป็นชื่อของปลั๊กอินที่จะติดตั้ง หากชื่อไม่ถูกต้อง คุณอาจต้องเปลี่ยนชื่อไดเรกทอรีรูทใน ZIP ก่อนทำการติดตั้ง';
+$string['validationmsg_rootdirinvalid'] = 'ชื่อปลั๊กอินไม่ถูกต้อง';
+$string['validationmsg_rootdirinvalid_help'] = 'ชื่อของไดเรกทอรีรูทในแพ็กเกจ ZIP ขัดกับหลักไวยากรณ์สากล แพ็กเกจ ZIP บางรายการ เช่น แพ็กเกจที่สร้างโดย Github อาจมีชื่อไดเรกทอรีรูทที่ไม่ถูกต้อง คุณต้องแก้ไขชื่อไดเรกทอรีรูทให้ตรงกับชื่อปลั๊กอิน';
+$string['validationmsg_targetexists'] = 'ตำแหน่งที่ต้องการติดตั้งมีอยู่แล้วและจะถูกลบออก';
+$string['validationmsg_targetexists_help'] = 'ไดเรกทอรีปลั๊กอินมีอยู่แล้วและจะถูกแทนที่โดยเนื้อหาในแพ็กเกจปลั๊กอินนี้';
+$string['validationmsg_targetnotdir'] = 'ตำแหน่งที่ต้องการติดตั้งถูกใช้งานโดยไฟล์';
+$string['validationmsg_unknowntype'] = 'ไม่รู้จักประเภทปลั๊กอิน';
+$string['validationmsg_versionphpsyntax'] = 'ตรวจพบไวยากรณ์ที่ไม่รองรับในไฟล์ version.php';
+$string['validationmsglevel_debug'] = 'การดีบัก (Debug)';
+$string['validationmsglevel_error'] = 'ข้อผิดพลาด (Error)';
+$string['validationmsglevel_info'] = 'ตกลง (OK)';
+$string['validationmsglevel_warning'] = 'คำเตือน (Warning)';
+$string['version'] = 'เวอร์ชัน';
+$string['versiondb'] = 'เวอร์ชันปัจจุบัน';
+$string['versiondisk'] = 'เวอร์ชันใหม่';

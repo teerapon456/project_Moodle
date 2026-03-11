@@ -372,39 +372,15 @@ $userId = $_SESSION['user']['id'] ?? 0;
             <div class="p-6 overflow-x-auto">
                 <?php
                 // 1. Calculate Date Range
-                // 1. Calculate Date Range
+                // Use strictly the activity dates as requested by the user
                 $startDate = !empty($activity['start_date']) ? strtotime($activity['start_date']) : time();
                 $endDate = !empty($activity['end_date']) ? strtotime($activity['end_date']) : $startDate;
 
-                // Cache logs to avoid duplicate queries and allow bounds checking
+                // Cache logs from controller
                 $milestoneLogsMap = $summary['MilestoneLogs'] ?? [];
 
-                // Adjust min/max date if milestones go beyond activity range
-                foreach ($summary['Milestones'] as $ms) {
-                    // Use cached logs from controller
-                    $logs = $milestoneLogsMap[$ms['id']] ?? [];
-
-                    // Check Start Dates (Plan)
-                    if (!empty($ms['start_date'])) $startDate = min($startDate, strtotime($ms['start_date']));
-
-                    // Check End Dates (Plan)
-                    if (!empty($ms['due_date'])) $endDate = max($endDate, strtotime($ms['due_date']));
-
-                    // Check Actual Dates from Logs for Bounds
-                    foreach ($logs as $l) {
-                        if (!empty($l['actual_start_date'])) {
-                            $startDate = min($startDate, strtotime($l['actual_start_date']));
-                        }
-                        if (!empty($l['actual_end_date'])) {
-                            $endDate = max($endDate, strtotime($l['actual_end_date']));
-                        }
-                    }
-                }
-                // Add buffer
-                $endDate += 86400 * 7;
-                // Add start buffer just in case
-                $startDate -= 86400 * 2;
-
+                // Removed: Auto-expansion logic which was causing Dec 2025 and Jan 2027 to show up
+                // and buffers which were adding 7 days to end and subtracting 2 days from start
                 $totalSeconds = $endDate - $startDate;
                 if ($totalSeconds <= 0) $totalSeconds = 86400; // Prevent div by zero
 
@@ -438,27 +414,30 @@ $userId = $_SESSION['user']['id'] ?? 0;
                             <?php
                             $daysCount = $totalSeconds / 86400;
 
-                            if ($daysCount <= 60) {
+                            if ($daysCount <= 45) {
                                 // DAILY HEADER
-                                // Show every day: "28 Mon"
                                 $curr = $startDate;
                                 while ($curr <= $endDate) {
                                     $left = (($curr - $startDate) / $totalSeconds) * 100;
-                                    // Rotate text slightly if too crowded, or just use small font
-                                    echo '<div class="absolute whitespace-nowrap text-[10px]" style="left: ' . $left . '%; transform: translateX(-50%);">' . date('d', $curr) . '</div>';
+                                    echo '<div class="absolute whitespace-nowrap text-[10px]" style="left: ' . $left . '%; transform: translateX(-50%);">' . date('d M', $curr) . '</div>';
                                     $curr = strtotime('+1 day', $curr);
                                 }
+                            } elseif ($daysCount <= 180) {
+                                // WEEKLY HEADER
+                                $curr = $startDate;
+                                while ($curr <= $endDate) {
+                                    $left = (($curr - $startDate) / $totalSeconds) * 100;
+                                    echo '<div class="absolute whitespace-nowrap text-[10px]" style="left: ' . $left . '%; transform: translateX(-50%);">' . date('d M', $curr) . '</div>';
+                                    $curr = strtotime('+1 week', $curr);
+                                }
                             } else {
-                                // WEEKLY / MONTHLY HEADER
-                                // Show Months (Strong)
+                                // MONTHLY HEADER
                                 $currM = $startDate;
                                 while ($currM <= $endDate) {
                                     $left = (($currM - $startDate) / $totalSeconds) * 100;
                                     echo '<div class="absolute font-bold text-gray-800" style="left: ' . $left . '%">' . date('M Y', $currM) . '</div>';
                                     $currM = strtotime('+1 month', $currM);
                                 }
-
-                                // Optional: Show Week numbers if space permits
                             }
                             ?>
                         </div>
@@ -467,11 +446,27 @@ $userId = $_SESSION['user']['id'] ?? 0;
                     <!-- Grid Lines -->
                     <div class="absolute inset-0 pointer-events-none">
                         <?php
-                        $curr = $startDate;
-                        while ($curr <= $endDate) {
-                            $left = (($curr - $startDate) / $totalSeconds) * 100;
-                            echo '<div class="absolute top-0 bottom-0 border-l border-gray-100 dashed" style="left: ' . $left . '%"></div>';
-                            $curr = strtotime('+1 month', $curr);
+                        if ($daysCount <= 45) {
+                            $curr = $startDate;
+                            while ($curr <= $endDate) {
+                                $left = (($curr - $startDate) / $totalSeconds) * 100;
+                                echo '<div class="absolute top-0 bottom-0 border-l border-gray-100 dashed" style="left: ' . $left . '%"></div>';
+                                $curr = strtotime('+1 day', $curr);
+                            }
+                        } elseif ($daysCount <= 180) {
+                            $curr = $startDate;
+                            while ($curr <= $endDate) {
+                                $left = (($curr - $startDate) / $totalSeconds) * 100;
+                                echo '<div class="absolute top-0 bottom-0 border-l border-gray-100 dashed" style="left: ' . $left . '%"></div>';
+                                $curr = strtotime('+1 week', $curr);
+                            }
+                        } else {
+                            $curr = $startDate;
+                            while ($curr <= $endDate) {
+                                $left = (($curr - $startDate) / $totalSeconds) * 100;
+                                echo '<div class="absolute top-0 bottom-0 border-l border-gray-100 dashed" style="left: ' . $left . '%"></div>';
+                                $curr = strtotime('+1 month', $curr);
+                            }
                         }
                         ?>
                     </div>
@@ -622,27 +617,37 @@ $userId = $_SESSION['user']['id'] ?? 0;
                                         <!-- Grid Layer (Inside) -->
                                         <div class="absolute inset-0 pointer-events-none z-0">
                                             <?php
-                                            // 1. Month Separation (Solid)
-                                            $currG = $startDate;
-                                            while ($currG <= $endDate) {
-                                                $leftG = (($currG - $startDate) / $totalSeconds) * 100;
-                                                echo '<div class="absolute top-0 bottom-0 border-l border-gray-300 pointer-events-none" style="left: ' . $leftG . '%"></div>';
-                                                $currG = strtotime('+1 month', $currG);
+                                            // 1. Month Separation (Always present for long ranges)
+                                            if ($daysCount > 60) {
+                                                $currG = $startDate;
+                                                while ($currG <= $endDate) {
+                                                    $leftG = (($currG - $startDate) / $totalSeconds) * 100;
+                                                    echo '<div class="absolute top-0 bottom-0 border-l border-gray-300 pointer-events-none" style="left: ' . $leftG . '%"></div>';
+                                                    $currG = strtotime('+1 month', $currG);
+                                                }
                                             }
 
-                                            // 2. Day/Week Separation (Dashed)
-                                            if ($daysCount <= 60) {
+                                            // 2. Day/Week Separation
+                                            if ($daysCount <= 45) {
                                                 $currD = strtotime('+1 day', $startDate);
                                                 while ($currD <= $endDate) {
                                                     $leftD = (($currD - $startDate) / $totalSeconds) * 100;
                                                     echo '<div class="absolute top-0 bottom-0 border-l border-gray-200 dashed pointer-events-none" style="left: ' . $leftD . '%"></div>';
                                                     $currD = strtotime('+1 day', $currD);
                                                 }
-                                            } else {
+                                            } elseif ($daysCount <= 180) {
                                                 $currW = strtotime('next monday', $startDate);
                                                 while ($currW <= $endDate) {
                                                     $leftW = (($currW - $startDate) / $totalSeconds) * 100;
                                                     echo '<div class="absolute top-0 bottom-0 border-l border-gray-200 dashed pointer-events-none" style="left: ' . $leftW . '%"></div>';
+                                                    $currW = strtotime('+1 week', $currW);
+                                                }
+                                            } else {
+                                                // Long range: Show Week lines faintly
+                                                $currW = strtotime('next monday', $startDate);
+                                                while ($currW <= $endDate) {
+                                                    $leftW = (($currW - $startDate) / $totalSeconds) * 100;
+                                                    echo '<div class="absolute top-0 bottom-0 border-l border-gray-200/50 dashed pointer-events-none" style="left: ' . $leftW . '%"></div>';
                                                     $currW = strtotime('+1 week', $currW);
                                                 }
                                             }
@@ -667,9 +672,10 @@ $userId = $_SESSION['user']['id'] ?? 0;
                                         <?php endforeach; ?>
 
                                         <!-- Comparison Tooltip -->
-                                        <div class="absolute opacity-0 group-hover:opacity-100 transition bottom-full left-[<?= $planLeft ?>%] mb-2 bg-black text-white text-xs rounded px-2 py-1 whitespace-nowrap z-50 pointer-events-none">
-                                            <strong>Plan:</strong> <?= $ms['start_date'] ?? 'N/A' ?> - <?= $ms['due_date'] ?><br>
-                                            <strong>Latest Actual:</strong> <?= $derivedStart ? date('d M H:i', $derivedStart) : '-' ?> - <?= $derivedEnd ? date('d M H:i', $derivedEnd) : '-' ?>
+                                        <div class="absolute opacity-0 group-hover:opacity-100 transition bottom-full mb-2 bg-gray-900 text-white text-[10px] rounded-lg px-3 py-2 whitespace-nowrap z-50 pointer-events-none shadow-xl border border-white/10" style="left: <?= $planLeft ?>%">
+                                            <div class="font-bold border-b border-white/10 pb-1 mb-1">Timeline Detail</div>
+                                            <div class="flex justify-between gap-4"><span>Plan:</span> <span class="text-gray-300"><?= $ms['start_date'] ?? 'N/A' ?> - <?= $ms['due_date'] ?></span></div>
+                                            <div class="flex justify-between gap-4"><span>Actual:</span> <span class="text-gray-300"><?= $derivedStart ? date('d M H:i', $derivedStart) : '-' ?> - <?= $derivedEnd ? date('d M H:i', $derivedEnd) : '-' ?></span></div>
                                         </div>
                                     </div>
                                 </div>
@@ -715,21 +721,13 @@ $userId = $_SESSION['user']['id'] ?? 0;
                                     <div class="text-gray-600 text-sm bg-gray-50 p-3 rounded-lg border border-gray-100">
                                         <?php
                                         $commentHtml = htmlspecialchars($comment['comment_text']);
-                                        // Highlight @PersonName mentions (sort by length desc to avoid partial matches)
-                                        $people = $summary['InvolvedPeople'] ?? [];
-                                        $people['all'] = 'All Members'; // Add All Members support
-                                        uasort($people, function ($a, $b) {
-                                            return strlen($b) - strlen($a);
-                                        });
-                                        foreach ($people as $uid => $pName) {
-                                            $escaped = htmlspecialchars($pName);
-                                            $commentHtml = str_replace(
-                                                '@' . $escaped,
-                                                '<span class="text-primary font-bold bg-red-50 px-1.5 py-0.5 rounded-md border border-red-100">@' . $escaped . '</span>',
-                                                $commentHtml
-                                            );
-                                        }
-                                        // Highlight #MilestoneName mentions (sort by length desc)
+                                        // Highlight @[Name](uid:ID) mentions
+                                        $commentHtml = preg_replace(
+                                            '/@\[(.*?)\]\(uid:(\w+)\)/',
+                                            '<span class="text-primary font-bold bg-red-50 px-1.5 py-0.5 rounded-md border border-red-100">@$1</span>',
+                                            $commentHtml
+                                        );
+                                        // Highlight #MilestoneName mentions (legacy support)
                                         $milestones = $summary['Milestones'] ?? [];
                                         usort($milestones, function ($a, $b) {
                                             return strlen($b['name']) - strlen($a['name']);
@@ -1247,6 +1245,158 @@ $userId = $_SESSION['user']['id'] ?? 0;
                     });
             }
 
+            function updateActivityStatus(id, currentStatus) {
+                Swal.fire({
+                    title: 'Update Activity Status',
+                    html: `
+                        <div class="text-left space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">New Status</label>
+                                <select id="swal-act-status" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none">
+                                    <option value="incoming" ${currentStatus === 'incoming' ? 'selected' : ''}>Incoming (Planned)</option>
+                                    <option value="in_progress" ${currentStatus === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                                    <!-- Completed is automatic only -->
+                                    <option value="on_hold" ${currentStatus === 'on_hold' ? 'selected' : ''}>On Hold</option>
+                                    <option value="proposed" ${currentStatus === 'proposed' ? 'selected' : ''}>Proposed (New Idea)</option>
+                                    <option value="cancelled" ${currentStatus === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Log Note / Reason</label>
+                                <textarea id="swal-act-note" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none" placeholder="Explain why the status is changing..."></textarea>
+                            </div>
+                        </div>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: 'Update Status',
+                    confirmButtonColor: '#2563eb',
+                    preConfirm: () => {
+                        return {
+                            status: document.getElementById('swal-act-status').value,
+                            note: document.getElementById('swal-act-note').value
+                        };
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const formData = new FormData();
+                        formData.append('id', id);
+                        formData.append('status', result.value.status);
+                        formData.append('note', result.value.note);
+
+                        fetch('?action=change_activity_status', {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(r => r.json())
+                            .then(res => {
+                                if (res.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Updated!',
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    }).then(() => location.reload());
+                                } else {
+                                    Swal.fire('Error', res.message || 'Failed to update', 'error');
+                                }
+                            })
+                            .catch(err => {
+                                Swal.fire('Error', 'Network error', 'error');
+                            });
+                    }
+                });
+            }
+
+            function updateStatus(id, currentStatus, currentActualStartDate, currentActualEndDate) {
+                Swal.fire({
+                    title: 'Update Milestone Status',
+                    html: `
+                    <div class="text-left space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                            <select id="swal-status" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none">
+                                <option value="pending" ${currentStatus === 'pending' ? 'selected' : ''}>Pending</option>
+                                <option value="in_progress" ${currentStatus === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                                <option value="completed" ${currentStatus === 'completed' ? 'selected' : ''}>Completed</option>
+                                <option value="on_hold" ${currentStatus === 'on_hold' ? 'selected' : ''}>On Hold</option>
+                                <option value="proposed" ${currentStatus === 'proposed' ? 'selected' : ''}>Proposed</option>
+                                <option value="cancelled" ${currentStatus === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="mb-4 text-left">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Reason / Note (Plan vs Actual)</label>
+                            <textarea id="swal-note" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none" rows="2" placeholder="Why is the status changing?"></textarea>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Actual Start</label>
+                                <input type="datetime-local" id="swal-start-date" value="${currentActualStartDate ? currentActualStartDate.replace(' ', 'T') : ''}" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Actual End</label>
+                                <input type="datetime-local" id="swal-end-date" value="${currentActualEndDate ? currentActualEndDate.replace(' ', 'T') : ''}" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none">
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Start required for In Progress. End required for Completed.</p>
+                    </div>
+                `,
+                    showCancelButton: true,
+                    confirmButtonText: 'Update',
+                    confirmButtonColor: '#2563eb',
+                    preConfirm: () => {
+                        const status = document.getElementById('swal-status').value;
+                        const note = document.getElementById('swal-note').value;
+                        const startDate = document.getElementById('swal-start-date').value;
+                        const endDate = document.getElementById('swal-end-date').value;
+
+                        if (['in_progress'].includes(status) && !startDate) {
+                            Swal.showValidationMessage('Actual Start Date is required for In Progress');
+                            return false;
+                        }
+                        if (['completed', 'on_hold', 'proposed', 'cancelled'].includes(status) && !endDate) {
+                            Swal.showValidationMessage('Actual End Date is required for this status');
+                            return false;
+                        }
+                        return {
+                            status,
+                            note,
+                            startDate,
+                            endDate
+                        };
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const formData = new FormData();
+                        formData.append('id', id);
+                        formData.append('status', result.value.status);
+                        formData.append('note', result.value.note);
+                        formData.append('actual_start_date', result.value.startDate);
+                        formData.append('actual_end_date', result.value.endDate);
+
+                        fetch('?action=update_milestone_status', {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(r => r.json())
+                            .then(res => {
+                                if (res.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Updated!',
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    }).then(() => location.reload());
+                                } else {
+                                    Swal.fire('Error', res.message || 'Failed to update', 'error');
+                                }
+                            })
+                            .catch(err => {
+                                Swal.fire('Error', 'Network error', 'error');
+                            });
+                    }
+                });
+            }
+
             function rateActivity(id, existingData = null) {
                 Swal.fire({
                     title: existingData ? 'Update My Evaluation' : 'Evaluation & Scoring',
@@ -1360,10 +1510,6 @@ $userId = $_SESSION['user']['id'] ?? 0;
                     }
                 });
             }
-
-            // Ensure updateStatus uses the correct parameters
-            // Redefining just in case to be sure it's the latest version
-            const originalUpdateStatus = window.updateStatus;
         </script>
     </div>
 </div>

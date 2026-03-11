@@ -2,6 +2,33 @@
 // settings.php - Admin only
 if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) return;
 ?>
+<style>
+    #categoryModal.active {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
+    #categoryModal.active #categoryModalContent {
+        transform: scale(1) !important;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #e2e2e2;
+        border-radius: 10px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #d1d1d1;
+    }
+</style>
 <!-- Settings View - Migrated to Tailwind -->
 <div class="flex flex-col gap-6 max-w-4xl">
     <!-- Utility Rates -->
@@ -32,15 +59,33 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                 <i class="ri-tools-line text-xl text-primary"></i>
                 <h3 class="text-lg font-semibold text-gray-900">หมวดหมู่งานซ่อม</h3>
             </div>
-            <button class="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors" onclick="addCategory()">
+            <button class="inline-flex items-center gap-2 px-3 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium transition-colors shadow-sm" onclick="addCategory()">
                 <i class="ri-add-line"></i>
                 เพิ่มหมวดหมู่
             </button>
         </div>
-        <div class="p-6 space-y-3" id="categoriesList">
-            <div class="flex items-center justify-center py-8">
-                <div class="w-8 h-8 border-4 border-gray-200 border-t-primary rounded-full animate-spin"></div>
-            </div>
+        <div class="p-0 overflow-x-auto custom-scrollbar">
+            <table class="w-full min-w-[700px]">
+                <thead>
+                    <tr class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th class="px-6 py-3">ชื่อหมวดหมู่</th>
+                        <th class="px-6 py-3">คำอธิบาย</th>
+                        <th class="px-6 py-3 text-center">ความเร่งด่วน</th>
+                        <th class="px-6 py-3 text-center">สถานะ</th>
+                        <th class="px-6 py-3 text-center">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100" id="categoriesTableBody">
+                    <tr>
+                        <td colspan="5" class="px-6 py-8 text-center text-gray-400">
+                            <div class="flex items-center justify-center gap-2">
+                                <div class="w-5 h-5 border-2 border-gray-200 border-t-primary rounded-full animate-spin"></div>
+                                กำลังโหลด...
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -207,6 +252,94 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
     </div>
 </div>
 
+<!-- Category Modal -->
+<div class="modal-overlay fixed inset-0 bg-black/40 flex items-center justify-center z-50 opacity-0 pointer-events-none transition-all duration-300 px-4" id="categoryModal">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden transition-all duration-300 scale-95" id="categoryModalContent">
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+            <h3 class="text-xl font-extrabold text-gray-900" id="categoryModalTitle">จัดการหมวดหมู่งานซ่อม</h3>
+            <button class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 transition-colors" onclick="closeCategoryModal()">
+                <i class="ri-close-line text-2xl"></i>
+            </button>
+        </div>
+
+        <form id="categoryForm" onsubmit="saveCategory(event)" class="flex-1 overflow-y-auto custom-scrollbar">
+            <input type="hidden" name="id" id="catId">
+            <div class="p-6 md:p-8 flex flex-col md:flex-row gap-8">
+                <!-- Left: Info (40%) -->
+                <div class="w-full md:w-5/12 space-y-5">
+                    <div class="p-5 bg-gray-50/50 rounded-xl border border-gray-100 space-y-5">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">ข้อมูลหมวดหมู่ (Category Info)</label>
+                        <div>
+                            <label class="block mb-1.5 text-sm font-bold text-gray-700">ชื่อหมวดหมู่ <span class="text-red-500">*</span></label>
+                            <input type="text" name="name" id="catName" class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all shadow-sm" required placeholder="เช่น งานไฟฟ้า, งานประปา">
+                        </div>
+                        <div>
+                            <label class="block mb-1.5 text-sm font-bold text-gray-700">คำอธิบาย</label>
+                            <textarea name="description" id="catDesc" rows="4" class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none shadow-sm" placeholder="รายละเอียดเบื้องต้น"></textarea>
+                        </div>
+                        <div>
+                            <label class="block mb-1.5 text-sm font-bold text-gray-700">ความสำคัญหลัก</label>
+                            <select name="priority_level" id="catPriority" class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all shadow-sm">
+                                <option value="low">ต่ำ (Low)</option>
+                                <option value="medium" selected>ปานกลาง (Medium)</option>
+                                <option value="high">สูง (High)</option>
+                                <option value="critical">ฉุกเฉิน (Critical)</option>
+                            </select>
+                        </div>
+                        <div id="catStatusField" class="hidden animate-in slide-in-from-top-2">
+                            <label class="block mb-1.5 text-sm font-bold text-gray-700">สถานะการใช้งาน</label>
+                            <select name="status" id="catStatus" class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all shadow-sm">
+                                <option value="active">เปิดใช้งาน (Active)</option>
+                                <option value="inactive">ปิดใช้งาน (Inactive)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Icon Picker (60%) -->
+                <div class="w-full md:w-7/12 flex flex-col">
+                    <div class="border border-gray-200 rounded-xl bg-white flex flex-col h-full overflow-hidden shadow-sm">
+                        <!-- Preview Box -->
+                        <div class="px-4 py-3 bg-gray-50/50 border-b border-gray-100 flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-white border border-gray-200 shadow flex items-center justify-center shrink-0">
+                                <i id="catIconPreview" class="ri-tools-line text-3xl" style="color: #A82025"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Selected Icon</div>
+                                <div class="text-sm font-black text-gray-900 truncate" id="selectedIconName">tools-line</div>
+                            </div>
+                        </div>
+                        <!-- Search and Grid -->
+                        <div class="p-4 flex-1 flex flex-col min-h-0 bg-white">
+                            <div class="relative mb-3 shrink-0">
+                                <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                <input type="text" id="iconSearch" class="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="ค้นหาไอคอน..." oninput="filterIcons(this.value)">
+                            </div>
+                            <div class="grid grid-cols-6 sm:grid-cols-8 lg:grid-cols-10 gap-1.5 overflow-y-auto p-1 max-h-[280px] custom-scrollbar" id="iconGrid">
+                                <!-- JS Populated -->
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" name="icon" id="catIcon" value="ri-tools-line">
+                </div>
+            </div>
+        </form>
+
+        <!-- Footer -->
+        <div class="px-8 py-5 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 shrink-0">
+            <button type="button" class="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all active:scale-95" onclick="closeCategoryModal()">
+                ยกเลิก
+            </button>
+            <button type="button" class="px-10 py-2.5 text-sm font-black text-white bg-primary hover:brightness-110 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center gap-2" onclick="saveCategory()">
+                <i class="ri-save-3-line text-lg"></i>
+                บันทึกข้อมูล
+            </button>
+        </div>
+    </div>
+
+</div>
+
 <script>
     let rates = [];
     let categories = [];
@@ -271,14 +404,14 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
         grid.innerHTML = rates.map(r => `
         <div class="p-5 bg-gray-50 border border-gray-200 rounded-lg">
             <div class="flex items-center gap-3 mb-4">
-                <div class="w-11 h-11 rounded-lg ${r.utility_type === 'electric' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'} flex items-center justify-center text-xl">
-                    <i class="ri-${r.utility_type === 'electric' ? 'flashlight-line' : 'drop-line'}"></i>
+                <div class="w-11 h-11 rounded-lg ${r.rate_type === 'electricity' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'} flex items-center justify-center text-xl">
+                    <i class="ri-${r.rate_type === 'electricity' ? 'flashlight-line' : 'drop-line'}"></i>
                 </div>
-                <span class="font-medium text-gray-900">${r.utility_type === 'electric' ? 'ค่าไฟฟ้า' : 'ค่าน้ำประปา'}</span>
+                <span class="font-medium text-gray-900">${r.rate_type === 'electricity' ? 'ค่าไฟฟ้า' : 'ค่าน้ำประปา'}</span>
             </div>
             <div class="flex items-center gap-2">
                 <input type="number" class="flex-1 px-3 py-2.5 text-right border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" 
-                       id="${r.utility_type}Rate" 
+                       id="${r.rate_type}Rate" 
                        value="${r.rate_per_unit}" 
                        step="0.01"
                        data-id="${r.id}">
@@ -290,14 +423,14 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 
     async function saveRates() {
         try {
-            const electricRate = document.getElementById('electricRate')?.value;
+            const electricRate = document.getElementById('electricityRate')?.value;
             const waterRate = document.getElementById('waterRate')?.value;
 
             const updates = [];
             if (electricRate) {
                 updates.push({
-                    id: document.getElementById('electricRate')?.dataset.id ? parseInt(document.getElementById('electricRate').dataset.id) : null,
-                    utility_type: 'electric',
+                    id: document.getElementById('electricityRate')?.dataset.id ? parseInt(document.getElementById('electricityRate').dataset.id) : null,
+                    utility_type: 'electricity',
                     rate_per_unit: parseFloat(electricRate)
                 });
             }
@@ -320,7 +453,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 
     async function loadCategories() {
         try {
-            const result = await apiCall('maintenance', 'getCategories');
+            const result = await apiCall('maintenance', 'getAllCategories');
             categories = result.categories || [];
             renderCategories();
         } catch (error) {
@@ -329,28 +462,161 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
     }
 
     function renderCategories() {
-        const list = document.getElementById('categoriesList');
+        const body = document.getElementById('categoriesTableBody');
 
         if (categories.length === 0) {
-            list.innerHTML = `<div class="text-center py-8 text-gray-400"><p>ยังไม่มีหมวดหมู่งานซ่อม</p></div>`;
+            body.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-gray-400">ยังไม่มีหมวดหมู่งานซ่อม</td></tr>`;
             return;
         }
 
-        list.innerHTML = categories.map(c => `
-        <div class="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-            <div class="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center text-primary">
-                <i class="ri-${c.icon || 'tools-line'}"></i>
-            </div>
-            <div class="flex-1">
-                <div class="font-medium text-gray-900">${escapeHtml(c.name)}</div>
-                ${c.description ? `<div class="text-sm text-gray-500">${escapeHtml(c.description)}</div>` : ''}
-            </div>
-        </div>
-    `).join('');
+        const priorityLabels = {
+            'low': 'ต่ำ',
+            'medium': 'ปานกลาง',
+            'high': 'สูง',
+            'critical': 'ฉุกเฉิน'
+        };
+
+        const priorityColors = {
+            'low': 'bg-emerald-50 text-emerald-600',
+            'medium': 'bg-amber-50 text-amber-600',
+            'high': 'bg-orange-50 text-orange-600',
+            'critical': 'bg-red-50 text-red-600'
+        };
+
+        body.innerHTML = categories.map(c => {
+            let iconClass = c.icon || 'ri-tools-line';
+            // Ensure ri- prefix exists
+            if (!iconClass.startsWith('ri-')) iconClass = 'ri-' + iconClass;
+            // Ensure -line or -fill suffix
+            if (!iconClass.includes('-line') && !iconClass.includes('-fill')) {
+                iconClass += '-line';
+            }
+
+            return `
+            <tr class="hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0" style="color: #A82025">
+                            <i class="${iconClass} text-lg"></i>
+                        </div>
+                        <div class="font-medium text-gray-900 whitespace-nowrap">${escapeHtml(c.name)}</div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-500 min-w-[200px]">${escapeHtml(c.description || '-')}</td>
+                <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${priorityColors[c.priority_level] || 'bg-gray-50 text-gray-600'}">
+                        ${priorityLabels[c.priority_level] || 'ทั่วไป'}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${c.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}">
+                        ${c.status === 'active' ? 'ใช้งาน' : 'ไม่ใช้งาน'}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-center">
+                    <div class="flex items-center justify-center gap-2">
+                        <button onclick="editCategory(${c.id})" class="p-1.5 text-gray-500 hover:text-primary hover:bg-gray-100 rounded transition-colors" title="แก้ไข">
+                            <i class="ri-edit-line"></i>
+                        </button>
+                        <button onclick="deleteCategory(${c.id}, '${escapeHtml(c.name)}')" class="p-1.5 text-gray-500 hover:text-danger hover:bg-red-50 rounded transition-colors" title="ลบ">
+                            <i class="ri-delete-bin-line"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        }).join('');
     }
 
     function addCategory() {
-        showToast('ฟังก์ชันเพิ่มหมวดหมู่กำลังพัฒนา', 'info');
+        document.getElementById('categoryModalTitle').textContent = 'เพิ่มหมวดหมู่งานซ่อม';
+        document.getElementById('categoryForm').reset();
+        document.getElementById('catId').value = '';
+        document.getElementById('catIcon').value = 'ri-tools-line';
+        document.getElementById('selectedIconName').textContent = 'tools-line';
+        document.getElementById('catIconPreview').className = 'ri-tools-line text-3xl transition-all';
+        document.getElementById('catIconPreview').style.color = '#A82025';
+        document.getElementById('iconSearch').value = '';
+        document.getElementById('catStatusField').classList.add('hidden');
+        document.getElementById('categoryModal').classList.add('active');
+        initIconPicker();
+    }
+
+    function editCategory(id) {
+        const cat = categories.find(c => c.id == id);
+        if (!cat) return;
+
+        let iconName = cat.icon || 'ri-tools-line';
+        // Ensure ri- prefix
+        if (!iconName.startsWith('ri-')) iconName = 'ri-' + iconName;
+
+        document.getElementById('categoryModalTitle').textContent = 'แก้ไขหมวดหมู่งานซ่อม';
+        document.getElementById('catId').value = cat.id;
+        document.getElementById('catName').value = cat.name || '';
+        document.getElementById('catDesc').value = cat.description || '';
+        document.getElementById('catIcon').value = iconName;
+        document.getElementById('selectedIconName').textContent = iconName.replace('ri-', '');
+        document.getElementById('catIconPreview').className = `${iconName} text-3xl transition-all`;
+        document.getElementById('catIconPreview').style.color = '#A82025';
+        document.getElementById('iconSearch').value = '';
+        document.getElementById('catPriority').value = cat.priority_level || 'medium';
+        document.getElementById('catStatus').value = cat.status || 'active';
+        document.getElementById('catStatusField').classList.remove('hidden');
+        document.getElementById('categoryModal').classList.add('active');
+        initIconPicker();
+    }
+
+    function closeCategoryModal() {
+        document.getElementById('categoryModal').classList.remove('active');
+    }
+
+    async function saveCategory(e) {
+        if (e) e.preventDefault();
+        const id = document.getElementById('catId').value;
+        const name = document.getElementById('catName').value.trim();
+
+        if (!name) {
+            showToast('กรุณาระบุชื่อหมวดหมู่', 'error');
+            return;
+        }
+
+        const data = {
+            name: name,
+            description: document.getElementById('catDesc').value.trim(),
+            icon: document.getElementById('catIcon').value.trim(),
+            priority_level: document.getElementById('catPriority').value,
+        };
+
+        try {
+            if (id) {
+                data.id = id;
+                data.status = document.getElementById('catStatus').value;
+                await apiCall('maintenance', 'updateCategory', data, 'POST');
+                showToast('อัพเดทหมวดหมู่สำเร็จ', 'success');
+            } else {
+                await apiCall('maintenance', 'createCategory', data, 'POST');
+                showToast('เพิ่มหมวดหมู่สำเร็จ', 'success');
+            }
+            closeCategoryModal();
+            await loadCategories();
+        } catch (error) {
+            showToast(error.message || 'เกิดข้อผิดพลาด', 'error');
+        }
+    }
+
+    async function deleteCategory(id, name) {
+        const confirmed = await showConfirm(`ต้องการลบหมวดหมู่ "${name}" หรือไม่?`, 'ยืนยันการลบ');
+        if (!confirmed) return;
+
+        try {
+            await apiCall('maintenance', 'deleteCategory', {
+                id: id
+            }, 'POST');
+            showToast('ลบหมวดหมู่สำเร็จ', 'success');
+            await loadCategories();
+        } catch (error) {
+            showToast(error.message || 'เกิดข้อผิดพลาด', 'error');
+        }
     }
 
     // ===================== ROOM TYPES =====================
@@ -704,6 +970,67 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
             }, 'POST');
             showToast('บันทึกอีเมลสำเร็จ', 'success');
         } catch (error) {}
+    }
+
+    const POPULAR_ICONS = [
+        'ri-tools-line', 'ri-hammer-line', 'ri-wrench-line', 'ri-flashlight-line', 'ri-droplet-line',
+        'ri-plug-line', 'ri-lightbulb-line', 'ri-temp-hot-line', 'ri-fire-line', 'ri-water-flash-line',
+        'ri-door-open-line', 'ri-window-line', 'ri-home-line', 'ri-building-line', 'ri-hotel-bed-line',
+        'ri-snowflake-line', 'ri-windy-line', 'ri-paint-brush-line', 'ri-paint-line', 'ri-brush-line',
+        'ri-lock-line', 'ri-key-line', 'ri-shield-line', 'ri-alarm-warning-line', 'ri-error-warning-line',
+        'ri-settings-line', 'ri-settings-3-line', 'ri-dashboard-line', 'ri-layout-line', 'ri-menu-line',
+        'ri-user-line', 'ri-team-line', 'ri-group-line', 'ri-contacts-line', 'ri-account-circle-line',
+        'ri-file-line', 'ri-file-list-line', 'ri-folder-line', 'ri-clipboard-line', 'ri-article-line',
+        'ri-calendar-line', 'ri-time-line', 'ri-timer-line', 'ri-alarm-line', 'ri-history-line',
+        'ri-money-dollar-circle-line', 'ri-wallet-line', 'ri-bank-card-line', 'ri-coin-line', 'ri-hand-coin-line',
+        'ri-car-line', 'ri-bus-line', 'ri-truck-line', 'ri-plane-line', 'ri-ship-line',
+        'ri-shirt-line', 'ri-briefcase-line', 'ri-shopping-cart-line', 'ri-archive-line', 'ri-inbox-line',
+        'ri-image-line', 'ri-camera-line', 'ri-video-line', 'ri-mic-line', 'ri-volume-up-line',
+        'ri-sun-line', 'ri-moon-line', 'ri-cloud-line', 'ri-leaf-line', 'ri-plant-line',
+        'ri-flag-line', 'ri-bookmark-line', 'ri-star-line', 'ri-heart-line', 'ri-rocket-line'
+    ];
+
+    function initIconPicker() {
+        // Init Grid
+        renderIconGrid(POPULAR_ICONS);
+    }
+
+    function renderIconGrid(icons) {
+        const grid = document.getElementById('iconGrid');
+        const currentIcon = document.getElementById('catIcon').value;
+        const currentColor = '#A82025';
+
+        // Ensure icon has -line or -fill suffix for display
+        const getDisplayIcon = (name) => {
+            if (name && !name.includes('-line') && !name.includes('-fill')) return name + '-line';
+            return name;
+        };
+
+        grid.innerHTML = icons.map(icon => {
+            const displayIcon = getDisplayIcon(icon);
+            return `
+                <button type="button" class="group flex items-center justify-center aspect-square rounded-lg bg-white border border-gray-100 hover:border-primary hover:bg-primary/5 transition-all ${currentIcon === icon ? 'border-primary bg-primary/10 ring-1 ring-primary' : ''}" 
+                        onclick="selectIcon('${icon}')" title="${icon}">
+                    <i class="${displayIcon} text-lg transition-transform group-hover:scale-110" style="color: ${currentColor}"></i>
+                </button>
+            `;
+        }).join('');
+    }
+
+    function selectIcon(icon) {
+        document.getElementById('catIcon').value = icon;
+        document.getElementById('selectedIconName').textContent = icon.replace('ri-', '');
+
+        // Use the icon directly since POPULAR_ICONS already has ri- prefix
+        document.getElementById('catIconPreview').className = `${icon} text-3xl`;
+
+        // Refresh grid to update selection ring
+        filterIcons(document.getElementById('iconSearch').value);
+    }
+
+    function filterIcons(query) {
+        const filtered = POPULAR_ICONS.filter(icon => icon.toLowerCase().includes(query.toLowerCase()));
+        renderIconGrid(filtered);
     }
 
     async function testNotificationEmail() {

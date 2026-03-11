@@ -191,7 +191,7 @@
                         <span class="detail-label">ผู้ขอจอง:</span>
                         <span class="detail-value">
                             <?php
-                            echo htmlspecialchars($booking['requester_name'] ?? $booking['fullname'] ?? $booking['username'] ?? 'Unknown User');
+                            echo htmlspecialchars($booking['requester_name'] ?? $booking['fullname'] ?? $booking['EmpCode'] ?? 'Unknown User');
                             ?>
                         </span>
                     </div>

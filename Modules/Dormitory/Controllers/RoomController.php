@@ -23,9 +23,9 @@ class RoomController extends DormBaseController
 
         // ค้นหาจากตาราง users
         $stmt = $this->pdo->prepare("
-            SELECT username as code, fullname as name, email, department, id
+            SELECT EmpCode as code, fullname as name, email, department, id
             FROM users 
-            WHERE (username LIKE ? OR fullname LIKE ? OR email LIKE ?) 
+            WHERE (EmpCode LIKE ? OR fullname LIKE ? OR email LIKE ?) 
             AND is_active = 1
             LIMIT 10
         ");
@@ -111,7 +111,15 @@ class RoomController extends DormBaseController
             }
         }
 
-        return $this->success(['rooms' => $rooms]);
+        // 3. ดึงข้อมูล Layout Elements (ถ้ามีการเลือกชั้นและอาคาร)
+        $elements = [];
+        if ($buildingId && $floor) {
+            $stmtElem = $this->pdo->prepare("SELECT * FROM dorm_layout_elements WHERE building_id = ? AND floor = ?");
+            $stmtElem->execute([$buildingId, $floor]);
+            $elements = $stmtElem->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        return $this->success(['rooms' => $rooms, 'elements' => $elements]);
     }
 
     /**
@@ -476,7 +484,6 @@ class RoomController extends DormBaseController
             // ลบญาติออกจาก array
             array_splice($relatives, $relativeIndex, 1);
 
-            // อัพเดท database
             $newCount = count($relatives);
             $newDetails = $newCount > 0 ? json_encode($relatives, JSON_UNESCAPED_UNICODE) : null;
 
@@ -486,6 +493,26 @@ class RoomController extends DormBaseController
                 WHERE id = ?
             ");
             $stmt->execute([$newCount, $newDetails, $occupancyId]);
+
+            // อัพเดท Database สร้าง Log ประวัติการเข้าพัก
+            $stmtLog = $this->pdo->prepare("
+                INSERT INTO dorm_occupancies 
+                (room_id, employee_id, employee_name, employee_email, department, check_in_date, check_out_date, notes, accompanying_persons, accompanying_details, created_by, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'relative_removed')
+            ");
+            $stmtLog->execute([
+                $occupancy['room_id'],
+                $occupancy['employee_id'],
+                $occupancy['employee_name'],
+                $occupancy['employee_email'],
+                $occupancy['department'],
+                date('Y-m-d'),
+                date('Y-m-d'),
+                "ระบบบันทึก: นำญาติออก (" . ($removedRelative['name'] ?? 'Unknown') . ")",
+                $newCount,
+                $newDetails,
+                $this->user['id'] ?? null
+            ]);
 
             // อัพเดทสถานะห้อง
             require_once __DIR__ . '/../Services/RoomService.php';
@@ -691,5 +718,75 @@ class RoomController extends DormBaseController
         $room['occupants'] = $occupants;
 
         return $this->success(['room' => $room]);
+    }
+
+    /**
+     * อัพเดทตำแหน่งเลย์เอาต์ห้องพักและองค์ประกอบอื่นๆ
+     */
+    public function updateLayout($data)
+    {
+        $this->requireAuth();
+        $this->requirePermission('manage');
+
+        $buildingId = $data['building_id'] ?? null;
+        $floor = $data['floor'] ?? null;
+        $layouts = $data['layouts'] ?? [];
+        $elements = $data['elements'] ?? [];
+
+        if (!$buildingId || !$floor) {
+            return $this->error('กรุณาระบุอาคารและชั้น');
+        }
+
+        $this->pdo->beginTransaction();
+        try {
+            // 1. อัพเดทตำแหน่งห้องพัก
+            $stmtRoom = $this->pdo->prepare("
+                UPDATE dorm_rooms 
+                SET layout_x = ?, layout_y = ?, layout_w = ?, layout_h = ?
+                WHERE id = ? AND building_id = ? AND floor = ?
+            ");
+
+            foreach ($layouts as $layout) {
+                if (empty($layout['id'])) continue;
+                $stmtRoom->execute([
+                    $layout['x'] ?? 0,
+                    $layout['y'] ?? 0,
+                    $layout['w'] ?? 1,
+                    $layout['h'] ?? 1,
+                    $layout['id'],
+                    $buildingId,
+                    $floor
+                ]);
+            }
+
+            // 2. อัพเดทองค์ประกอบอื่นๆ (ลบของเก่าแล้วเพิ่มใหม่สำหรับชั้นนี้)
+            $this->pdo->prepare("DELETE FROM dorm_layout_elements WHERE building_id = ? AND floor = ?")
+                ->execute([$buildingId, $floor]);
+
+            if (!empty($elements)) {
+                $stmtElem = $this->pdo->prepare("
+                    INSERT INTO dorm_layout_elements (building_id, floor, type, x, y, w, h, text)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                foreach ($elements as $el) {
+                    $stmtElem->execute([
+                        $buildingId,
+                        $floor,
+                        $el['type'],
+                        $el['x'],
+                        $el['y'],
+                        $el['w'] ?? 1,
+                        $el['h'] ?? 1,
+                        $el['text'] ?? null
+                    ]);
+                }
+            }
+
+            $this->pdo->commit();
+            return $this->success([], 'บันทึกตำแหน่งเลย์เอาต์สำเร็จ');
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            return $this->error('เกิดข้อผิดพลาด: ' . $e->getMessage());
+        }
     }
 }

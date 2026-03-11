@@ -1,0 +1,78 @@
+{{!
+    Department Cohort Management Template
+}}
+<div class="local_departmentcohorts_container">
+    <h3>{{#str}}managedeptcohorts, local_departmentcohorts{{/str}}</h3>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <form action="{{baseurl}}" method="get" class="form-inline">
+                <label for="deptsearch" class="mr-2">{{#str}}searchdept, local_departmentcohorts{{/str}}:</label>
+                <input type="text" id="deptsearch" name="search" value="{{search}}" class="form-control mr-2" placeholder="e.g. IT">
+                <button type="submit" class="btn btn-primary">{{#str}}search, core{{/str}}</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Department List -->
+        <div class="col-md-4">
+            <h4>{{#str}}deptlist, local_departmentcohorts{{/str}}</h4>
+            <div class="list-group">
+                {{#departments}}
+                <a href="{{baseurl}}&dept={{name}}" class="list-group-item list-group-item-action {{#active}}active{{/active}}">
+                    {{name}}
+                </a>
+                {{/departments}}
+                {{^departments}}
+                <div class="alert alert-info">{{#str}}nodeptfound, local_departmentcohorts{{/str}}</div>
+                {{/departments}}
+            </div>
+        </div>
+
+        <!-- Users Preview & Actions -->
+        <div class="col-md-8">
+            {{#selected_dept}}
+            <h4>{{#str}}userspreview, local_departmentcohorts{{/str}}: {{selected_dept}}</h4>
+            
+            <table class="table table-striped table-hover bg-white shadow-sm mt-3">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>First Name</th>
+                        <th>Last Name</th>
+                        <th>Email</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#users}}
+                    <tr>
+                        <td>{{id}}</td>
+                        <td>{{firstname}}</td>
+                        <td>{{lastname}}</td>
+                        <td>{{email}}</td>
+                    </tr>
+                    {{/users}}
+                    {{^users}}
+                    <tr><td colspan="4" class="text-center">No users found.</td></tr>
+                    {{/users}}
+                </tbody>
+            </table>
+
+            <div class="mt-4 d-flex gap-2">
+                <form action="{{baseurl}}" method="post">
+                    <input type="hidden" name="dept" value="{{selected_dept}}">
+                    <input type="hidden" name="sesskey" value="{{sesskey}}">
+                    <button type="submit" name="action" value="create" class="btn btn-success">{{#str}}createcohort, local_departmentcohorts{{/str}}</button>
+                    <button type="submit" name="action" value="sync" class="btn btn-primary">{{#str}}syncmembers, local_departmentcohorts{{/str}}</button>
+                </form>
+            </div>
+            {{/selected_dept}}
+            {{^selected_dept}}
+            <div class="alert alert-light text-center py-5 border">
+                Select a department from the left to preview users and manage cohorts.
+            </div>
+            {{/selected_dept}}
+        </div>
+    </div>
+</div>

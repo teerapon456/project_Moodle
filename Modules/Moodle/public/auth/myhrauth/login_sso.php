@@ -2,7 +2,23 @@
 define('CLI_SCRIPT', false); // This is a web script
 require('../../../config.php');
 require_once($CFG->libdir . '/authlib.php');
-require_once($CFG->dirroot . '/user/lib.php'); // เพิ่มบรรทัดนี้เพื่อเรียกใช้ user_create_user()
+require_once($CFG->dirroot . '/user/lib.php');
+
+// Check if myhrauth plugin is enabled
+if (!is_enabled_auth('myhrauth')) {
+    $loginurl = $CFG->wwwroot . '/login/index.php';
+    $message = get_string('auth_myhrauth_disabled', 'auth_myhrauth');
+    // If string not found or shows as placeholder, use multilingual fallback
+    if (strpos($message, '[[') === 0) {
+        if (current_language() == 'th') {
+            $message = 'ระบบ SSO ถูกปิดการใช้งานอยู่ กรุณาเข้าสู่ระบบด้วยบัญชีปกติ';
+        } else {
+            $message = 'SSO is currently disabled. Please login with your local account.';
+        }
+    }
+    redirect($loginurl, $message, 5);
+    exit;
+}
 
 $token = optional_param('token', '', PARAM_ALPHANUM);
 

@@ -11,6 +11,7 @@ if ($basePath === '') {
     $scriptDir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
     $basePath = preg_replace('#/Modules/OrgChart$#i', '', $scriptDir);
 }
+
 if ($basePath === '') $basePath = '/';
 $baseRoot = rtrim($basePath, '/');
 $linkBase = ($baseRoot ? $baseRoot . '/' : '/');

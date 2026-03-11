@@ -27,6 +27,7 @@ class UrlHelper
         // 2. Auto-detect from script path and project root
         $scriptPath = $_SERVER['SCRIPT_FILENAME'] ?? '';
         $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+        $requestUri = $_SERVER['REQUEST_URI'] ?? '';
 
         if ($scriptPath && $scriptName) {
             // Find project root by looking for composer.json or .env

@@ -1,0 +1,132 @@
+/**
+ * Autocomplete styles for Course History
+ */
+
+/* Autocomplete dropdown container */
+.autocomplete-dropdown {
+    position: absolute;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    max-height: 200px;
+    overflow-y: auto;
+    width: 100%;
+    box-sizing: border-box;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Autocomplete items */
+.autocomplete-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background-color 0.2s ease;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.selected {
+    background-color: #f0f0f0;
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+/* Loading indicator */
+.autocomplete-loading {
+    padding: 8px 12px;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+}
+
+/* No results message */
+.autocomplete-no-results {
+    padding: 8px 12px;
+    text-align: center;
+    color: #999;
+    font-style: italic;
+}
+
+/* Form input styling with autocomplete */
+.form-autocomplete {
+    position: relative;
+}
+
+.form-autocomplete input[type="text"] {
+    padding-right: 20px;
+}
+
+/* Autocomplete indicator */
+.autocomplete-indicator {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
+    font-size: 12px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .autocomplete-dropdown {
+        max-height: 150px;
+    }
+    
+    .autocomplete-item {
+        padding: 6px 10px;
+        font-size: 14px;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .autocomplete-dropdown {
+        background: #2d2d2d;
+        border-color: #555;
+    }
+    
+    .autocomplete-item {
+        border-bottom-color: #444;
+        color: #fff;
+    }
+    
+    .autocomplete-item:hover,
+    .autocomplete-item.selected {
+        background-color: #444;
+    }
+    
+    .autocomplete-no-results,
+    .autocomplete-loading {
+        color: #999;
+    }
+}
+
+/* Focus states */
+.form-autocomplete input[type="text"]:focus + .autocomplete-dropdown {
+    border-color: #007bff;
+}
+
+/* Accessibility */
+.autocomplete-item:focus {
+    outline: 2px solid #007bff;
+    outline-offset: -2px;
+}
+
+/* Animation */
+.autocomplete-dropdown {
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

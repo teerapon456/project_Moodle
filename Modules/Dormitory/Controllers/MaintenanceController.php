@@ -11,7 +11,19 @@ require_once __DIR__ . '/../../../core/Services/NotificationService.php';
 class MaintenanceController extends DormBaseController
 {
     /**
-     * รายการหมวดหมู่งานซ่อม
+     * รายการหมวดหมู่งานซ่อม (ทั้งหมด - สำหรับหน้าตั้งค่า)
+     */
+    public function getAllCategories()
+    {
+        $this->requireAuth();
+        $this->requirePermission('manage');
+
+        $stmt = $this->pdo->query("SELECT * FROM dorm_maintenance_categories ORDER BY name");
+        return $this->success(['categories' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    }
+
+    /**
+     * รายการหมวดหมู่งานซ่อม (เฉพาะที่เปิดการใช้งาน)
      */
     public function getCategories()
     {
@@ -21,6 +33,92 @@ class MaintenanceController extends DormBaseController
             ORDER BY name
         ");
         return $this->success(['categories' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    }
+
+    /**
+     * สร้างหมวดหมู่ใหม่
+     */
+    public function createCategory($data)
+    {
+        $this->requireAuth();
+        $this->requirePermission('manage');
+
+        $name = trim($data['name'] ?? '');
+        if (empty($name)) {
+            return $this->error('กรุณาระบุชื่อหมวดหมู่');
+        }
+
+        $stmt = $this->pdo->prepare("INSERT INTO dorm_maintenance_categories (name, description, icon, priority_level, status) VALUES (?, ?, ?, ?, 'active')");
+        $stmt->execute([
+            $data['name'],
+            $data['description'] ?? null,
+            $data['icon'] ?? 'tools-line',
+            $data['priority_level'] ?? 'medium'
+        ]);
+
+        return $this->success(['id' => $this->pdo->lastInsertId()], 'สร้างหมวดหมู่สำเร็จ');
+    }
+
+    /**
+     * แก้ไขหมวดหมู่
+     */
+    public function updateCategory($data)
+    {
+        $this->requireAuth();
+        $this->requirePermission('manage');
+
+        $id = (int)($data['id'] ?? 0);
+        if (!$id) {
+            return $this->error('ไม่พบ ID หมวดหมู่');
+        }
+
+        $name = trim($data['name'] ?? '');
+        if (empty($name)) {
+            return $this->error('กรุณาระบุชื่อหมวดหมู่');
+        }
+
+        $stmt = $this->pdo->prepare("UPDATE dorm_maintenance_categories SET name = ?, description = ?, icon = ?, priority_level = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+        $stmt->execute([
+            $data['name'],
+            $data['description'] ?? null,
+            $data['icon'] ?? 'tools-line',
+            $data['priority_level'] ?? 'medium',
+            $data['status'] ?? 'active',
+            $data['id']
+        ]);
+
+        return $this->success([], 'อัพเดทหมวดหมู่สำเร็จ');
+    }
+
+    /**
+     * ลบหมวดหมู่ (Soft delete by changing status)
+     */
+    public function deleteCategory($data)
+    {
+        $this->requireAuth();
+        $this->requirePermission('manage');
+
+        $id = (int)($data['id'] ?? 0);
+        if (!$id) {
+            return $this->error('ไม่พบ ID หมวดหมู่');
+        }
+
+        // ตรวจสอบว่ามีรายการแจ้งซ่อมใช้พ่วงอยู่หรือไม่
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM dorm_maintenance_requests WHERE category_id = ?");
+        $stmt->execute([$id]);
+        $count = $stmt->fetchColumn();
+
+        if ($count > 0) {
+            // ถ้ามีรายการพ่วงอยู่ ให้เปลี่ยนเป็น inactive แทนการลบจริง
+            $stmt = $this->pdo->prepare("UPDATE dorm_maintenance_categories SET status = 'inactive' WHERE id = ?");
+            $stmt->execute([$id]);
+            return $this->success([], 'ปิดการใช้งานหมวดหมู่แล้วเนื่องจากมีรายการพ่วงอยู่ (' . $count . ' รายการ)');
+        } else {
+            // ถ้าไม่มีพ่วง ลบจริงได้เลย
+            $stmt = $this->pdo->prepare("DELETE FROM dorm_maintenance_categories WHERE id = ?");
+            $stmt->execute([$id]);
+            return $this->success([], 'ลบหมวดหมู่สำเร็จ');
+        }
     }
 
     /**

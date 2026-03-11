@@ -23,10 +23,20 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
             <option value="suite">ห้องชุด</option>
         </select>
     </div>
-    <button class="inline-flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md" onclick="openAddRoomModal()">
-        <i class="ri-add-line"></i>
-        เพิ่มห้องพัก
-    </button>
+    <div class="flex flex-wrap gap-2">
+        <a href="?page=layout-display" class="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md">
+            <i class="ri-map-2-line"></i>
+            ดูผังห้องพัก (Layout)
+        </a>
+        <a href="?page=layout-designer" class="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md">
+            <i class="ri-layout-grid-line"></i>
+            ออกแบบผัง
+        </a>
+        <button class="inline-flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md" onclick="openAddRoomModal()">
+            <i class="ri-add-line"></i>
+            เพิ่มห้องพัก
+        </button>
+    </div>
 </div>
 
 <!-- Room Stats -->
@@ -511,11 +521,13 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
         };
 
         grid.innerHTML = rooms.map(room => {
-            // Calculate total occupants including accompanying persons
+            // Calculate total occupants (only primary) and sum relatives separately
             let totalOccupants = 0;
+            let totalRelatives = 0;
             if (room.occupants && room.occupants.length > 0) {
+                totalOccupants = room.occupants.length;
                 room.occupants.forEach(occ => {
-                    totalOccupants += 1 + parseInt(occ.accompanying_persons || 0);
+                    totalRelatives += parseInt(occ.accompanying_persons || 0);
                 });
             }
 
@@ -523,7 +535,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
             <div class="bg-white border border-gray-200 rounded-xl p-4 cursor-pointer transition-all hover:border-primary hover:-translate-y-0.5 hover:shadow-md border-t-[3px] ${statusColors[room.status] || ''}" onclick="showRoomDetail(${room.id})">
                 <div class="flex items-center justify-between mb-1">
                     <div class="text-lg font-semibold text-gray-900">${room.building_code}${room.room_number}</div>
-                    ${totalOccupants > 0 ? `<span class="text-xs text-gray-500">${totalOccupants}/${room.capacity}</span>` : ''}
+                    ${totalOccupants > 0 ? `<span class="text-xs text-gray-500">${totalOccupants}/${room.capacity} ${totalRelatives > 0 ? `<span class="text-purple-600">(+ญาติ ${totalRelatives})</span>` : ''}</span>` : ''}
                 </div>
                 <div class="text-sm text-gray-500 mb-3">${getRoomType(room.room_type)} • ชั้น ${room.floor}</div>
                 ${room.occupants && room.occupants.length > 0 ? room.occupants.map(occ => `
@@ -658,7 +670,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                             </div>
                         `
         }).join('')
-    } < /div> </div >
+    } </div></div>
     ` : ''}
             
             <div class="flex flex-wrap gap-3 pt-4 border-t border-gray-100">
@@ -801,12 +813,15 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
         } else {
             const tempName = document.getElementById('tempName').value;
             const tempPhone = document.getElementById('tempPhone').value;
+            const tempIdCard = document.getElementById('tempIdCard').value;
+
             if (!tempName) {
                 showToast('กรุณากรอกชื่อ-นามสกุล', 'error');
                 return;
             }
             data.employee_name = tempName;
-            data.employee_id = 'TEMP_' + Date.now();
+            // Use ID Card if provided, otherwise fallback to TEMP_ + timestamp
+            data.employee_id = tempIdCard ? tempIdCard.trim() : 'TEMP_' + Date.now();
             data.notes = (data.notes || '') + `\n[ข้อมูลผู้พักชั่วคราว]\nโทร: ${tempPhone}\nหน่วยงาน: ${document.getElementById('tempCompany').value}`;
         }
 

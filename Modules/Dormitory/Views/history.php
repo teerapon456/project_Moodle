@@ -132,12 +132,16 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                     </div>
                 </td>
                 <td class="px-4 py-3">
-                    ${item.check_out_date 
+                    ${item.check_out_date && item.status === 'checked_out'
                         ? `<div class="flex items-center gap-1.5 text-danger"><i class="ri-logout-box-r-line"></i>${formatDate(item.check_out_date)}</div>` 
-                        : '<span class="text-success font-medium">ยังพักอยู่</span>'}
+                        : (item.status === 'active' ? '<span class="text-success font-medium">ยังพักอยู่</span>' : '<span class="text-gray-400">-</span>')}
                 </td>
                 <td class="px-4 py-3">
-                    <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${item.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'}">
+                    <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
+                        item.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 
+                        (item.status === 'relative_added' ? 'bg-purple-100 text-purple-800' : 
+                        (item.status === 'relative_removed' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-600'))
+                    }">
                         ${getStatusText(item.status)}
                     </span>
                 </td>
@@ -185,7 +189,10 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
     }
 
     function getStatusText(status) {
-        return status === 'active' ? 'พักอยู่' : 'ออกแล้ว';
+        if (status === 'active') return 'พักอยู่';
+        if (status === 'relative_added') return 'เพิ่มญาติ/ผู้ติดตาม';
+        if (status === 'relative_removed') return 'นำญาติออก';
+        return 'ออกแล้ว';
     }
 
     function escapeHtml(text) {

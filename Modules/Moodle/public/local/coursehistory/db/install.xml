@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/coursehistory/db" VERSION="2026030500" COMMENT="local_coursehistory tables"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
+  <TABLES>
+    <TABLE NAME="local_coursehistory" COMMENT="Stores external course history submissions from learners">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="FK to mdl_user.id"/>
+        <FIELD NAME="idnumber" TYPE="char" LENGTH="100" NOTNULL="false" COMMENT="Integration code or subject code"/>
+        <FIELD NAME="coursetype" TYPE="char" LENGTH="50" NOTNULL="false" COMMENT="Type: Mandatory, Plan, Elective"/>
+        <FIELD NAME="occurrence" TYPE="char" LENGTH="100" NOTNULL="false" COMMENT="Session or Batch info"/>
+        <FIELD NAME="coursename" TYPE="char" LENGTH="255" NOTNULL="true" COMMENT="Name of the external course"/>
+        <FIELD NAME="instructorname" TYPE="char" LENGTH="255" NOTNULL="true" COMMENT="Name of the instructor"/>
+        <FIELD NAME="organization" TYPE="char" LENGTH="255" NOTNULL="true" COMMENT="Institution or organization"/>
+        <FIELD NAME="startdate" TYPE="int" LENGTH="10" NOTNULL="false" DEFAULT="0" COMMENT="Course start timestamp"/>
+        <FIELD NAME="enddate" TYPE="int" LENGTH="10" NOTNULL="false" DEFAULT="0" COMMENT="Course end timestamp"/>
+        <FIELD NAME="certificatefile" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="itemid in mdl_files"/>
+        <FIELD NAME="matchedcourseid" TYPE="int" LENGTH="10" NOTNULL="false" DEFAULT="0" COMMENT="FK to mdl_course.id if matched"/>
+        <FIELD NAME="status" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" COMMENT="0=pending, 1=approved, 2=rejected"/>
+        <FIELD NAME="reviewedby" TYPE="int" LENGTH="10" NOTNULL="false" COMMENT="FK to mdl_user.id who reviewed"/>
+        <FIELD NAME="reviewcomment" TYPE="text" NOTNULL="false" COMMENT="Review comment from admin/teacher"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+        <KEY NAME="fk_matchedcourseid" TYPE="foreign" FIELDS="matchedcourseid" REFTABLE="course" REFFIELDS="id"/>
+        <KEY NAME="fk_reviewedby" TYPE="foreign" FIELDS="reviewedby" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="idx_userid" UNIQUE="false" FIELDS="userid"/>
+        <INDEX NAME="idx_status" UNIQUE="false" FIELDS="status"/>
+        <INDEX NAME="idx_userid_status" UNIQUE="false" FIELDS="userid, status"/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>

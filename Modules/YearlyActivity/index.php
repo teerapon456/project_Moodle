@@ -30,6 +30,7 @@ if ($docRoot && is_dir($docRoot . '/assets')) {
 }
 $moduleAssets = $baseRoot . '/Modules/YearlyActivity/public/assets/';
 
+
 // Page Router
 $page = $_GET['page'] ?? null;
 
@@ -221,10 +222,17 @@ if (isset($_GET['action'])) {
         $provider = $_GET['provider'] ?? 'outlook';
 
         // Construct Redirect URI (Same script, callback action)
-        $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http";
-        // Ensure standard port handling if needed, but usually host header is sufficient
+        $protocol = "http";
+        if ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ||
+            (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+        ) {
+            $protocol = "https";
+        }
+
+        // Force https as requested by user for Microsoft OAuth alignment
+        $protocol = "https";
+
         $host = $_SERVER['HTTP_HOST'];
-        $path = strtok($_SERVER['REQUEST_URI'], '?'); // Use request uri path without query/params isn't robust if re-written. Use SCRIPT_NAME.
         $path = $_SERVER['SCRIPT_NAME'];
         $redirectUri = "$protocol://$host$path?action=calendar_callback";
 
@@ -238,7 +246,16 @@ if (isset($_GET['action'])) {
         $calController = new CalendarSyncController();
 
         // Reconstruct Redirect URI for verification
-        $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http";
+        $protocol = "http";
+        if ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ||
+            (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+        ) {
+            $protocol = "https";
+        }
+
+        // Force https as requested by user for Microsoft OAuth alignment
+        $protocol = "https";
+
         $host = $_SERVER['HTTP_HOST'];
         $path = $_SERVER['SCRIPT_NAME'];
         $redirectUri = "$protocol://$host$path?action=calendar_callback";
@@ -630,6 +647,7 @@ if (isset($_GET['action'])) {
                     $activeClass = $isActive
                         ? 'bg-primary text-white shadow-md'
                         : 'text-gray-600 hover:bg-gray-100';
+                    $linkPrefix = '?';
                     echo "<a href='?page=$key' class='flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap $activeClass'>";
                     echo "<i class='{$item['icon']}'></i>";
                     echo "<span>{$item['label']}</span>";

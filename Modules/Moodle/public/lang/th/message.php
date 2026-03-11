@@ -1,0 +1,294 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Strings for component 'message', language 'th', branch 'MOODLE_20_STABLE'
+ *
+ * @package   core_message
+ * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+$string['acceptandaddcontact'] = 'ยอมรับและเพิ่มในรายชื่อติดต่อ';
+$string['addcontact'] = 'เพิ่มผู้ติดต่อ';
+$string['addcontactconfirm'] = 'คุณแน่ใจหรือไม่ที่จะเพิ่ม {$a} ในรายชื่อติดต่อของคุณ?';
+$string['addtoyourcontacts'] = 'เพิ่มในรายชื่อติดต่อ';
+$string['addtoyourcontactsandmessage'] = 'เพิ่มในรายชื่อติดต่อและส่งข้อความ';
+$string['addtofavourites'] = 'ติดดาวการสนทนา';
+$string['ago'] = '{$a} ที่ผ่านมา';
+$string['allusers'] = 'ข้อความทั้งหมดจากผู้ใช้ทั้งหมด';
+$string['backto'] = 'กลับสู่ {$a}';
+$string['backupmessageshelp'] = 'หากเปิดใช้งาน ข้อความด่วนจะรวมอยู่ในการสำรองข้อมูลอัตโนมัติของไซต์';
+$string['blockcontact'] = 'บล็อกรายชื่อติดต่อ';
+$string['blockedusers'] = 'ผู้ใช้ที่ถูกบล็อก';
+$string['blockuser'] = 'บล็อกผู้ใช้';
+$string['blockuserconfirm'] = 'คุณแน่ใจหรือไม่ว่าต้องการบล็อก {$a}?';
+$string['blockuserconfirmbutton'] = 'บล็อก';
+$string['blocknoncontacts'] = 'ป้องกันไม่ให้ผู้ที่ไม่ได้อยู่ในรายชื่อติดต่อส่งข้อความถึงฉัน';
+$string['cancelselection'] = 'ยกเลิกการเลือกข้อความ';
+$string['cannotsendmessages'] = 'ไม่สามารถส่งข้อความได้';
+$string['cantblockuser'] = 'คุณไม่สามารถบล็อก {$a} ได้เนื่องจากพวกเขามีบทบาทที่มีสิทธิ์ส่งข้อความถึงผู้ใช้ทั้งหมด';
+$string['contactableprivacy'] = 'ยอมรับข้อความจาก:';
+$string['contactableprivacy_onlycontacts'] = 'รายชื่อติดต่อของฉันเท่านั้น';
+$string['contactableprivacy_coursemember'] = 'รายชื่อติดต่อของฉันและทุกคนในคอร์สเรียนของฉัน';
+$string['contactableprivacy_site'] = 'ทุกคนบนไซต์';
+$string['contactblocked'] = 'บล็อกรายชื่อติดต่อแล้ว';
+$string['contactrequests'] = 'คำขอติดต่อ';
+$string['contactrequestsent'] = 'ส่งคำขอติดต่อแล้ว';
+$string['contacts'] = 'รายชื่อติดต่อ';
+$string['conversation'] = 'การสนทนา';
+$string['conversationactions'] = 'เมนูการจัดการการสนทนา';
+$string['conversationtype'] = 'ประเภท';
+$string['decline'] = 'ปฏิเสธ';
+$string['defaultmessageoutputs'] = 'การตั้งค่าการแจ้งเตือน';
+$string['deleteallconfirm'] = "คุณแน่ใจหรือไม่ว่าต้องการลบการสนทนานี้ทั้งหมด? การดำเนินการนี้จะไม่ลบออกสำหรับผู้เข้าร่วมการสนทนาคนอื่น ๆ";
+$string['deleteallmessages'] = "ลบข้อความทั้งหมด";
+$string['deleteallselfconfirm'] = "คุณแน่ใจหรือไม่ว่าต้องการลบการสนทนาส่วนตัวนี้ทั้งหมด?";
+$string['deleteconversation'] = "ลบการสนทนา";
+$string['deleteforeveryone'] = 'ลบสำหรับฉันและทุกคน';
+$string['deleteforeveryoneselectedmessagesconfirm'] = 'คุณแน่ใจหรือไม่ว่าต้องการลบข้อความที่เลือก?';
+$string['deleteselectedmessages'] = 'ลบข้อความที่เลือก';
+$string['deleteselectedmessagesconfirm'] = 'คุณแน่ใจหรือไม่ว่าต้องการลบข้อความที่เลือก? การดำเนินการนี้จะไม่ลบออกสำหรับผู้เข้าร่วมการสนทนาคนอื่น ๆ';
+$string['deleteselectedmessagesconfirmselfconversation'] = 'คุณแน่ใจหรือไม่ว่าต้องการลบข้อความส่วนตัวที่เลือก?';
+$string['disableall'] = 'ปิดการแจ้งเตือนทั้งหมด';
+$string['disabled'] = 'ระบบส่งข้อความบนไซต์นี้ถูกปิดใช้งาน';
+$string['disallowed'] = 'ปิดการใช้งานแล้ว';
+$string['editmessages'] = 'แก้ไขข้อความ';
+$string['emailtagline'] = 'นี่คือสำเนาของข้อความที่ส่งถึงคุณบนไซต์ {$a->sitename} ไปที่ <a href="{$a->url}">{$a->url}</a> เพื่อตอบกลับ';
+$string['enabled'] = 'เปิดใช้งาน';
+$string['enablenotificationplugin'] = 'เปิดใช้งานปลั๊กอินการแจ้งเตือน: {$a}';
+$string['errorcallingprocessor'] = 'เกิดข้อผิดพลาดในการเรียกใช้เอาต์พุตที่กำหนดไว้';
+$string['errorconversationdoesnotexist'] = 'การสนทนาไม่มีอยู่จริง';
+$string['errormessagetoolong'] = 'ข้อความมีความยาวเกินกว่าที่อนุญาต';
+$string['errortranslatingdefault'] = 'เกิดข้อผิดพลาดในการแปลการตั้งค่าเริ่มต้นที่ได้รับจากปลั๊กอิน โดยใช้ค่าเริ่มต้นของระบบแทน';
+$string['eventgroupmessagesent'] = 'ส่งข้อความกลุ่มแล้ว';
+$string['eventnotificationviewed'] = 'ดูการแจ้งเตือนแล้ว';
+$string['eventnotificationsent'] = 'ส่งการแจ้งเตือนแล้ว';
+$string['eventmessagecontactadded'] = 'เพิ่มรายชื่อติดต่อสำหรับข้อความแล้ว';
+$string['eventmessagecontactremoved'] = 'ลบรายชื่อติดต่อสำหรับข้อความแล้ว';
+$string['eventmessagedeleted'] = 'ลบข้อความแล้ว';
+$string['eventmessageuserblocked'] = 'บล็อกผู้ใช้แล้ว';
+$string['eventmessageuserunblocked'] = 'ยกเลิกการบล็อกผู้ใช้แล้ว';
+$string['eventmessageviewed'] = 'ดูข้อความแล้ว';
+$string['eventmessagesent'] = 'ส่งข้อความแล้ว';
+$string['forced'] = 'ล็อกไว้';
+$string['forcedmessage'] = 'ล็อกเพื่อเปิดใช้งาน';
+$string['guestnoeditmessage'] = 'ผู้ใช้ทั่วไปไม่สามารถแก้ไขตัวเลือกการส่งข้อความได้';
+$string['guestnoeditmessageother'] = 'ผู้ใช้ทั่วไปไม่สามารถแก้ไขตัวเลือกการส่งข้อความของผู้ใช้อื่นได้';
+$string['groupinfo'] = 'ข้อมูลกลุ่ม';
+$string['groupconversations'] = 'กลุ่ม';
+$string['hidemessagewindow'] = 'ซ่อนหน้าต่างข้อความ';
+$string['hidenotificationwindow'] = 'ซ่อนหน้าต่างการแจ้งเตือน';
+$string['individualconversations'] = 'ส่วนตัว';
+$string['info'] = 'ข้อมูลผู้ใช้';
+$string['isnotinyourcontacts'] = '{$a} ไม่อยู่ในรายชื่อติดต่อของคุณ';
+$string['loadmore'] = 'โหลดเพิ่ม';
+$string['loggedin'] = 'ออนไลน์';
+$string['loggedoff'] = 'ออฟไลน์';
+$string['managemessageoutputs'] = 'สิทธิ์การแจ้งเตือนเริ่มต้น';
+$string['messageoutputs'] = 'ปลั๊กอินการแจ้งเตือน';
+$string['messagepreferences'] = 'การตั้งค่าข้อความ';
+$string['message'] = 'ข้อความ';
+$string['messagecontactrequest'] = '{$a->user} กำลังขอเพิ่มคุณเป็นผู้ติดต่อ เข้าไปที่หน้า <a href="{$a->url}">คำขอติดต่อ</a> ของคุณเพื่อตอบรับคำขอ';
+$string['messagecontactrequestsubject'] = '{$a->sitename}: คำขอติดต่อจาก {$a->user}';
+$string['messagecontentaudio'] = 'เสียง';
+$string['messagecontentimage'] = 'รูปภาพ';
+$string['messagecontentmultimediageneral'] = 'สื่ออื่น ๆ';
+$string['messagecontentvideo'] = 'วิดีโอ';
+$string['messagedrawerviewcontact'] = 'รายละเอียดผู้ใช้สำหรับ {$a}';
+$string['messagedrawerviewcontacts'] = 'รายชื่อติดต่อสำหรับข้อความ';
+$string['messagedrawerviewconversation'] = 'การสนทนากับ {$a}';
+$string['messagedrawerviewgroupinfo'] = 'รายละเอียดกลุ่มสำหรับ {$a}';
+$string['messagedrawerviewoverview'] = 'ภาพรวมข้อความ';
+$string['messagedrawerviewsearch'] = 'ผลการค้นหาข้อความสำหรับ {$a}';
+$string['messagedrawerviewsettings'] = 'การตั้งค่าข้อความ';
+$string['messages'] = 'ข้อความ';
+$string['messagesselected:'] = 'ข้อความที่เลือก:';
+$string['messagetextrequired'] = 'โปรดระบุข้อความ';
+$string['messagingdatahasnotbeenmigrated'] = 'ข้อความของคุณไม่สามารถใช้งานได้ชั่วคราวเนื่องจากการอัปเกรดโครงสร้างพื้นฐานของระบบส่งข้อความ โปรดรอจนกว่าจะดำเนินการย้ายข้อมูลเสร็จสิ้น';
+$string['muteconversation'] = 'ปิดเสียง';
+$string['mutedconversation'] = 'การสนทนาที่ถูกปิดเสียง';
+$string['newonlymsg'] = 'แสดงเฉพาะที่มาใหม่';
+$string['newmessage'] = 'ข้อความใหม่';
+$string['newmessageearch'] = 'เลือกหรือค้นหารายชื่อติดต่อเพื่อส่งข้อความใหม่';
+$string['nofavourites'] = 'ไม่มีการสนทนาที่ติดดาว';
+$string['noframesjs'] = 'ใช้อินเทอร์เฟซที่เข้าถึงได้ง่ายขึ้น';
+$string['nocontactrequests'] = 'ไม่มีคำขอติดต่อ';
+$string['nocontacts'] = 'ไม่มีรายชื่อติดต่อ';
+$string['nocontactsgetstarted'] = 'ไม่มีรายชื่อติดต่อ';
+$string['nogroupconversations'] = 'ไม่มีการสนทนากลุ่ม';
+$string['noindividualconversations'] = 'ไม่มีการสนทนาส่วนตัว';
+$string['nomessagesfound'] = 'ไม่พบข้อความ';
+$string['nopermissiontosend'] = 'คุณไม่มีสิทธิ์ในการส่งข้อความในการสนทนานี้';
+$string['noreply'] = 'อย่าตอบกลับข้อความนี้';
+$string['noncontacts'] = 'ผู้ที่ไม่ได้อยู่ในรายชื่อติดต่อ';
+$string['nonotifications'] = 'คุณไม่มีการแจ้งเตือน';
+$string['noparticipants'] = 'ไม่มีผู้เข้าร่วม';
+$string['notificationdatahasnotbeenmigrated'] = 'การแจ้งเตือนของคุณไม่สามารถใช้งานได้ชั่วคราวเนื่องจากการอัปเกรดโครงสร้างพื้นฐานของระบบแจ้งเตือน โปรดรอจนกว่าจะดำเนินการย้ายข้อมูลเสร็จสิ้น';
+$string['notificationwindow'] = 'หน้าต่างการแจ้งเตือน';
+$string['notificationpreferences'] = 'การตั้งค่าการแจ้งเตือน';
+$string['notifications'] = 'การแจ้งเตือน';
+$string['notificationsmarkedasread'] = 'การแจ้งเตือนทั้งหมดถูกทำเครื่องหมายว่าอ่านแล้ว';
+$string['notincontactsheading'] = '{$a} ไม่อยู่ในรายชื่อติดต่อของคุณ';
+$string['notincontacts'] = 'คุณต้องเพิ่ม {$a} ในรายชื่อติดต่อของคุณเพื่อให้สามารถส่งข้อความหาพวกเขาได้';
+$string['notsupported'] = 'ไม่รองรับ';
+$string['numparticipants'] = 'ผู้เข้าร่วม {$a} คน';
+$string['off'] = 'ปิด';
+$string['offline'] = 'ออฟไลน์';
+$string['on'] = 'เปิด';
+$string['online'] = 'ออนไลน์';
+$string['otherparticipants'] = 'ผู้เข้าร่วมคนอื่น ๆ';
+$string['outputnotavailable'] = 'ไม่สามารถใช้งานได้';
+$string['page-message-x'] = 'หน้าข้อความใด ๆ';
+$string['participants'] = 'ผู้เข้าร่วม';
+$string['pendingcontactrequests'] = 'มีคำขอติดต่อที่รอดำเนินการ {$a} รายการ';
+$string['permitted'] = 'อนุญาตแล้ว';
+$string['preference'] = 'ค่าที่ต้องการ';
+$string['privacy'] = 'ความเป็นส่วนตัว';
+$string['privacy_desc'] = 'คุณสามารถจำกัดว่าใครสามารถส่งข้อความหาคุณได้บ้าง';
+$string['privacy:metadata:core_favourites'] = 'การสนทนาที่ผู้ใช้ติดดาวไว้';
+$string['privacy:metadata:messages'] = 'ข้อความ';
+$string['privacy:metadata:messages:conversationid'] = 'ID ของการสนทนา';
+$string['privacy:metadata:messages:fullmessage'] = 'ข้อความฉบับเต็ม';
+$string['privacy:metadata:messages:fullmessageformat'] = 'รูปแบบของข้อความฉบับเต็ม';
+$string['privacy:metadata:messages:fullmessagehtml'] = 'รูปแบบ HTML ของข้อความฉบับเต็ม';
+$string['privacy:metadata:messages:useridfrom'] = 'ID ของผู้ใช้ที่เป็นผู้ส่งข้อความ';
+$string['privacy:metadata:messages:smallmessage'] = 'ข้อความขนาดสั้น';
+$string['privacy:metadata:messages:subject'] = 'หัวข้อของข้อความ';
+$string['privacy:metadata:messages:timecreated'] = 'เวลาที่สร้างข้อความ';
+$string['privacy:metadata:messages:customdata'] = 'ข้อมูลที่กำหนดเอง มักประกอบด้วย ID ภายในและ URL สาธารณะของรูปภาพผู้ส่ง (ผู้ใช้หรือกลุ่ม)';
+$string['privacy:metadata:message_contacts'] = 'รายการรายชื่อติดต่อ';
+$string['privacy:metadata:message_contacts:contactid'] = 'ID ของผู้ใช้ที่เป็นรายชื่อติดต่อ';
+$string['privacy:metadata:message_contacts:timecreated'] = 'เวลาที่เพิ่มรายชื่อติดต่อ';
+$string['privacy:metadata:message_contacts:userid'] = 'ID ของผู้ใช้ที่รายชื่อติดต่อเรากำลังดูอยู่';
+$string['privacy:metadata:message_contact_requests'] = 'รายการคำขอติดต่อ';
+$string['privacy:metadata:message_contact_requests:requesteduserid'] = 'ID ของผู้ใช้ที่ได้รับคำขอติดต่อ';
+$string['privacy:metadata:message_contact_requests:timecreated'] = 'เวลาที่สร้างคำขอติดต่อ';
+$string['privacy:metadata:message_contact_requests:userid'] = 'ID ของผู้ใช้ที่ส่งคำขอติดต่อ';
+$string['privacy:metadata:message_conversation_actions'] = 'รายการการจัดการการสนทนาของผู้ใช้';
+$string['privacy:metadata:message_conversation_actions:action'] = 'การจัดการที่ดำเนินการ';
+$string['privacy:metadata:message_conversation_actions:conversationid'] = 'ID ของการสนทนาที่การจัดการนี้เป็นส่วนหนึ่ง';
+$string['privacy:metadata:message_conversation_actions:timecreated'] = 'เวลาที่สร้างการจัดการ';
+$string['privacy:metadata:message_conversation_actions:userid'] = 'ID ของผู้ใช้ที่ดำเนินการนี้';
+$string['privacy:metadata:message_conversation_members'] = 'รายชื่อผู้ใช้ในการสนทนา';
+$string['privacy:metadata:message_conversation_members:conversationid'] = 'ID ของการสนทนา';
+$string['privacy:metadata:message_conversation_members:timecreated'] = 'เวลาที่เพิ่มสมาชิก';
+$string['privacy:metadata:message_conversation_members:userid'] = 'ID ของผู้ใช้ในการสนทนา';
+$string['privacy:metadata:message_user_actions'] = 'รายการการจัดการข้อความของผู้ใช้';
+$string['privacy:metadata:message_user_actions:action'] = 'การจัดการที่ดำเนินการ';
+$string['privacy:metadata:message_user_actions:messageid'] = 'ID ของข้อความที่การจัดการนี้เป็นส่วนหนึ่ง';
+$string['privacy:metadata:message_user_actions:timecreated'] = 'เวลาที่สร้างการจัดการ';
+$string['privacy:metadata:message_user_actions:userid'] = 'ID ของผู้ใช้ที่ดำเนินการนี้';
+$string['privacy:metadata:message_users_blocked'] = 'รายการผู้ใช้ที่ถูกบล็อก';
+$string['privacy:metadata:message_users_blocked:blockeduserid'] = 'ID ของผู้ใช้ที่ถูกบล็อก';
+$string['privacy:metadata:message_users_blocked:timecreated'] = 'เวลาที่ดำเนินการบล็อก';
+$string['privacy:metadata:message_users_blocked:userid'] = 'ID ของผู้ใช้ที่ดำเนินการบล็อก';
+$string['privacy:metadata:notifications'] = 'การแจ้งเตือน';
+$string['privacy:metadata:notifications:component'] = 'คอมโพเนนต์ที่รับผิดชอบในการส่งการแจ้งเตือน';
+$string['privacy:metadata:notifications:contexturl'] = 'URL ที่เกี่ยวข้องกับการแจ้งเตือนนี้';
+$string['privacy:metadata:notifications:contexturlname'] = 'ชื่อของคอนเทกซ์';
+$string['privacy:metadata:notifications:eventtype'] = 'ประเภทของเหตุการณ์';
+$string['privacy:metadata:notifications:fullmessage'] = 'การแจ้งเตือนฉบับเต็ม';
+$string['privacy:metadata:notifications:fullmessageformat'] = 'รูปแบบการแจ้งเตือน';
+$string['privacy:metadata:notifications:fullmessagehtml'] = 'HTML ของการแจ้งเตือน';
+$string['privacy:metadata:notifications:smallmessage'] = 'ข้อความขนาดสั้นของการแจ้งเตือน';
+$string['privacy:metadata:notifications:subject'] = 'หัวข้อของการแจ้งเตือน';
+$string['privacy:metadata:notifications:timeread'] = 'เวลาที่อ่านการแจ้งเตือน';
+$string['privacy:metadata:notifications:timecreated'] = 'เวลาที่สร้างการแจ้งเตือน';
+$string['privacy:metadata:notifications:useridfrom'] = 'ID ของผู้ใช้ที่ส่งการแจ้งเตือน';
+$string['privacy:metadata:notifications:useridto'] = 'ID ของผู้ใช้ที่ได้รับคำแจ้งเตือน';
+$string['privacy:metadata:notifications:customdata'] = 'ข้อมูลที่กำหนดเอง มักประกอบด้วย ID ภายในและ URL สาธารณะของรูปภาพผู้ส่ง (ถ้ามี)';
+$string['privacy:metadata:preference:core_message_settings'] = 'การตั้งค่าที่เกี่ยวข้องกับการส่งข้อความ';
+$string['privacy:request:preference:set'] = 'ค่าของการตั้งค่า \'{$a->name}\' คือ \'{$a->value}\'';
+$string['privacy:export:conversationprefix'] = 'การสนทนา: ';
+$string['processorsettings'] = 'การตั้งค่าพรอเซสเซอร์';
+$string['providerenabled'] = 'สถานะการเปิดใช้งานการส่ง "{$a}"';
+$string['providerprocesorislocked'] = '"{$a->provider}" บน "{$a->processor}" ถูกล็อกให้เปิดใช้งาน';
+$string['providerprocesorisdisallowed'] = '"{$a->provider}" บน "{$a->processor}" ถูกล็อกให้ปิดใช้งาน';
+$string['recipient'] = 'ผู้รับ';
+$string['removecontact'] = 'ลบรายชื่อติดต่อ';
+$string['removecontactconfirm'] = 'คุณแน่ใจหรือไม่ที่จะลบ {$a} ออกจากรายชื่อติดต่อของคุณ?';
+$string['removecoursefilter'] = 'ลบตัวกรองสำหรับคอร์สเรียน {$a}';
+$string['removefromyourcontacts'] = 'ลบออกจากรายชื่อติดต่อ';
+$string['removefromfavourites'] = 'ยกเลิกการติดดาวการสนทนา';
+$string['requirecontacttomessage'] = 'คุณต้องการขอให้ {$a} เพิ่มคุณเป็นรายชื่อติดต่อเพื่อให้สามารถส่งข้อความหาพวกเขาได้';
+$string['requiresconfiguration'] = 'ต้องมีการกำหนดค่า';
+$string['searchforuser'] = 'ค้นหาผู้ใช้';
+$string['searchforuserorcourse'] = 'ค้นหาผู้ใช้หรือคอร์สเรียน';
+$string['searchmessages'] = 'ค้นหาข้อความ';
+$string['searchcombined'] = 'ค้นหาบุคคลและข้อความ';
+$string['seeall'] = 'ดูทั้งหมด';
+$string['selectmessagestodelete'] = 'เลือกข้อความที่จะลบ';
+$string['selectnotificationtoview'] = 'เลือกจากการรายการแจ้งเตือนด้านข้างเพื่อดูรายละเอียดเพิ่มเติม';
+$string['selfconversation'] = 'พื้นที่ส่วนตัว';
+$string['selfconversationdefaultmessage'] = 'บันทึกร่างข้อความ ลิงก์ บันทึกย่อ ฯลฯ เพื่อเข้าถึงในภายหลัง';
+$string['send'] = 'ส่ง';
+$string['sender'] = '{$a}:';
+$string['sendcontactrequest'] = 'ส่งคำขอติดต่อ';
+$string['sendingviaenabled'] = 'สถานะการเปิดใช้งานการส่ง "{$a->provider}" ผ่าน "{$a->processor}"';
+$string['sendingvialocked'] = 'สถานะการล็อกการส่ง "{$a->provider}" ผ่าน "{$a->processor}"';
+$string['sendmessage'] = 'ส่งข้อความ';
+$string['sendbulkmessage'] = 'ส่งข้อความถึง {$a} คน';
+$string['sendbulkmessagesingle'] = 'ส่งข้อความถึง 1 คน';
+$string['sendbulkmessagesent'] = 'ส่งข้อความถึง {$a} คนแล้ว';
+$string['sendbulkmessagesentsingle'] = 'ส่งข้อความถึง 1 คนแล้ว';
+$string['sendmessageto'] = 'ส่งข้อความถึง {$a}';
+$string['sendmessagetopopup'] = 'ส่งข้อความถึง {$a} - หน้าต่างใหม่';
+$string['settings'] = 'การตั้งค่า';
+$string['showmessagewindownonew'] = 'แสดงหน้าต่างข้อความโดยไม่มีข้อความใหม่';
+$string['showmessagewindowwithcount'] = 'แสดงหน้าต่างข้อความพร้อมข้อความใหม่ {$a} ข้อความ';
+$string['shownotificationwindownonew'] = 'แสดงหน้าต่างการแจ้งเตือนโดยไม่มีการแจ้งเตือนใหม่';
+$string['shownotificationwindowwithcount'] = 'แสดงหน้าต่างการแจ้งเตือนพร้อมการแจ้งเตือนใหม่ {$a} ข้อความ';
+$string['successproviderenabled'] = 'อัปเดต \'{$a->provider}\' สำหรับ \'{$a->processor}\' แล้ว';
+$string['successproviderlocked'] = 'ล็อก \'{$a->provider}\' สำหรับ \'{$a->processor}\' แล้ว';
+$string['successproviderunlocked'] = 'ยกเลิกการล็อก \'{$a->provider}\' สำหรับ \'{$a->processor}\' แล้ว';
+$string['successproviderupdate'] = 'อัปเดต \'{$a}\' แล้ว';
+$string['togglemessagemenu'] = 'เปิด/ปิด แถบข้อความ';
+$string['totalconversations'] = 'การสนทนาทั้งหมด {$a} รายการ';
+$string['touserdoesntexist'] = 'คุณไม่สามารถส่งข้อความถึง ID ผู้ใช้ ({$a}) ที่ไม่มีอยู่จริงได้';
+$string['unblock'] = 'ยกเลิกการบล็อก';
+$string['unblockcontact'] = 'ยกเลิกการบล็อกรายชื่อติดต่อ';
+$string['unblockuser'] = 'ยกเลิกการบล็อกผู้ใช้';
+$string['unblockuserconfirm'] = 'คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการบล็อก {$a}?';
+$string['unknownuser'] = 'ไม่รู้จักผู้ใช้';
+$string['unmuteconversation'] = 'ยกเลิกการปิดเสียง';
+$string['unreadconversations'] = 'มีการสนทนาที่ยังไม่ได้อ่าน {$a} รายการ';
+$string['unreadmessages'] = 'มีข้อความที่ยังไม่ได้อ่าน {$a} ข้อความ';
+$string['unreadnotification'] = 'การแจ้งเตือนที่ยังไม่ได้อ่าน: {$a}';
+$string['unreadnotifications'] = 'มีการแจ้งเตือนที่ยังไม่ได้อ่าน {$a} รายการ';
+$string['unreadnewgroupconversationmessage'] = 'ข้อความใหม่จาก {$a->name} ใน {$a->conversationname}';
+$string['unreadnewmessage'] = 'ข้อความใหม่จาก {$a}';
+$string['unsentmessagenotification'] = 'คุณมีข้อความที่ยังไม่ได้ส่ง ข้อความจะหายไปหากคุณออกจากหน้านี้';
+$string['useentertosend'] = 'ใช้ปุ่ม Enter เพื่อส่ง';
+$string['usercantbemessaged'] = 'คุณไม่สามารถส่งข้อความถึงผู้ใช้นี้ได้เนื่องจากการตั้งค่าข้อความของพวกเขา โปรดลองเพิ่มพวกเขาเป็นรายชื่อติดต่อ';
+$string['userwouldliketocontactyou'] = '{$a} ต้องการติดต่อคุณ';
+$string['viewfullnotification'] = 'ดูการแจ้งเตือนฉบับเต็ม';
+$string['viewmessageswith'] = 'ดูข้อความที่มี {$a}';
+$string['viewnotificationresource'] = 'ไปที่: {$a}';
+$string['viewunreadmessageswith'] = 'ดูข้อความที่ยังไม่ได้อ่านที่มี {$a}';
+$string['waitingforcontactaccept'] = 'กำลังรอการตอบรับเพื่อเป็นรายชื่อติดต่อ';
+$string['writeamessage'] = 'เขียนข้อความ...';
+$string['wouldliketocontactyou'] = 'ต้องการติดต่อคุณ';
+$string['you'] = 'คุณ:';
+$string['youhaveblockeduser'] = 'คุณได้บล็อกผู้ใช้นี้ไว้';
+$string['yourcontactrequestpending'] = 'คำขอติดต่อของคุณอยู่ระหว่างการพิจารณาโดย {$a}';
+
+// Deprecated since Moodle 5.0.
+$string['togglenotificationmenu'] = 'เปิด/ปิด เมนูการแจ้งเตือน';
+
+// Deprecated since Moodle 5.1.
+$string['notificationimage'] = 'รูปภาพการแจ้งเตือน';
+$string['unabletomessage'] = 'คุณไม่สามารถส่งข้อความถึงผู้ใช้นี้ได้';

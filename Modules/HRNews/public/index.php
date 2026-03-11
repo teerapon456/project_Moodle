@@ -665,7 +665,7 @@ $profilePic = $user['profile_picture'] ?? null;
 
             list.innerHTML = items.map(item => {
                 const fileAtts = (item.attachments || []).filter(a =>
-                    a.attachment_type !== 'link' && a.attachment_type !== 'body_image' && a.mime_type !== 'link'
+                    a.attachment_type === 'file'
                 );
                 const attHtml = fileAtts.slice(0, 3).map(a =>
                     `<span class="inline-flex items-center px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs">📎 ${a.file_name}</span>`
@@ -924,7 +924,7 @@ $profilePic = $user['profile_picture'] ?? null;
             filesWrap.className = 'thumb-grid mt-2';
 
             attachments.forEach(att => {
-                if (att.attachment_type === 'link' || att.mime_type === 'link') {
+                if (att.attachment_type === 'link') {
                     const row = document.createElement('div');
                     row.className = 'link-row flex gap-2 items-center';
                     row.innerHTML = `
@@ -933,7 +933,7 @@ $profilePic = $user['profile_picture'] ?? null;
     <button type="button" class="remove-link w-8 h-8 flex-none flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg">&times;</button>
     `;
                     linkList.appendChild(row);
-                } else if (att.attachment_type === 'body_image' || (att.mime_type || '').startsWith('image/')) {
+                } else if (att.attachment_type === 'body_image') {
                     // Image thumbnail - prepend BASE_PATH to relative URLs
                     const imgUrl = att.file_url.startsWith('http') ? att.file_url : (BASE_PATH + att.file_url);
                     const thumb = document.createElement('div');
@@ -1222,7 +1222,7 @@ $profilePic = $user['profile_picture'] ?? null;
 
             // Body images
             if (dataFromCache) {
-                const attachs = (dataFromCache.attachments || []).filter(a => a.attachment_type === 'body_image' || (a.mime_type || '').startsWith('image/')).map(a => ({
+                const attachs = (dataFromCache.attachments || []).filter(a => a.attachment_type === 'body_image').map(a => ({
                     name: a.file_name,
                     url: a.file_url.startsWith('http') ? a.file_url : (BASE_PATH + a.file_url)
                 }));
@@ -1242,7 +1242,7 @@ $profilePic = $user['profile_picture'] ?? null;
             // Files
             const fileWrap = document.getElementById('preview-files');
             const fileList = dataFromCache ?
-                (dataFromCache.attachments || []).filter(a => a.attachment_type !== 'link' && a.attachment_type !== 'body_image' && !(a.mime_type || '').startsWith('image/')).map(a => ({
+                (dataFromCache.attachments || []).filter(a => a.attachment_type === 'file').map(a => ({
                     name: a.file_name,
                     url: a.file_url
                 })) : [];
@@ -1258,7 +1258,7 @@ $profilePic = $user['profile_picture'] ?? null;
             // Links
             const linksWrap = document.getElementById('preview-links');
             const links = dataFromCache ?
-                (dataFromCache.attachments || []).filter(a => a.attachment_type === 'link' || a.mime_type === 'link').map(a => ({
+                (dataFromCache.attachments || []).filter(a => a.attachment_type === 'link').map(a => ({
                     label: a.file_name,
                     url: a.file_url
                 })) : [];

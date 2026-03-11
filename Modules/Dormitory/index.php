@@ -30,8 +30,13 @@ $user = $_SESSION['user'];
 $page = $_GET['page'] ?? 'dashboard';
 session_write_close(); // Release session lock immediately
 
-// Base URL for assets
+// Base URL for assets and navigation
 $baseUrl = $basePath . '/Modules/Dormitory';
+// Detect clean URL (/Dormitory/ instead of /Modules/Dormitory/)
+if (strpos($_SERVER['REQUEST_URI'], $basePath . '/Dormitory') === 0) {
+    $baseUrl = $basePath . '/Dormitory';
+}
+
 $assetBase = UrlHelper::getAssetBase();
 // Remove trailing slash for compatibility
 $publicUrl = rtrim($assetBase, '/');
@@ -102,8 +107,8 @@ if (!$canView) {
 }
 
 // Valid pages based on role
-$adminPages = ['dashboard', 'buildings', 'rooms', 'billing', 'meter-reading', 'invoices', 'payments', 'maintenance', 'maintenance-form', 'settings', 'my-room', 'history', 'audit-log', 'booking_form', 'booking_manage', 'request_history'];
-$userPages = ['my-room', 'invoices', 'payments', 'request_history'];
+$adminPages = ['dashboard', 'buildings', 'rooms', 'billing', 'meter-reading', 'invoices', 'payments', 'maintenance', 'maintenance-form', 'settings', 'my-room', 'history', 'audit-log', 'booking_form', 'booking_manage', 'request_history', 'layout-designer', 'layout-display'];
+$userPages = ['my-room', 'invoices', 'payments', 'request_history', 'layout-display'];
 
 if ($canEdit) {
     $userPages[] = 'booking_form';
@@ -152,12 +157,12 @@ if (!in_array($page, $validPages)) {
         const API_BASE = '<?= $baseUrl ?>/api.php';
         const USER = <?= json_encode([
                             'id' => $user['id'],
-                            'username' => $user['username'] ?? '',
+                            'username' => $user['EmpCode'] ?? $user['username'] ?? '',
                             'email' => $user['email'] ?? '',
                             'role' => $isAdmin ? 'admin' : 'user',
                             'role_id' => $user['role_id'] ?? null,
                             'permissions' => $perms,
-                            'employee_id' => $user['employee_id'] ?? null
+                            'employee_id' => $user['EmpCode'] ?? $user['username'] ?? null
                         ]) ?>;
         const isAdmin = <?= json_encode($isAdmin) ?>;
         const canEdit = <?= json_encode($canEdit) ?>;

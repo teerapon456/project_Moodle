@@ -85,64 +85,56 @@ class ModuleController extends BaseController
             $this->moduleId = (int)$_GET['mid'];
             $_SESSION['current_module_id'] = $this->moduleId;
         }
-        // 2. Check Session
-        elseif (isset($_SESSION['current_module_id'])) {
-            $this->moduleId = (int)$_SESSION['current_module_id'];
-        }
 
-        // Validate/Fetch Code from ID
-        if ($this->moduleId) {
-            $stmt = $this->pdo->prepare("SELECT code FROM core_modules WHERE id = ? LIMIT 1");
-            $stmt->execute([$this->moduleId]);
-            $this->moduleCode = $stmt->fetchColumn();
-
-            if ($this->moduleCode) {
-                // Set Email Config Context Dynamically
-                $this->setEmailContext();
-                return;
-            }
-        }
-
-        // 3. Fallback: Path Discovery
-        $moduleFolder = basename(dirname(__DIR__)); // Assumes structure: Modules/{Name}/Controllers/Controler.php -> ../ -> {Name}
-        // This might fail if ModuleController is in core. 
-        // We should rely on the CHILD CLASS location.
-        // We can use Reflection or debug_backtrace, but simply assuming Child is in Modules/X/Controllers works if we use logic properly.
-
-        // How to get Child's directory?
-        // get_class($this) returns Child class name.
-        // $reflector = new ReflectionClass($this);
-        // $fn = $reflector->getFileName();
-        // basename(dirname(dirname($fn))) ...
-
+        // 2. Identify Module based on Child Class Path (Stronger than Session)
+        // Extract Module Name from folder structure (e.g. .../Modules/CarBooking/)
         try {
             $reflector = new ReflectionClass($this);
-            $childPath = $reflector->getFileName(); // e.g. .../Modules/Dormitory/Controllers/BaseController.php
+            $childPath = $reflector->getFileName();
 
-            // Assume format: .../Modules/{ModuleName}/...
-            // Extract Module Name (support both / and \ for Windows)
             if (preg_match('/Modules[\\/\\\\]([^\\/\\\\]+)[\\/\\\\]/', $childPath, $matches)) {
                 $folderName = $matches[1];
 
-                $stmt = $this->pdo->prepare("SELECT id, code FROM core_modules WHERE path LIKE ? LIMIT 1");
-                $stmt->execute(["%Modules/$folderName%"]);
+                $stmt = $this->pdo->prepare("
+                    SELECT id, code FROM core_modules 
+                    WHERE path LIKE ? 
+                    OR path LIKE ? 
+                    OR path = ?
+                    LIMIT 1
+                ");
+                $stmt->execute([
+                    "%/Modules/$folderName%",
+                    "%/$folderName/%",
+                    "/Modules/$folderName"
+                ]);
                 $module = $stmt->fetch(PDO::FETCH_ASSOC);
 
                 if ($module) {
                     $this->moduleId = $module['id'];
                     $this->moduleCode = $module['code'];
-
                     $_SESSION['current_module_id'] = $this->moduleId;
-                    $this->setEmailContext();
-                } else {
-                    $this->moduleCode = strtoupper($folderName);
                 }
-            } else {
-                // Fallback for non-standard paths
-                $this->moduleCode = 'UNKNOWN';
             }
         } catch (Exception $e) {
-            error_log("Module Identity Error: " . $e->getMessage());
+            error_log("Module Path Discovery Error: " . $e->getMessage());
+        }
+
+        // 3. Last Resort: Use Session if Path Discovery failed
+        if (!$this->moduleId && isset($_SESSION['current_module_id'])) {
+            $this->moduleId = (int)$_SESSION['current_module_id'];
+        }
+
+        // Validate/Fetch Code from ID if still missing
+        if ($this->moduleId && !$this->moduleCode) {
+            $stmt = $this->pdo->prepare("SELECT code FROM core_modules WHERE id = ? LIMIT 1");
+            $stmt->execute([$this->moduleId]);
+            $this->moduleCode = $stmt->fetchColumn();
+        }
+
+        if ($this->moduleId) {
+            $this->setEmailContext();
+        } else {
+            $this->moduleCode = 'UNKNOWN';
         }
     }
 

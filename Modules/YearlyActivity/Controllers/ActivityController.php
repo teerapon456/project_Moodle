@@ -807,22 +807,20 @@ class ActivityController
             $mentionedUserIds = [];
             $allMembersMentioned = false;
 
-            // Fetch summary first to map names to IDs
+            // Fetch summary for notifications and mention mapping
             $summary = $this->activityModel->get5w2hSummary($activityId);
             $involvedPeople = $summary['InvolvedPeople'] ?? [];
 
-            // Check for @All Members
-            if (stripos($text, '@All Members') !== false) {
-                $allMembersMentioned = true;
-                foreach ($involvedPeople as $uid => $name) {
-                    $mentionedUserIds[] = (int)$uid;
-                }
-            } else {
-                // Parse individual @Name mentions
-                foreach ($involvedPeople as $uid => $name) {
-                    // Check if "@Name" exists in the text. Add boundary checks or simple string pos
-                    $searchName = '@' . $name;
-                    if (stripos($text, $searchName) !== false) {
+            // Parse mentioned user IDs using Regex: @[Name](uid:ID)
+            preg_match_all('/@\[.*?\]\(uid:(\w+)\)/', $text, $matches);
+            if (!empty($matches[1])) {
+                foreach ($matches[1] as $uid) {
+                    if ($uid === 'all') {
+                        $allMembersMentioned = true;
+                        foreach ($involvedPeople as $memberId => $memberName) {
+                            $mentionedUserIds[] = (int)$memberId;
+                        }
+                    } else {
                         $mentionedUserIds[] = (int)$uid;
                     }
                 }

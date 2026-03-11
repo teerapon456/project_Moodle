@@ -17,14 +17,19 @@ class BookingModel
 
     public function getCurrentOccupancy($userId)
     {
+        $stmt = $this->pdo->prepare("SELECT EmpCode FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $empCode = $stmt->fetchColumn() ?: $userId; // fallback if null
+
         $stmt = $this->pdo->prepare("
             SELECT o.*, r.room_number, b.name as building_name 
             FROM dorm_occupancies o
             JOIN dorm_rooms r ON o.room_id = r.id
             JOIN dorm_buildings b ON r.building_id = b.id
-            WHERE o.employee_id = ? AND o.status = 'active'
+            WHERE o.employee_id IN (?, ?) 
+              AND o.status = 'active'
         ");
-        $stmt->execute([$userId]);
+        $stmt->execute([$userId, $empCode]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
@@ -67,8 +72,17 @@ class BookingModel
 
     public function hasActiveOccupancy($userId)
     {
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM dorm_occupancies WHERE employee_id = ? AND status = 'active'");
+        $stmt = $this->pdo->prepare("SELECT EmpCode FROM users WHERE id = ?");
         $stmt->execute([$userId]);
+        $empCode = $stmt->fetchColumn() ?: $userId;
+
+        $stmt = $this->pdo->prepare("
+            SELECT COUNT(*) 
+            FROM dorm_occupancies 
+            WHERE employee_id IN (?, ?) 
+              AND status = 'active'
+        ");
+        $stmt->execute([$userId, $empCode]);
         return $stmt->fetchColumn() > 0;
     }
 
@@ -104,7 +118,7 @@ class BookingModel
         return $this->pdo->lastInsertId();
     }
 
-    public function getRequestsByStatus($status)
+    public function getRequestsList($status, $supervisorEmail = null, $search = null, $type = 'all')
     {
         $sql = "
             SELECT r.*, u.fullname, u.Level3Name as department, u.email, rt.name as room_type_name,
@@ -114,19 +128,51 @@ class BookingModel
             LEFT JOIN dorm_room_types rt ON r.room_type_preference = rt.id
             LEFT JOIN dorm_rooms ar ON r.room_id = ar.id
             LEFT JOIN dorm_buildings ab ON ar.building_id = ab.id
-            WHERE r.status = ?
-            ORDER BY r.created_at DESC
+            WHERE 1=1
         ";
+        $params = [];
+
+        if ($status && $status !== 'all') {
+            $sql .= " AND r.status = ?";
+            $params[] = $status;
+        }
+
+        if ($type && $type !== 'all') {
+            $sql .= " AND r.request_type = ?";
+            $params[] = $type;
+        }
+
+        if ($supervisorEmail) {
+            $sql .= " AND r.supervisor_email = ?";
+            $params[] = $supervisorEmail;
+        }
+
+        if ($search) {
+            $searchTerm = "%$search%";
+            $sql .= " AND (u.fullname LIKE ? OR u.Level3Name LIKE ? OR r.reason LIKE ?)";
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+        }
+
+        $sql .= " ORDER BY r.created_at DESC";
+
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$status]);
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getRequestsByStatus($status)
+    {
+        return $this->getRequestsList($status);
     }
 
     public function getAvailableRooms()
     {
         $sql = "
             SELECT r.id, r.room_number, r.floor , r.status, r.room_type as type, b.name as building_name, r.capacity,
-                   (SELECT COALESCE(SUM(1 + COALESCE(o.accompanying_persons, 0)), 0) FROM dorm_occupancies o WHERE o.room_id = r.id AND o.status = 'active') as current_occupants,
+                   (SELECT COUNT(*) FROM dorm_occupancies o WHERE o.room_id = r.id AND o.status = 'active') as current_occupants,
+                   (SELECT COALESCE(SUM(COALESCE(o.accompanying_persons, 0)), 0) FROM dorm_occupancies o WHERE o.room_id = r.id AND o.status = 'active') as current_relatives,
                    (SELECT GROUP_CONCAT(u.fullname SEPARATOR ', ') FROM dorm_occupancies o JOIN users u ON o.employee_id = u.id WHERE o.room_id = r.id AND o.status = 'active') as occupant_names
             FROM dorm_rooms r
             JOIN dorm_buildings b ON r.building_id = b.id
@@ -148,20 +194,7 @@ class BookingModel
 
     public function getRequestsBySupervisor($supervisorEmail, $status)
     {
-        $sql = "
-            SELECT r.*, u.fullname, u.Level3Name as department, u.email, rt.name as room_type_name,
-                   ar.room_number as assigned_room_number, ab.name as assigned_building_name
-            FROM dorm_reservations r
-            JOIN users u ON r.requester_id = u.id
-            LEFT JOIN dorm_room_types rt ON r.room_type_preference = rt.id
-            LEFT JOIN dorm_rooms ar ON r.room_id = ar.id
-            LEFT JOIN dorm_buildings ab ON ar.building_id = ab.id
-            WHERE r.supervisor_email = ? AND r.status = ?
-            ORDER BY r.created_at DESC
-        ";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$supervisorEmail, $status]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $this->getRequestsList($status, $supervisorEmail);
     }
 
     public function getReservationById($id, $lock = false)
@@ -177,7 +210,7 @@ class BookingModel
 
     public function getReservationWithUser($id)
     {
-        $sql = "SELECT r.*, u.email, u.fullname, u.Level3Name as department FROM dorm_reservations r JOIN users u ON r.requester_id = u.id WHERE r.id = ?";
+        $sql = "SELECT r.*, u.email, u.fullname, u.Level3Name as department, u.EmpCode FROM dorm_reservations r JOIN users u ON r.requester_id = u.id WHERE r.id = ?";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);

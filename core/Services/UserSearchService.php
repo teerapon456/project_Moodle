@@ -30,7 +30,7 @@ class UserSearchService
             $db = new Database();
             $conn = $db->getConnection();
 
-            $sql = "SELECT id, username as code, fullname, email, Level3Name as department, PositionName as position, emplevel_id
+            $sql = "SELECT id, EmpCode as code, fullname, email, Level3Name as department, PositionName as position, emplevel_id
                     FROM users 
                     WHERE is_active = 1 ";
 
@@ -38,7 +38,7 @@ class UserSearchService
                 $sql .= " AND emplevel_id >= " . (int)$minLevel;
             }
 
-            $sql .= " AND (username LIKE ? OR fullname LIKE ? OR email LIKE ?) LIMIT " . (int)$limit;
+            $sql .= " AND (EmpCode LIKE ? OR fullname LIKE ? OR email LIKE ?) LIMIT " . (int)$limit;
 
             $stmt = $conn->prepare($sql);
             $searchTerm = "%$query%";

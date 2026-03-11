@@ -59,7 +59,7 @@ if (time() - $lastCronCheck > 60 && $pdo) {
 }
 // ============================================
 
-// Base URL for assets
+// Base URL for assets and navigation
 $baseUrl = $basePath . '/Modules/CarBooking';
 $assetBase = UrlHelper::getAssetBase();
 // Remove trailing slash for compatibility with existing code that appends it

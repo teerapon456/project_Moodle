@@ -77,11 +77,11 @@ class BillingController extends DormBaseController
                 } else {
                     // Insert new rate
                     $stmt = $this->pdo->prepare("
-                        INSERT INTO dorm_utility_rates (rate_type, rate_name, rate_per_unit, unit, status)
-                        VALUES (?, ?, ?, ?, 'active')
+                        INSERT INTO dorm_utility_rates (rate_type, rate_name, rate_per_unit, unit_name, effective_date, status)
+                        VALUES (?, ?, ?, ?, CURDATE(), 'active')
                     ");
-                    $rateName = $utilityType === 'electric' ? 'ค่าไฟฟ้า' : ($utilityType === 'water' ? 'ค่าน้ำประปา' : $utilityType);
-                    $unit = $utilityType === 'electric' ? 'หน่วย' : ($utilityType === 'water' ? 'หน่วย' : 'หน่วย');
+                    $rateName = $utilityType === 'electricity' ? 'ค่าไฟฟ้า' : ($utilityType === 'water' ? 'ค่าน้ำประปา' : $utilityType);
+                    $unit = 'หน่วย';
                     $stmt->execute([$utilityType, $rateName, $ratePerUnit, $unit]);
                 }
             }
@@ -267,7 +267,7 @@ class BillingController extends DormBaseController
         $sql = "
         SELECT i.*, 
                r.room_number, b.code as building_code, b.name as building_name,
-               r.room_type as room_type_name,
+               rt.name as room_type_name,
                (
                    SELECT GROUP_CONCAT(employee_name SEPARATOR ', ') 
                    FROM dorm_occupancies 
@@ -277,6 +277,7 @@ class BillingController extends DormBaseController
         FROM dorm_invoices i
         JOIN dorm_rooms r ON i.room_id = r.id
         JOIN dorm_buildings b ON r.building_id = b.id
+        LEFT JOIN dorm_room_types rt ON rt.id = r.room_type
         LEFT JOIN dorm_occupancies o ON i.occupancy_id = o.id
         WHERE 1=1
     ";
@@ -365,6 +366,22 @@ class BillingController extends DormBaseController
             $stmt = $this->pdo->prepare("SELECT * FROM dorm_payments WHERE id = ?");
             $stmt->execute([$invoice['payment_id']]);
             $invoice['payment_info'] = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // เมื่อมีการจ่ายเงิน ดึงรายการบิลทั้งหมดที่จ่ายมาพร้อมกันในสลิปนี้ด้วย
+            $stmt = $this->pdo->prepare("
+                SELECT i.invoice_number, i.total_amount, i.id, r.room_number 
+                FROM dorm_invoices i
+                JOIN dorm_rooms r ON i.room_id = r.id
+                WHERE i.payment_id = ?
+            ");
+            $stmt->execute([$invoice['payment_id']]);
+            $associatedInvoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $invoice['payment_info']['invoices'] = $associatedInvoices;
+
+            // คำนวณยอดรวมของทุกบิลที่ชำระด้วยสลิปนี้
+            $invoice['payment_info']['total_payment_amount'] = array_reduce($associatedInvoices, function ($sum, $item) {
+                return $sum + $item['total_amount'];
+            }, 0);
         }
 
         return $this->success(['invoice' => $invoice]);
@@ -525,25 +542,50 @@ class BillingController extends DormBaseController
             return $this->error('ไม่พบบิล', 404);
         }
 
+        // Handle proof file upload
+        $proofFilepath = null;
+        if (isset($_FILES['proof_file']) && $_FILES['proof_file']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = __DIR__ . '/../public/uploads/slips/' . date('Y/m');
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
+
+            $file = $_FILES['proof_file'];
+            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            $allowedExts = ['jpg', 'jpeg', 'png', 'pdf'];
+
+            if (!in_array($ext, $allowedExts)) {
+                return $this->error('ไฟล์แนบต้องเป็นรูปภาพ (jpg, png) หรือ pdf เท่านั้น');
+            }
+
+            $filename = 'slip_admin_' . time() . '_' . uniqid() . '.' . $ext;
+            if (move_uploaded_file($file['tmp_name'], $uploadDir . '/' . $filename)) {
+                $proofFilepath = date('Y/m') . '/' . $filename;
+            }
+        }
+
         $this->pdo->beginTransaction();
 
         try {
             // บันทึกการชำระเงิน
             $stmt = $this->pdo->prepare("
                 INSERT INTO dorm_payments 
-                (invoice_id, payment_date, amount, payment_method, reference_number, receipt_number, notes, recorded_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (amount, total_amount, payment_date, payment_method, reference_number, receipt_number, notes, proof_file, recorded_by, status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', NOW())
             ");
             $stmt->execute([
-                $data['invoice_id'],
-                $data['payment_date'],
                 $data['amount'],
+                $data['amount'],
+                $data['payment_date'],
                 $data['payment_method'] ?? 'transfer',
                 $data['reference_number'] ?? null,
                 $data['receipt_number'] ?? null,
                 $data['notes'] ?? null,
+                $proofFilepath,
                 $this->user['id'] ?? null
             ]);
+
+            $paymentId = $this->pdo->lastInsertId();
 
             // อัพเดทยอดชำระในบิล
             $newPaidAmount = $invoice['paid_amount'] + $data['amount'];
@@ -551,13 +593,14 @@ class BillingController extends DormBaseController
 
             $stmt = $this->pdo->prepare("
                 UPDATE dorm_invoices 
-                SET paid_amount = ?, status = ?, paid_date = ?
+                SET paid_amount = ?, status = ?, paid_date = ?, payment_id = ?
                 WHERE id = ?
             ");
             $stmt->execute([
                 $newPaidAmount,
                 $newStatus,
                 $newStatus === 'paid' ? $data['payment_date'] : null,
+                $paymentId,
                 $data['invoice_id']
             ]);
 
@@ -811,10 +854,11 @@ class BillingController extends DormBaseController
         try {
             // 1. สร้าง record การจ่ายเงิน
             $stmt = $this->pdo->prepare("
-                INSERT INTO dorm_payments (total_amount, payment_date, payment_time, proof_file, status, paid_by, created_at)
-                VALUES (?, ?, ?, ?, 'pending', ?, NOW())
+                INSERT INTO dorm_payments (amount, total_amount, payment_date, payment_time, proof_file, status, paid_by, payment_method, created_at)
+                VALUES (?, ?, ?, ?, ?, 'pending', ?, 'transfer', NOW())
             ");
             $stmt->execute([
+                $totalAmount,
                 $totalAmount,
                 $transferDate,
                 $transferTime,
@@ -889,8 +933,6 @@ class BillingController extends DormBaseController
             ");
             $stmt->execute([$paymentId]);
 
-            $this->pdo->commit();
-
             // Notify payer that payment is approved
             $stmt = $this->pdo->prepare("SELECT paid_by FROM dorm_payments WHERE id = ?");
             $stmt->execute([$paymentId]);
@@ -911,6 +953,8 @@ class BillingController extends DormBaseController
                     );
                 }
             }
+
+            $this->pdo->commit();
 
             return $this->success([], 'อนุมัติการชำระเงินเรียบร้อย');
         } catch (Exception $e) {
@@ -943,8 +987,6 @@ class BillingController extends DormBaseController
             ");
             $stmt->execute([$paymentId]);
 
-            $this->pdo->commit();
-
             // Notify payer that payment is rejected
             $stmt = $this->pdo->prepare("SELECT paid_by FROM dorm_payments WHERE id = ?");
             $stmt->execute([$paymentId]);
@@ -964,6 +1006,8 @@ class BillingController extends DormBaseController
                     );
                 }
             }
+
+            $this->pdo->commit();
 
             return $this->success([], 'บันทึกรายการปฏิเสธเรียบร้อย');
         } catch (Exception $e) {

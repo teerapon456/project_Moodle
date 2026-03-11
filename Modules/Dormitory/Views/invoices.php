@@ -141,6 +141,11 @@ if (!checkViewPermission($canView, 'ระบบหอพัก')) return;
                     <input type="text" class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" name="reference_number" placeholder="เลขที่อ้างอิง/สลิป">
                 </div>
                 <div>
+                    <label class="block mb-2 text-sm font-medium text-gray-700">แนบสลิป (ไม่บังคับ)</label>
+                    <input type="file" name="proof_file" accept=".jpg,.jpeg,.png,.pdf" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-dark cursor-pointer">
+                    <p class="mt-1 text-xs text-gray-500">รองรับไฟล์ภาพ JPG, PNG หรือเอกสาร PDF ขนาดไม่เกิน 5MB</p>
+                </div>
+                <div>
                     <label class="block mb-2 text-sm font-medium text-gray-700">หมายเหตุ</label>
                     <textarea class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary resize-y" name="notes" rows="2"></textarea>
                 </div>
@@ -448,6 +453,12 @@ if (!checkViewPermission($canView, 'ระบบหอพัก')) return;
                             <i class="ri-file-search-line"></i>
                         </button>
                     `;
+                } else if (inv.status === 'pending' || inv.status === 'partial' || inv.status === 'overdue') {
+                    actionButtons += `
+                        <button class="p-2 text-success hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors" onclick="openPaymentModal(${inv.id})" title="บันทึกรับชำระเงิน">
+                            <i class="ri-money-dollar-circle-line"></i>
+                        </button>
+                    `;
                 }
                 if (inv.status !== 'cancelled') {
                     actionButtons += `
@@ -576,6 +587,61 @@ if (!checkViewPermission($canView, 'ระบบหอพัก')) return;
         }
     }
 
+    async function openPaymentModal(invoiceId) {
+        try {
+            const result = await apiCall('billing', 'getInvoice', {
+                id: invoiceId
+            });
+            const inv = result.invoice;
+
+            document.getElementById('paymentInvoiceId').value = inv.id;
+
+            const remainingAmt = (parseFloat(inv.total_amount) - parseFloat(inv.paid_amount || 0)).toFixed(2);
+            document.querySelector('#paymentForm input[name="amount"]').value = remainingAmt;
+            document.querySelector('#paymentForm input[name="payment_date"]').value = new Date().toISOString().split('T')[0];
+
+            document.getElementById('invoiceSummary').innerHTML = `
+                <div class="flex justify-between text-sm mb-1"><span class="text-gray-600">บิล:</span><span class="font-medium">${inv.invoice_number}</span></div>
+                <div class="flex justify-between text-sm mb-1"><span class="text-gray-600">ยอดรวม:</span><span class="font-medium">${formatCurrency(inv.total_amount)}</span></div>
+                <div class="flex justify-between text-sm text-primary font-medium border-t border-gray-200 mt-2 pt-2"><span class="text-gray-900">ยอดค้างชำระ:</span><span>${formatCurrency(remainingAmt)}</span></div>
+            `;
+
+            openModal('paymentModal');
+        } catch (error) {
+            showToast('ไม่สามารถโหลดข้อมูลบิลได้', 'error');
+        }
+    }
+
+    async function handlePayment(e) {
+        e.preventDefault();
+        const form = e.target;
+        const submitBtn = form.querySelector('button[type="submit"]');
+
+        const fileInput = form.querySelector('input[name="proof_file"]');
+        if (fileInput && fileInput.files.length > 0 && fileInput.files[0].size > 5 * 1024 * 1024) {
+            showToast('ไฟล์แนบมีขนาดใหญ่เกิน 5MB', 'error');
+            return;
+        }
+
+        const formData = new FormData(form);
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> กำลังบันทึก...';
+
+        try {
+            await apiCall('billing', 'recordPayment', formData, 'POST');
+            showToast('บันทึกการชำระเงินเรียบร้อย', 'success');
+            closeModal('paymentModal');
+            form.reset();
+            loadInvoices();
+        } catch (error) {
+            // Error is handled by apiCall
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="ri-check-line"></i> บันทึกการชำระ';
+        }
+    }
+
     function updateSummary() {
         const total = invoices.length;
         const totalAmount = invoices.reduce((sum, i) => sum + parseFloat(i.total_amount || 0), 0);
@@ -645,14 +711,33 @@ if (!checkViewPermission($canView, 'ระบบหอพัก')) return;
             if (inv.payment_info && inv.payment_info.proof_file) {
                 const pm = inv.payment_info;
                 const proofUrl = fixProofUrl(pm.proof_file);
+
+                let combinedInvoicesHtml = '';
+                if (pm.invoices && pm.invoices.length > 1) {
+                    combinedInvoicesHtml = `
+                        <div class="mb-3 p-3 bg-white/50 border border-green-100 rounded">
+                            <span class="text-[10px] font-bold text-green-600 uppercase tracking-wider">ชำระรวมกับรายการอื่น:</span>
+                            <div class="mt-2 space-y-1.5">
+                                ${pm.invoices.map(i => `
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="${i.id == inv.id ? 'font-bold text-green-700' : 'text-gray-600'}">#${i.invoice_number} (ห้อง ${i.room_number})</span>
+                                        <span class="font-medium">${formatCurrency(i.total_amount)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
                 html += `
                     <div class="mt-5 p-4 bg-green-50 border border-green-200 rounded-lg">
                         <h5 class="font-medium text-success mb-3 flex items-center gap-2"><i class="ri-money-dollar-circle-line"></i> หลักฐานการชำระเงิน</h5>
+                        ${combinedInvoicesHtml}
                         <div class="flex justify-between text-sm mb-2"><span class="text-gray-600">วันที่โอน:</span><span>${pm.payment_date || '-'} ${pm.payment_time || ''}</span></div>
-                        <div class="flex justify-between text-sm mb-3"><span class="text-gray-600">ยอดที่แจ้งโอน:</span><span class="font-medium">${formatCurrency(pm.total_amount)}</span></div>
-                        <div class="text-center">
+                        <div class="flex justify-between text-base mb-3 pt-2 border-t border-green-100 font-bold text-green-700"><span class="text-gray-600">ยอดรวมในสลิป:</span><span>${formatCurrency(pm.total_payment_amount || pm.total_amount)}</span></div>
+                        <div class="text-center mt-4">
                             ${proofUrl.match(/\.(jpeg|jpg|png|gif)$/i) ?
-                                `<img src="${proofUrl}" alt="Payment Slip" class="max-w-full max-h-[300px] rounded-lg shadow-md mx-auto">` :
+                                `<img src="${proofUrl}" alt="Payment Slip" class="max-w-full max-h-[300px] rounded-lg shadow-md mx-auto cursor-pointer" onclick="window.open('${proofUrl}', '_blank')">` :
                                 `<a href="${proofUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2 bg-info hover:bg-blue-600 text-white rounded-lg text-sm font-medium"><i class="ri-download-line"></i> ดาวน์โหลดหลักฐาน</a>`
                             }
                         </div>
@@ -710,9 +795,29 @@ if (!checkViewPermission($canView, 'ระบบหอพัก')) return;
                 link.classList.remove('hidden');
             }
 
+            let invoicesHtml = '';
+            if (pm.invoices && pm.invoices.length > 0) {
+                invoicesHtml = `
+                    <div class="mb-3">
+                        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">รายการบิลที่ชำระรวมกัน:</span>
+                        <div class="mt-2 space-y-2">
+                            ${pm.invoices.map(i => `
+                                <div class="flex justify-between items-center text-sm p-2 bg-white border border-gray-100 rounded">
+                                    <span class="text-gray-700">#${i.invoice_number} (ห้อง ${i.room_number})</span>
+                                    <span class="font-medium">${formatCurrency(i.total_amount)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
             document.getElementById('verifyDetails').innerHTML = `
-                <div class="flex justify-between py-2"><span class="text-gray-600">วันที่โอน:</span><span>${pm.payment_date} ${pm.payment_time}</span></div>
-                <div class="flex justify-between py-2 border-t border-gray-200 font-semibold"><span>ยอดที่แจ้งโอน:</span><span>${formatCurrency(pm.total_amount)}</span></div>
+                ${invoicesHtml}
+                <div class="space-y-2 pt-2 border-t border-gray-200">
+                    <div class="flex justify-between text-sm"><span class="text-gray-600">วันที่โอน:</span><span>${pm.payment_date} ${pm.payment_time}</span></div>
+                    <div class="flex justify-between text-lg font-bold text-primary"><span>ยอดรวมในสลิป:</span><span>${formatCurrency(pm.total_payment_amount || pm.total_amount)}</span></div>
+                </div>
             `;
 
             openModal('verifyPaymentModal');

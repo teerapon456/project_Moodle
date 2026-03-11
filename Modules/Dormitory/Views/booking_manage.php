@@ -12,6 +12,14 @@ if (!$isAdmin && (!isset($canApprove) || !$canApprove)) {
             <input type="text" id="params_search" class="pl-9 pr-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary w-64" placeholder="ค้นหาชื่อ, แผนก..." onkeyup="if(event.key === 'Enter') loadRequests()">
             <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
         </div>
+        <select id="params_type" class="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary min-w-[150px]" onchange="loadRequests()">
+            <option value="all">ทุกประเภทคำขอ</option>
+            <option value="move_in">ขอเข้าพัก</option>
+            <option value="move_out">ขอย้ายออก</option>
+            <option value="change_room">ขอย้ายห้อง</option>
+            <option value="add_relative">ขอเพิ่มญาติ</option>
+            <option value="remove_relative">ขอนำญาติออก</option>
+        </select>
         <select id="params_status" class="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary min-w-[150px]" onchange="loadRequests()">
             <?php if ($isAdmin): ?>
                 <option value="pending_supervisor">รอหัวหน้าอนุมัติ</option>
@@ -266,6 +274,7 @@ if (!$isAdmin && (!isset($canApprove) || !$canApprove)) {
     async function loadRequests() {
         const status = document.getElementById('params_status').value;
         const search = document.getElementById('params_search').value;
+        const type = document.getElementById('params_type').value;
         const tbody = document.getElementById('requestsTableBody');
 
         tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-gray-500"><i class="ri-loader-4-line animate-spin text-2xl mb-2 block"></i>กำลังโหลดข้อมูล...</td></tr>`;
@@ -273,7 +282,8 @@ if (!$isAdmin && (!isset($canApprove) || !$canApprove)) {
         try {
             const result = await apiCall('booking', 'listRequests', {
                 status,
-                search
+                search,
+                type
             }); // Assuming API supports search/status filtering
             currentRequests = result.requests || [];
             renderTable(currentRequests);
@@ -541,7 +551,7 @@ if (!$isAdmin && (!isset($canApprove) || !$canApprove)) {
 
                 <div class="flex justify-between items-end mb-2.5">
                     <div class="flex flex-col">
-                       <span class="text-xs text-gray-500 mb-0.5">ผู้เข้าพัก</span>
+                       <span class="text-xs text-gray-500 mb-0.5">ผู้เข้าพัก ${r.current_relatives > 0 ? `<span class="text-purple-600">(+ญาติ ${r.current_relatives} คน)</span>` : ''}</span>
                        <span class="text-sm font-semibold text-gray-900">${r.current_occupants} <span class="text-gray-400 font-normal">/ ${r.capacity}</span></span>
                     </div>
                     <div class="text-right">
@@ -631,7 +641,7 @@ if (!$isAdmin && (!isset($canApprove) || !$canApprove)) {
                     modalTitle.innerHTML = '<i class="ri-checkbox-circle-line text-emerald-500"></i> อนุมัติคำขอ';
                 }
 
-                const requiredCapacity = 1 + relativesCount;
+                const requiredCapacity = 1; // ไม่นับญาติ
                 document.getElementById('approve_required_capacity').value = requiredCapacity;
                 document.getElementById('requiredCountDisplay').textContent = requiredCapacity;
                 filterRoomsByCapacity(requiredCapacity);

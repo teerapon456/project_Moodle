@@ -80,7 +80,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 </div>
 
 <!-- Detail Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 opacity-0 invisible transition-all duration-200 p-5" id="detailModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] opacity-0 invisible transition-all duration-200 p-5" id="detailModal">
     <div class="bg-white rounded-xl w-full max-w-[700px] max-h-[calc(100vh-40px)] flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="text-lg font-semibold text-gray-900" id="detailModalTitle">รายละเอียดแจ้งซ่อม</h3>
@@ -93,7 +93,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 </div>
 
 <!-- Update Status Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 opacity-0 invisible transition-all duration-200 p-5" id="statusModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] opacity-0 invisible transition-all duration-200 p-5" id="statusModal">
     <div class="bg-white rounded-xl w-full max-w-lg max-h-[calc(100vh-40px)] flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="text-lg font-semibold text-gray-900">อัพเดทสถานะ</h3>
@@ -275,7 +275,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 
             document.getElementById('detailModalTitle').textContent = req.ticket_number;
             document.getElementById('detailModalBody').innerHTML = `
-            <div class="flex items-start justify-between mb-6 pb-4 border-b border-gray-100">
+            <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
                 <div>
                     <div class="text-primary text-sm font-medium mb-1">${req.ticket_number}</div>
                     <div class="text-xl font-semibold text-gray-900 mb-2">${escapeHtml(req.title)}</div>

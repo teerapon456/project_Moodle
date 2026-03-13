@@ -65,7 +65,7 @@ $companyCarIds = $controller->getActiveCompanyCarIds();
 </div>
 
 <!-- Daily Events Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5 opacity-0 invisible transition-all" id="dailyEventsModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] p-5 opacity-0 invisible transition-all" id="dailyEventsModal">
     <div class="bg-white rounded-xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="font-semibold text-gray-900" id="dailyEventsModalTitle">รายการจองวันที่</h3>
@@ -182,7 +182,7 @@ $companyCarIds = $controller->getActiveCompanyCarIds();
 
             html += `<div class="calendar-cell p-2 border-r border-b border-gray-100 cursor-pointer ${bgClass} ${isToday ? 'bg-primary/5' : ''}" onclick="onCellClick('${dateStr}', event)">`;
 
-            html += `<div class="flex justify-between items-start mb-1">`;
+            html += `<div class="flex justify-between items-center mb-1">`;
             if (isToday) {
                 html += `<div class="w-7 h-7 flex items-center justify-center bg-primary text-white rounded-full text-sm font-medium">${day}</div>`;
             } else {
@@ -302,7 +302,7 @@ $companyCarIds = $controller->getActiveCompanyCarIds();
                 const carText = evt.car ? `<i class="ri-car-fill"></i> ${evt.car} ${evt.plate ? '(' + evt.plate + ')' : ''}` : '';
                 html += `
                     <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm transition-all">
-                        <div class="flex justify-between items-start mb-2">
+                        <div class="flex justify-between items-center mb-2">
                             <h4 class="font-medium text-gray-900">${evt.title}</h4>
                             <span class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">#${evt.id}</span>
                         </div>

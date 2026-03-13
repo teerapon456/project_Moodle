@@ -1,7 +1,7 @@
 <?php
 
 require_once __DIR__ . '/Env.php';
-require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/../Database/Database.php';
 
 class EmailConfig
 {

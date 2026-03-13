@@ -66,7 +66,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 </div>
 
 <!-- Detail Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 opacity-0 invisible transition-all duration-200 p-5" id="detailModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] opacity-0 invisible transition-all duration-200 p-5" id="detailModal">
     <div class="bg-white rounded-xl w-full max-w-2xl max-h-[calc(100vh-40px)] flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="flex items-center gap-2 text-lg font-semibold text-gray-900"><i class="ri-information-line text-primary"></i> รายละเอียด Log</h3>

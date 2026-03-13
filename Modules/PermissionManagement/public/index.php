@@ -232,6 +232,14 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                         </div>
                         <div class="absolute bottom-0 left-0 w-full h-0.5 bg-primary transform scale-x-0 transition-transform duration-200 origin-left group-hover:scale-x-100 opacity-50"></div>
                     </button>
+
+                    <button class="nav-tab group relative pb-4 px-4 min-w-[120px] text-center" data-tab="ai-settings">
+                        <div class="flex items-center justify-center gap-2 text-sm font-semibold transition-colors duration-200 text-gray-500 hover:text-gray-700">
+                            <i class="ri-equalizer-line text-lg"></i>
+                            <span>AI Settings</span>
+                        </div>
+                        <div class="absolute bottom-0 left-0 w-full h-0.5 bg-primary transform scale-x-0 transition-transform duration-200 origin-left group-hover:scale-x-100 opacity-50"></div>
+                    </button>
                 </div>
             </div>
 
@@ -474,6 +482,64 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                     </div>
                 </div>
 
+                <!-- AI Settings Tab -->
+                <div class="tab-panel hidden animate-fade-in" data-tab="ai-settings">
+                    <div class="px-6 py-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h4 class="font-bold text-gray-800 text-lg">AI Settings Control Panel</h4>
+                            <p class="text-gray-500 text-sm">จัดการตั้งค่าโมเดลและพฤติกรรมของ AI</p>
+                        </div>
+                        <button onclick="saveAISettings()" class="btn-primary flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all shadow-sm">
+                            <i class="ri-save-line"></i> บันทึกการตั้งค่า
+                        </button>
+                    </div>
+                    <div class="p-6 bg-gray-50/50">
+                        <div id="ai-settings-loading" class="text-center py-10 hidden">
+                            <i class="ri-loader-4-line animate-spin text-3xl text-primary"></i>
+                            <p class="text-gray-500 mt-2">กำลังโหลดการตั้งค่า...</p>
+                        </div>
+                        <form id="ai-settings-form" class="space-y-6 max-w-4xl mx-auto bg-white p-6 sm:p-8 rounded-xl border border-gray-100 shadow-sm">
+                            <!-- System Prompt -->
+                            <div>
+                                <label class="block text-sm font-bold text-gray-800 mb-2">System Prompt <span class="text-xs text-gray-500 font-normal ml-2">(คำสั่งตั้งต้นของ AI)</span></label>
+                                <textarea id="ai-setting-prompt" rows="12" class="form-input w-full font-mono text-sm leading-relaxed bg-gray-50 focus:bg-white resize-y rounded-lg"></textarea>
+                            </div>
+                            <!-- Model Selection -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-800 mb-2">Primary AI Model</label>
+                                    <select id="ai-setting-model" class="form-select w-full bg-white">
+                                        <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (Highly Capable, 70B)</option>
+                                        <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (Fast, 8B)</option>
+                                        <option value="mixtral-8x7b-32768">mixtral-8x7b-32768 (Fast, High Context)</option>
+                                        <option value="gemma2-9b-it">gemma2-9b-it (Google Gemma 2)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-800 mb-2">Fallback AI Model</label>
+                                    <select id="ai-setting-fallback" class="form-select w-full bg-white">
+                                        <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (Fast, 8B)</option>
+                                        <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (Highly Capable, 70B)</option>
+                                        <option value="mixtral-8x7b-32768">mixtral-8x7b-32768 (Fast, High Context)</option>
+                                        <option value="gemma2-9b-it">gemma2-9b-it (Google Gemma 2)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <!-- Rate Limit -->
+                            <div class="p-4 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-between">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-800">Daily Request Limit</label>
+                                    <p class="text-xs text-gray-500 mt-1">จำนวนครั้งที่พนักงาน 1 คน ใช้งาน AI ได้ต่อวัน</p>
+                                </div>
+                                <div class="relative">
+                                    <input type="number" id="ai-setting-limit" class="form-input w-36 text-center text-lg font-bold text-primary bg-white pr-8" min="1" max="1000">
+                                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-400 text-sm">ครั้ง</div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
                 <!-- System & Security Tab -->
                 <div id="tab-system-security" class="tab-panel hidden animate-fade-in" data-tab="system-security">
                     <?php if (!empty($canManage)): ?>
@@ -658,6 +724,67 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
 
         // --- AI Usage Dashboard Logic ---
         let aiUsageChart = null;
+        // === AI Settings Handlers ===
+        let aiSettingsLoaded = false;
+        
+        window.loadAISettings = async function() {
+            if (aiSettingsLoaded) return;
+            
+            document.getElementById('ai-settings-form').classList.add('hidden');
+            document.getElementById('ai-settings-loading').classList.remove('hidden');
+
+            try {
+                const res = await fetch(window.location.pathname.replace(/\/index\.php$/, '') + '/ai_settings_api.php');
+                if (!res.ok) throw new Error("Failed to load settings");
+                const data = await res.json();
+                if (data.success && data.data) {
+                    if (data.data.system_prompt) document.getElementById('ai-setting-prompt').value = data.data.system_prompt;
+                    if (data.data.model_name) document.getElementById('ai-setting-model').value = data.data.model_name;
+                    if (data.data.fallback_model_name) document.getElementById('ai-setting-fallback').value = data.data.fallback_model_name;
+                    if (data.data.daily_limit) document.getElementById('ai-setting-limit').value = data.data.daily_limit;
+                    aiSettingsLoaded = true;
+                }
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Error', 'ไม่สามารถโหลดข้อมูลการตั้งค่า AI ได้', 'error');
+            } finally {
+                document.getElementById('ai-settings-loading').classList.add('hidden');
+                document.getElementById('ai-settings-form').classList.remove('hidden');
+            }
+        };
+
+        window.saveAISettings = async function() {
+            const settings = {
+                system_prompt: document.getElementById('ai-setting-prompt').value,
+                model_name: document.getElementById('ai-setting-model').value,
+                fallback_model_name: document.getElementById('ai-setting-fallback').value,
+                daily_limit: document.getElementById('ai-setting-limit').value
+            };
+
+            try {
+                const res = await fetch(window.location.pathname.replace(/\/index\.php$/, '') + '/ai_settings_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ settings })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกสำเร็จ',
+                        text: 'การตั้งค่า AI ถูกบันทึกเรียบร้อยแล้ว',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                } else {
+                    throw new Error(data.error || "Save failed");
+                }
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Error', 'ไม่สามารถบันทึกการตั้งค่าได้', 'error');
+            }
+        };
+
         window.loadAIUsage = async function() {
             const body = document.getElementById('ai-usage-table-body');
             const canvas = document.getElementById('ai-usage-chart');
@@ -1596,6 +1723,11 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                     // Load AI Usage if needed
                     if (tab === 'ai-usage') {
                         loadAIUsage();
+                    }
+                    if (tab === 'ai-settings') {
+                        if (typeof window.loadAISettings === 'function') {
+                            window.loadAISettings();
+                        }
                     }
                 });
             });
@@ -2667,6 +2799,7 @@ $permManage = ['can_view' => 1, 'can_manage' => $canManage ? 1 : 0];
                 nav.innerHTML = html;
             }
         });
+
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>

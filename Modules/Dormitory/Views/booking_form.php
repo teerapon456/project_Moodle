@@ -405,7 +405,7 @@ $maxRelatives = $maxRelativesResult ? (int)$maxRelativesResult : 5; // Default t
                         <div class="mb-6">
                             <label class="block font-medium mb-3">ประเภทการย้ายออก</label>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <label class="move-out-type-option flex items-start gap-3 p-4 bg-white border-2 border-gray-200 rounded-xl cursor-pointer hover:border-primary transition-colors" onclick="selectMoveOutType('self')">
+                                <label class="move-out-type-option flex items-center gap-3 p-4 bg-white border-2 border-gray-200 rounded-xl cursor-pointer hover:border-primary transition-colors" onclick="selectMoveOutType('self')">
                                     <input type="radio" name="move_out_type" value="self" class="mt-1" checked>
                                     <div>
                                         <div class="font-semibold text-gray-900 flex items-center gap-2">
@@ -424,7 +424,7 @@ $maxRelatives = $maxRelativesResult ? (int)$maxRelativesResult : 5; // Default t
                                     $hasRelatives = count($relativesList) > 0;
                                 }
                                 ?>
-                                <label class="move-out-type-option flex items-start gap-3 p-4 bg-white border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-500 transition-colors <?= !$hasRelatives ? 'opacity-50 cursor-not-allowed' : '' ?>" onclick="<?= $hasRelatives ? "selectMoveOutType('relative')" : 'return false' ?>">
+                                <label class="move-out-type-option flex items-center gap-3 p-4 bg-white border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-500 transition-colors <?= !$hasRelatives ? 'opacity-50 cursor-not-allowed' : '' ?>" onclick="<?= $hasRelatives ? "selectMoveOutType('relative')" : 'return false' ?>">
                                     <input type="radio" name="move_out_type" value="relative" class="mt-1" <?= !$hasRelatives ? 'disabled' : '' ?>>
                                     <div>
                                         <div class="font-semibold text-gray-900 flex items-center gap-2">

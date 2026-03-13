@@ -24,6 +24,21 @@ if (empty($apiKey)) {
     exit;
 }
 
+/**
+ * Helper to get AI settings from DB
+ */
+function get_ai_setting($conn, $key, $default = '')
+{
+    try {
+        $stmt = $conn->prepare("SELECT setting_value FROM ai_settings WHERE setting_key = ?");
+        $stmt->execute([$key]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? $row['setting_value'] : $default;
+    } catch (Exception $e) {
+        return $default;
+    }
+}
+
 // 2. Get Input
 $input = json_decode(file_get_contents('php://input'), true);
 $userMessage = $input['message'] ?? '';
@@ -33,6 +48,24 @@ $userInfo = $input['user'] ?? null;
 if (empty(trim($userMessage))) {
     echo json_encode(['reply' => '...']);
     exit;
+}
+
+// 2.1 Check Rate Limit
+$userId = $userInfo['id'] ?? null;
+if ($userId) {
+    $dailyLimit = (int)get_ai_setting($conn, 'daily_limit', '50');
+    try {
+        $stmt = $conn->prepare("SELECT COUNT(*) FROM copilot_usage_logs WHERE user_id = ? AND DATE(created_at) = CURDATE()");
+        $stmt->execute([$userId]);
+        $todayCount = (int)$stmt->fetchColumn();
+
+        if ($todayCount >= $dailyLimit) {
+            echo json_encode(['reply' => "⚠️ คุณใช้งานเกินขีดจำกัดรายวัน ($dailyLimit ครั้ง) แล้ว สามารถลองใหม่ได้ในวันพรุ่งนี้ครับ"]);
+            exit;
+        }
+    } catch (Exception $e) {
+        // Continue if check fails
+    }
 }
 
 // 3. Build Tools Definition
@@ -93,7 +126,13 @@ function execute_tool($name, $args, $userInfo)
             $queryParam = "%" . $queryStr . "%";
 
             try {
-                // 1. Search News
+                // 1. Fetch All Active Policies (Semantic Engine handles matching)
+                // Llama 3 70B context window is 8k+, returning all simple text rules is well within token budget
+                // and avoids SQL LIKE missing synonyms like "เดินทาง" vs "ท่องเที่ยว"
+                $stmt = $conn->query("SELECT title, category, content FROM hr_policies WHERE is_active = 1");
+                $policies = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                // 2. Search News
                 $news = [];
                 if (!$isGeneric) {
                     $stmt = $conn->prepare("SELECT title, content, created_at FROM hr_news WHERE (title LIKE ? OR content LIKE ?) AND status = 'published' ORDER BY created_at DESC LIMIT 3");
@@ -101,27 +140,26 @@ function execute_tool($name, $args, $userInfo)
                     $news = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 }
 
-                // Fallback or generic: get latest
                 if ($isGeneric || empty($news)) {
                     $stmt = $conn->query("SELECT title, content, created_at FROM hr_news WHERE status = 'published' ORDER BY created_at DESC LIMIT 3");
                     $news = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 }
 
-                // 2. Search Services
+                // 3. Search Services
                 $services = [];
                 if (!$isGeneric) {
-                    $stmt = $conn->prepare("SELECT name, description FROM hr_services WHERE (name LIKE ? OR description LIKE ?) AND status = 'ready' LIMIT 3");
+                    $stmt = $conn->prepare("SELECT name, name_translations FROM hr_services WHERE (name LIKE ? OR name_translations LIKE ?) AND status = 'ready' LIMIT 3");
                     $stmt->execute([$queryParam, $queryParam]);
                     $services = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 }
 
-                // Fallback or generic: get latest
                 if ($isGeneric || empty($services)) {
-                    $stmt = $conn->query("SELECT name, description FROM hr_services WHERE status = 'ready' LIMIT 3");
+                    $stmt = $conn->query("SELECT name, name_translations FROM hr_services WHERE status = 'ready' LIMIT 3");
                     $services = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 }
 
                 return json_encode([
+                    'from_policies' => $policies,
                     'from_news' => $news,
                     'from_services' => $services,
                     'note' => $isGeneric ? "Showing latest items (generic query)" : "Filtered results"
@@ -151,33 +189,12 @@ function log_usage($conn, $userId, $query, $toolCalled, $tokensUsed, $model)
 
 // System Prompt with Project Knowledge
 $userName = ($userInfo['name'] ?? 'ผู้ใช้งาน');
-$userId = ($userInfo['id'] ?? 'N/A');
+$userIdLabel = ($userInfo['id'] ?? 'N/A');
 
-$systemPrompt = "คุณคือ 'HR Assistant' ผู้ช่วยอัจฉริยะของ MyHR Portal (INTEQC Group)
-หน้าที่ของคุณคือช่วยเหลือพนักงานในการใช้งานระบบ ตอบคำถาม และนำทางไปยังโมดูลต่างๆ
+$systemPromptTemplate = get_ai_setting($conn, 'system_prompt', "คุณคือ 'HR Assistant' ผู้ช่วยอัจฉริยะของ MyHR Portal (INTEQC Group)
+หน้าที่ของคุณคือช่วยเหลือพนักงานในการใช้งานระบบ ตอบคำถาม และนำทางไปยังโมดูลต่างๆ");
 
-ข้อมูลผู้ใช้งานปัจจุบัน:
-- ชื่อ: $userName
-- ID: $userId
-
-คุณมีความสามารถในการเข้าถึงฐานข้อมูลผ่านเครื่องมือ (Tools) ดังนี้:
-1. หากผู้ใช้ถามเกี่ยวกับข้อมูลส่วนตัว (เช่น รหัสพนักงาน) ให้ใช้ `get_my_user_info`
-2. หากผู้ใช้ถามเกี่ยวกับกฎระเบียบ สวัสดิการ ประกาศ หรือต้องการสรุปข่าวสารล่าสุด ให้ใช้ `search_hr_knowledge` (หากต้องการดูข่าวทั้งหมดให้ส่งคำว่า 'latest' หรือ 'ข่าว')
-
-ข้อมูลโมดูล (สำหรับนำทาง):
-- ระบบจองรถ: `Modules/CarBooking/`
-- ระบบหอพัก: `Modules/Dormitory/`
-- ข่าวสาร: `Modules/HRNews/public/`
-- บริการ: `Modules/HRServices/public/`
-- Moodle: `https://172.17.100.55:8090/moodle/`
-
-กฎการตอบ:
-1. ตอบเป็นภาษาไทย สุภาพ เป็นกันเอง
-2. ห้ามคิดคำตอบหรือข่าวสารเองโดยเด็ดขาด (No hallucinations) หากต้องการข้อมูลข่าวสาร กฎระเบียบ หรือสวัสดิการ ให้เรียกใช้ `search_hr_knowledge` เสมอ
-3. หากเรียกใช้เครื่องมือแล้วไม่พบข้อมูล ให้แจ้งผู้ใช้ตามตรงว่า 'ไม่พบข้อมูลในระบบ' ห้ามแต่งเรื่องขึ้นมา
-4. หากใช้เรียกเครื่องมือแล้วได้ข้อมูลมา ให้อ้างอิงข้อมูลนั้นในการตอบ
-5. หากผู้ใช้ถามหาบริการที่ระบุ URL ไว้ ให้ถามว่าต้องการให้พาไปไหม และใช้ [ACTION:URL] เมื่อได้รับคำยืนยัน
-";
+$systemPrompt = str_replace(['{{userName}}', '{{userId}}'], [$userName, $userIdLabel], $systemPromptTemplate);
 
 // 4. Build messages
 $messages = [['role' => 'system', 'content' => $systemPrompt]];
@@ -226,21 +243,31 @@ function callGroq($messages, $tools, $apiKey, $model = 'llama-3.3-70b-versatile'
 }
 
 try {
-    $decoded = callGroq($messages, $tools, $apiKey);
+    $primaryModel = get_ai_setting($conn, 'model_name', 'llama-3.3-70b-versatile');
+    $fallbackModel = get_ai_setting($conn, 'fallback_model_name', 'llama-3.1-8b-instant');
 
-    // Fallback to 8b if 70b fails (Rate Limit 429 or Model Error 400)
+    $decoded = callGroq($messages, $tools, $apiKey, $primaryModel);
+
+    // Fallback to 8b if primary fails (Rate Limit 429 or Model Error 400)
     if (isset($decoded['error']) || empty($decoded['choices'])) {
-        $decoded = callGroq($messages, $tools, $apiKey, 'llama-3.1-8b-instant');
+        $decoded = callGroq($messages, $tools, $apiKey, $fallbackModel);
     }
 
     // Call AI with tool results
     if (isset($decoded['choices'][0]['message']['tool_calls'])) {
-        $toolMessages = [$decoded['choices'][0]['message']];
+        $assistantMessage = $decoded['choices'][0]['message'];
+        
+        // Ensure content is at least null or empty string if not set, required by Groq
+        if (!isset($assistantMessage['content'])) {
+            $assistantMessage['content'] = "";
+        }
+
+        $toolMessages = [$assistantMessage];
         $toolsUsed = [];
 
-        foreach ($decoded['choices'][0]['message']['tool_calls'] as $toolCall) {
+        foreach ($assistantMessage['tool_calls'] as $toolCall) {
             $functionName = $toolCall['function']['name'];
-            $functionArgs = json_decode($toolCall['function']['arguments'], true);
+            $functionArgs = json_decode($toolCall['function']['arguments'], true) ?: [];
             $toolsUsed[] = $functionName;
 
             $toolResult = execute_tool($functionName, $functionArgs, $userInfo);
@@ -255,11 +282,14 @@ try {
 
         // Call AI again with tool results
         $finalMessages = array_merge($messages, $toolMessages);
-        $decoded = callGroq($finalMessages, $tools, $apiKey);
+        
+        // Remove tools from the second call to force a final text answer
+        $decoded = callGroq($finalMessages, [], $apiKey, $primaryModel);
 
         // Fallback for second call
         if (isset($decoded['error']) || empty($decoded['choices'])) {
-            $decoded = callGroq($finalMessages, $tools, $apiKey, 'llama-3.1-8b-instant');
+            @file_put_contents('/tmp/copilot_raw.log', date('Y-m-d H:i:s') . " - Primary 2nd call failed, falling back.\n", FILE_APPEND);
+            $decoded = callGroq($finalMessages, $tools, $apiKey, $fallbackModel);
         }
 
         // Cumulative logging

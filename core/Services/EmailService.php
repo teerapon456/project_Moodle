@@ -379,7 +379,7 @@ class EmailService
                 }
             }
         } catch (Exception $e) {
-            error_log("Failed to log email to database: " . $e->getMessage());
+            error_log("Failed to log email to database (email_logs): " . $e->getMessage());
         }
 
         // Also log to file

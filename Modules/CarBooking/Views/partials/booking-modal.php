@@ -7,7 +7,7 @@
 ?>
 
 <!-- Booking Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5 opacity-0 invisible transition-all" id="bookingModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] p-5 opacity-0 invisible transition-all" id="bookingModal">
     <div class="bg-white rounded-xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="font-semibold text-gray-900">สร้างคำขอจองรถใหม่</h3>
@@ -68,7 +68,7 @@
                     </div>
                     <div class="relative" id="supervisorSearchContainer">
                         <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" id="supervisorSearch" placeholder="ค้นหาชื่อหรืออีเมลหัวหน้า..." autocomplete="off" oninput="searchSupervisor(this.value)">
-                        <div id="supervisorResults" class="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50 hidden"></div>
+                        <div id="supervisorResults" class="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-[1000] hidden"></div>
                     </div>
                 </div>
 
@@ -82,7 +82,7 @@
                     </div>
                     <div class="relative" id="driverSearchContainer">
                         <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" id="driverSearch" placeholder="ค้นหาคนขับ (ปล่อยว่างถ้าขับเอง)..." autocomplete="off" oninput="searchDriver(this.value)">
-                        <div id="driverResults" class="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50 hidden"></div>
+                        <div id="driverResults" class="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-[1000] hidden"></div>
                     </div>
                     <p class="text-xs text-gray-500 mt-1">ถ้าไม่ระบุ จะใช้ผู้ขอเป็นคนขับ</p>
                 </div>
@@ -93,7 +93,7 @@
                     <div id="passengersList" class="space-y-2 mb-2"></div>
                     <div class="relative">
                         <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" id="passengerSearch" placeholder="ค้นหาเพิ่มผู้โดยสาร..." autocomplete="off" oninput="searchPassenger(this.value)">
-                        <div id="passengerResults" class="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50 hidden"></div>
+                        <div id="passengerResults" class="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-[1000] hidden"></div>
                     </div>
                 </div>
             </form>

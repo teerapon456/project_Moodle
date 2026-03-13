@@ -170,7 +170,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                     <input type="text" class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" id="adminEmailSearch"
                         placeholder="ค้นหาชื่อหรืออีเมลพนักงาน..." autocomplete="off"
                         oninput="searchAdminEmail(this.value)">
-                    <div class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-[250px] overflow-y-auto z-50 hidden" id="adminEmailResults"></div>
+                    <div class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-[250px] overflow-y-auto z-[1000] hidden" id="adminEmailResults"></div>
                 </div>
             </div>
 
@@ -188,7 +188,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                     <input type="text" class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" id="ccEmailSearch"
                         placeholder="ค้นหาชื่อหรืออีเมลพนักงาน..." autocomplete="off"
                         oninput="searchCcEmail(this.value)">
-                    <div class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-[250px] overflow-y-auto z-50 hidden" id="ccEmailResults"></div>
+                    <div class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-[250px] overflow-y-auto z-[1000] hidden" id="ccEmailResults"></div>
                 </div>
             </div>
 
@@ -207,7 +207,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 </div>
 
 <!-- Room Type Modal -->
-<div class="modal-overlay fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5" id="roomTypeModal">
+<div class="modal-overlay fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] p-5" id="roomTypeModal">
     <div class="bg-white rounded-xl w-full max-w-md shadow-2xl">
         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <h3 class="font-semibold text-gray-900" id="roomTypeModalTitle">เพิ่มประเภทห้องพัก</h3>
@@ -253,7 +253,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 </div>
 
 <!-- Category Modal -->
-<div class="modal-overlay fixed inset-0 bg-black/40 flex items-center justify-center z-50 opacity-0 pointer-events-none transition-all duration-300 px-4" id="categoryModal">
+<div class="modal-overlay fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] opacity-0 pointer-events-none transition-all duration-300 px-4" id="categoryModal">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden transition-all duration-300 scale-95" id="categoryModalContent">
         <!-- Header -->
         <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">

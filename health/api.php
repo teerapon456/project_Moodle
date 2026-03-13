@@ -59,6 +59,158 @@ function controlContainer($containerName, $action = 'start')
     }
 }
 
+/**
+ * Fetch CPU/RAM stats for multiple containers in parallel with persistence cache
+ */
+function getMultipleContainerStats($containerNames)
+{
+    $socket = '/var/run/docker.sock';
+    if (!file_exists($socket) || !is_writable($socket)) return [];
+
+    $cacheFile = '/tmp/health_stats_cache.json';
+    $cache = [];
+    if (file_exists($cacheFile)) {
+        $cache = json_decode(file_get_contents($cacheFile), true) ?: [];
+    }
+
+    $mh = curl_multi_init();
+    $handles = [];
+
+    foreach ($containerNames as $name) {
+        $ch = curl_init();
+        $url = "http://localhost/v1.41/containers/{$name}/stats?stream=false";
+        curl_setopt($ch, CURLOPT_UNIX_SOCKET_PATH, $socket);
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 3); // Increased timeout for heavy load
+        curl_multi_add_handle($mh, $ch);
+        $handles[$name] = $ch;
+    }
+
+    $active = null;
+    do {
+        $mrc = curl_multi_exec($mh, $active);
+    } while ($mrc == CURLM_CALL_MULTI_PERFORM);
+
+    while ($active && $mrc == CURLM_OK) {
+        if (curl_multi_select($mh) != -1) {
+            do {
+                $mrc = curl_multi_exec($mh, $active);
+            } while ($mrc == CURLM_CALL_MULTI_PERFORM);
+        }
+    }
+
+    $results = [];
+    $updatedCache = false;
+
+    foreach ($handles as $name => $ch) {
+        $response = curl_multi_getcontent($ch);
+        curl_multi_remove_handle($mh, $ch);
+        curl_close($ch);
+
+        if ($response) {
+            $stats = json_decode($response, true);
+            if ($stats && !isset($stats['message'])) {
+                // CPU
+                $cpu_percent = 0.0;
+                if (isset($stats['cpu_stats'], $stats['precpu_stats'])) {
+                    $cpu_delta = $stats['cpu_stats']['cpu_usage']['total_usage'] - $stats['precpu_stats']['cpu_usage']['total_usage'];
+                    $system_delta = ($stats['cpu_stats']['system_cpu_usage'] ?? 0) - ($stats['precpu_stats']['system_cpu_usage'] ?? 0);
+                    $online_cpus = $stats['cpu_stats']['online_cpus'] ?? 1;
+                    if ($system_delta > 0 && $cpu_delta > 0) {
+                        $cpu_percent = ($cpu_delta / $system_delta) * $online_cpus * 100.0;
+                    }
+                }
+                // Mem
+                $mem_usage = $stats['memory_stats']['usage'] ?? 0;
+                $mem_limit = $stats['memory_stats']['limit'] ?? 1;
+                $mem_cache = $stats['memory_stats']['stats']['cache'] ?? 0;
+                $used_memory = $mem_usage - $mem_cache;
+                $mem_percent = ($used_memory / $mem_limit) * 100.0;
+
+                $data = [
+                    'cpu_percent' => round($cpu_percent, 1),
+                    'mem_percent' => round($mem_percent, 1),
+                    'mem_usage_mb' => round($used_memory / 1024 / 1024, 1),
+                    'mem_limit_mb' => round($mem_limit / 1024 / 1024, 1),
+                    'timestamp' => time()
+                ];
+                
+                $results[$name] = $data;
+                $cache[$name] = $data;
+                $updatedCache = true;
+            } else if (isset($cache[$name])) {
+                // Return cached version if poll failed
+                $results[$name] = $cache[$name];
+                $results[$name]['stale'] = true;
+            }
+        } else if (isset($cache[$name])) {
+            // Return cached version if poll failed
+            $results[$name] = $cache[$name];
+            $results[$name]['stale'] = true;
+        }
+    }
+
+    if ($updatedCache) {
+        @file_put_contents($cacheFile, json_encode($cache));
+    }
+
+    curl_multi_close($mh);
+    return $results;
+}
+
+/**
+ * Fetch all container information in a single call to Docker API
+ */
+function getAllContainersInfo()
+{
+    $socket = '/var/run/docker.sock';
+    if (!file_exists($socket)) return [];
+
+    $url = "http://localhost/v1.41/containers/json?all=true";
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_UNIX_SOCKET_PATH, $socket);
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    if (!$response) return [];
+
+    $containers = json_decode($response, true);
+    $map = [];
+    if (is_array($containers)) {
+        foreach ($containers as $c) {
+            $name = ltrim($c['Names'][0] ?? '', '/');
+            if (!$name) continue;
+
+            $status = $c['Status'] ?? 'Unknown';
+            $state = $c['State'] ?? 'offline';
+            
+            // Format uptime/started_at from status string or use Created
+            $uptime = "Stopped";
+            $started_at = "Unknown";
+            
+            if ($state === 'running') {
+                $uptime = $status; // Docker Status string is "Up X minutes"
+                if (isset($c['Created'])) {
+                   // We don't have accurate started_at here without Inspect, 
+                   // but Status string is usually enough for the user.
+                }
+            }
+
+            $map[$name] = [
+                'status' => ($state === 'running') ? 'online' : 'offline',
+                'uptime' => $uptime,
+                'state' => $state
+            ];
+        }
+    }
+    return $map;
+}
+
 function checkTcpStatus($host, $port, $timeout = 2)
 {
     try {
@@ -166,29 +318,95 @@ function getContainerUptime()
     return ['uptime' => 'Active', 'started_at' => 'Running'];
 }
 
+function getSystemMetrics()
+{
+    $metrics = [
+        'load' => '0.00 0.00 0.00',
+        'cpu_percent' => 0,
+        'cores' => 1,
+        'ram' => ['total' => 0, 'free' => 0, 'available' => 0, 'used_percent' => 0],
+        'swap' => ['total' => 0, 'free' => 0, 'used_percent' => 0],
+        'disk' => ['total' => 0, 'free' => 0, 'used_percent' => 0]
+    ];
+
+    // CPU Cores
+    $cores = @shell_exec('nproc');
+    $metrics['cores'] = $cores ? (int)trim($cores) : 1;
+
+    // Load Average
+    $load = @file_get_contents('/proc/loadavg');
+    if ($load) {
+        $loadArr = explode(' ', $load);
+        $metrics['load'] = "{$loadArr[0]} {$loadArr[1]} {$loadArr[2]}";
+        
+        // Utilization = (Load / Cores) * 100
+        $metrics['cpu_percent'] = round(($loadArr[0] / $metrics['cores']) * 100, 1);
+    }
+
+    // Memory Info
+    $meminfo = @file_get_contents('/proc/meminfo');
+    if ($meminfo) {
+        preg_match('/MemTotal:\s+(\d+)/', $meminfo, $total);
+        preg_match('/MemFree:\s+(\d+)/', $meminfo, $free);
+        preg_match('/MemAvailable:\s+(\d+)/', $meminfo, $avail);
+        preg_match('/SwapTotal:\s+(\d+)/', $meminfo, $stotal);
+        preg_match('/SwapFree:\s+(\d+)/', $meminfo, $sfree);
+
+        $metrics['ram']['total'] = (int)($total[1] ?? 0);
+        $metrics['ram']['free'] = (int)($free[1] ?? 0);
+        $metrics['ram']['available'] = (int)($avail[1] ?? 0);
+        
+        if ($metrics['ram']['total'] > 0) {
+            $used = $metrics['ram']['total'] - $metrics['ram']['available'];
+            $metrics['ram']['used_percent'] = round(($used / $metrics['ram']['total']) * 100, 1);
+        }
+
+        $metrics['swap']['total'] = (int)($stotal[1] ?? 0);
+        $metrics['swap']['free'] = (int)($sfree[1] ?? 0);
+        if ($metrics['swap']['total'] > 0) {
+            $sused = $metrics['swap']['total'] - $metrics['swap']['free'];
+            $metrics['swap']['used_percent'] = round(($sused / $metrics['swap']['total']) * 100, 1);
+        }
+    }
+
+    // Disk Info
+    $path = '/'; 
+    $disk_total = @disk_total_space($path);
+    $disk_free = @disk_free_space($path);
+    if ($disk_total !== false && $disk_free !== false) {
+        $disk_used = $disk_total - $disk_free;
+        $metrics['disk']['total'] = round($disk_total / 1024 / 1024 / 1024, 1); // GB
+        $metrics['disk']['free'] = round($disk_free / 1024 / 1024 / 1024, 1); // GB
+        $metrics['disk']['used_percent'] = round(($disk_used / $disk_total) * 100, 1);
+    }
+
+    return $metrics;
+}
+
 $redisHost = $_ENV['REDIS_HOST'] ?? 'myhr-redis';
 $redisPort = $_ENV['REDIS_PORT'] ?? 6379;
+
+// Service to Container Mapping
+$nameMap = [
+    'Database' => 'myhr-db',
+    'Moodle DB' => 'myhr-moodle-db',
+    'Redis' => 'myhr-redis',
+    'Gateway' => 'myhr-gateway',
+    'Portal (Main)' => 'myhr-portal',
+    'Moodle Frontend' => 'myhr-frontend',
+    'Moodle LMS' => 'myhr-moodle',
+    'Car Booking' => 'myhr-carbooking',
+    'Yearly Activity' => 'myhr-yearlyactivity',
+    'IGA Module' => 'myhr-iga',
+    'Dormitory' => 'myhr-dormitory',
+    'phpMyAdmin' => 'myhr-phpmyadmin',
+    'Health Check' => 'myhr-health'
+];
 
 // Handle Control Requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = json_decode(file_get_contents('php://input'), true);
     if (isset($input['service']) && isset($input['action'])) {
-        // Map service display name to container name
-        $nameMap = [
-            'Database' => 'myhr-db',
-            'Moodle DB' => 'myhr-moodle-db',
-            'Redis' => 'myhr-redis',
-            'Gateway' => 'myhr-gateway',
-            'Portal (Main)' => 'myhr-portal',
-            'Moodle Frontend' => 'myhr-frontend',
-            'Moodle LMS' => 'myhr-moodle',
-            'Car Booking' => 'myhr-carbooking',
-            'Yearly Activity' => 'myhr-yearlyactivity',
-            'IGA Module' => 'myhr-iga',
-            'Dormitory' => 'myhr-dormitory',
-            'phpMyAdmin' => 'myhr-phpmyadmin'
-        ];
-
         $containerName = $nameMap[$input['service']] ?? null;
         if ($containerName) {
             $result = controlContainer($containerName, $input['action']);
@@ -200,9 +418,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-$containerMetrics = getContainerUptime();
-
-// Mocking uptime for containers since we can't easily query docker socket
+// 0. Define Services
 $servicesDefinition = [
     'Database' => ['host' => 'myhr-db', 'port' => 3306, 'type' => 'db', 'link' => ':8081/?server=1'],
     'Moodle DB' => ['host' => 'myhr-moodle-db', 'port' => 3306, 'type' => 'tcp', 'link' => ':8081/?server=2'],
@@ -222,23 +438,50 @@ $servicesDefinition = [
     'Health Check' => ['host' => 'localhost', 'port' => 80, 'type' => 'self', 'link' => '/health/']
 ];
 
+// 1. Fetch all basic container info in one bulk call
+$allContainers = getAllContainersInfo();
+
+// 2. Identify which containers are online and need resource stats
+$onlineContainerNames = [];
+foreach ($servicesDefinition as $name => $cfg) {
+    $cName = $nameMap[$name] ?? null;
+    if ($cName && isset($allContainers[$cName]) && $allContainers[$cName]['status'] === 'online') {
+        $onlineContainerNames[] = $cName;
+    }
+}
+
+// 3. Fetch resource stats (CPU/RAM) for all online containers in parallel
+$allStats = getMultipleContainerStats($onlineContainerNames);
+
 $serviceDetails = [];
 $allOnline = true;
 
 foreach ($servicesDefinition as $name => $cfg) {
+    $cName = $nameMap[$name] ?? null;
+    $containerInfo = $cName ? ($allContainers[$cName] ?? null) : null;
+
     if ($cfg['type'] === 'db') {
         $data = checkDatabase();
     } elseif ($cfg['type'] === 'self') {
-        $data = ['status' => 'online', 'latency' => 1, 'uptime' => $containerMetrics['uptime'], 'started_at' => $containerMetrics['started_at'], 'link' => $cfg['link']];
+        $data = [
+            'status' => 'online', 
+            'latency' => 1, 
+            'uptime' => $containerInfo['uptime'] ?? 'Running', 
+            'started_at' => 'Active', 
+            'link' => $cfg['link']
+        ];
     } else {
         $check = checkTcpStatus($cfg['host'], $cfg['port']);
         $data = array_merge($check, [
             'link' => $cfg['link'],
-            // Since all containers were started together by Docker Compose,
-            // they share the same container uptime metrics.
-            'uptime' => $check['status'] === 'online' ? $containerMetrics['uptime'] : 'Offline',
-            'started_at' => $check['status'] === 'online' ? $containerMetrics['started_at'] : 'Stopped'
+            'uptime' => $containerInfo['uptime'] ?? ($check['status'] === 'online' ? 'Up' : 'Offline'),
+            'started_at' => $check['status'] === 'online' ? 'Running' : 'Stopped'
         ]);
+    }
+
+    // Add Container Specific Stats if available (from parallel fetch)
+    if ($cName && isset($allStats[$cName])) {
+        $data['container_stats'] = $allStats[$cName];
     }
 
     $serviceDetails[$name] = $data;
@@ -250,6 +493,7 @@ foreach ($servicesDefinition as $name => $cfg) {
 $response = [
     'status' => $allOnline ? 'healthy' : 'degraded',
     'timestamp' => date('Y-m-d H:i:sP'),
+    'system_metrics' => getSystemMetrics(),
     'services' => $serviceDetails
 ];
 

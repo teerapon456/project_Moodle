@@ -10,5 +10,5 @@ defined('MOODLE_INTERNAL') || die();
 $plugin->version   = 2026031003;        // YYYYMMDDXX — Add coursetype and occurrence fields
 $plugin->requires  = 2024042200;        // Moodle 4.4+
 $plugin->component = 'local_coursehistory';
-$plugin->maturity  = MATURITY_BETA;
+$plugin->maturity  = MATURITY_STABLE;
 $plugin->release   = '1.1.0';

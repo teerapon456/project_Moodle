@@ -45,7 +45,7 @@ $ccEmails = $settings['cc_emails'] ?? '';
 
             <div class="relative">
                 <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" id="adminEmailSearch" placeholder="ค้นหาชื่อหรืออีเมลพนักงาน..." autocomplete="off" oninput="searchAdminEmail(this.value)">
-                <div id="adminEmailResults" class="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50 hidden"></div>
+                <div id="adminEmailResults" class="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-[1000] hidden"></div>
             </div>
         </div>
 
@@ -61,7 +61,7 @@ $ccEmails = $settings['cc_emails'] ?? '';
 
             <div class="relative">
                 <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" id="ccEmailSearch" placeholder="ค้นหาชื่อหรืออีเมลพนักงาน..." autocomplete="off" oninput="searchCcEmail(this.value)">
-                <div id="ccEmailResults" class="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50 hidden"></div>
+                <div id="ccEmailResults" class="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-[1000] hidden"></div>
             </div>
         </div>
 

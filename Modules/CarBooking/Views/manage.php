@@ -151,7 +151,7 @@ $statusLabels = [
 </div>
 
 <!-- Approval Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5 opacity-0 invisible transition-all" id="approvalModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] p-5 opacity-0 invisible transition-all" id="approvalModal">
     <div class="bg-white rounded-xl w-full max-w-xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="flex items-center gap-2 font-semibold text-gray-900"><i class="ri-checkbox-circle-line text-primary"></i> อนุมัติคำขอ</h3>
@@ -207,7 +207,7 @@ $statusLabels = [
 </div>
 
 <!-- Reject Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5 opacity-0 invisible transition-all" id="rejectModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] p-5 opacity-0 invisible transition-all" id="rejectModal">
     <div class="bg-white rounded-xl w-full max-w-md shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="flex items-center gap-2 font-semibold text-red-600"><i class="ri-close-circle-line"></i> ปฏิเสธคำขอ</h3>
@@ -323,6 +323,7 @@ $statusLabels = [
             }
         }
 
+        if (window.MyHRModal) MyHRModal.setupCustomModal('approvalModal');
         document.getElementById('approvalModal').classList.add('active');
     }
 
@@ -445,6 +446,7 @@ $statusLabels = [
     function openRejectModal(bookingId) {
         document.getElementById('rejectBookingId').value = bookingId;
         document.getElementById('rejectReason').value = '';
+        if (window.MyHRModal) MyHRModal.setupCustomModal('rejectModal');
         document.getElementById('rejectModal').classList.add('active');
     }
 

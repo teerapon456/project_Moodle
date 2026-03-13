@@ -132,6 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form method="POST" action="">
+            <?php
             require_once __DIR__ . '/../../core/Security/CsrfHelper.php';
             \Core\Security\CsrfHelper::insertField();
             ?>

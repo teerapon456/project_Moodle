@@ -121,13 +121,15 @@ class UrlHelper
 
     /**
      * Generate a full URL for a given path.
-     * @param string $path Path relative to app root (e.g., 'dormitory/dashboard')
+     * @param string $path Path relative to app root (e.g., 'Modules/YearlyActivity/index.php')
      * @return string Full URL
      */
     public static function url($path = '')
     {
         $base = self::getBaseUrl();
         $path = ltrim($path, '/');
+        // Handle empty path
+        if ($path === '') return $base . '/';
         return $base . '/' . $path;
     }
 
@@ -140,7 +142,9 @@ class UrlHelper
     {
         $basePath = self::getBasePath();
         $path = ltrim($path, '/');
-        return $basePath . '/' . $path;
+        // Ensure no double slashes and handles empty path
+        $result = rtrim($basePath, '/') . '/' . $path;
+        return ($result === '/') ? '/' : rtrim($result, '/');
     }
 
     /**
@@ -154,15 +158,20 @@ class UrlHelper
         $basePath = self::getBasePath();
         $baseRoot = rtrim($basePath, '/');
 
-        // Check if DocumentRoot points to public/ folder (Docker) or htdocs (XAMPP)
+        // Check if DocumentRoot points to public/ folder (Docker Portal) 
+        // or contains public/ folder (XAMPP or Docker Module)
         $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/');
-        if ($docRoot && is_dir($docRoot . '/assets')) {
-            // Docker: DocumentRoot is public/, assets are at /assets/
-            return ($baseRoot ? $baseRoot : '') . '/';
-        } else {
-            // XAMPP: DocumentRoot is htdocs, assets are at /public/assets/
-            return ($baseRoot ? $baseRoot : '') . '/public/';
+        
+        // If we are in Docker (either Portal root or Module root), 
+        // we want the browser to use absolute root paths for shared assets/API
+        // so that Nginx handles them correctly.
+        if ($docRoot && (is_dir($docRoot . '/assets') || is_dir($docRoot . '/public/assets'))) {
+            // In Docker, we usually want paths to be absolute from domain root
+            return '/';
         }
+
+        // Fallback for XAMPP or other subfolder deployments
+        return ($baseRoot ? $baseRoot : '') . '/public/';
     }
 
     /**
@@ -183,7 +192,14 @@ class UrlHelper
      */
     public static function getCurrentUrl($includeQuery = true)
     {
-        $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http");
+        // Use robust protocol detection (respect proxy headers)
+        if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+            $protocol = strtok($_SERVER['HTTP_X_FORWARDED_PROTO'], ',');
+        } else {
+            $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ||
+                (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? "https" : "http";
+        }
+
         $host = $_SERVER['HTTP_HOST'] ?? '';
         $uri = $_SERVER['REQUEST_URI'] ?? '';
 

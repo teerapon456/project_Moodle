@@ -161,6 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         client.connect();
+        client.startPolling(60000); // 1 minute polling fallback
 
         // Immediately fetch unread count on page load
         fetchUnreadCount();

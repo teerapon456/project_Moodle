@@ -43,6 +43,67 @@ class Copilot {
 
     renderUI() {
         const ui = `
+            <style>
+                .copilot-quick-actions {
+                    display: flex;
+                    gap: 8px;
+                    padding: 10px 15px;
+                    overflow-x: auto;
+                    background: #f8fafc;
+                    border-top: 1px solid #e2e8f0;
+                    scrollbar-width: none;
+                }
+                .copilot-quick-actions::-webkit-scrollbar { display: none; }
+                .copilot-quick-btn {
+                    white-space: nowrap;
+                    padding: 6px 12px;
+                    background: #fff;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 20px;
+                    font-size: 0.8rem;
+                    color: #475569;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                }
+                .copilot-quick-btn:hover {
+                    background: #eff6ff;
+                    border-color: #3b82f6;
+                    color: #1d4ed8;
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 4px rgba(59,130,246,0.1);
+                }
+                .copilot-typing {
+                    display: flex;
+                    gap: 4px;
+                    padding: 12px 16px;
+                    background: #f1f5f9;
+                    border-radius: 12px;
+                    width: fit-content;
+                    margin-bottom: 10px;
+                    border-bottom-left-radius: 4px;
+                }
+                .copilot-dot {
+                    width: 6px;
+                    height: 6px;
+                    background: #94a3b8;
+                    border-radius: 50%;
+                    animation: copilot-bounce 1.4s infinite ease-in-out both;
+                }
+                .copilot-dot:nth-child(1) { animation-delay: -0.32s; }
+                .copilot-dot:nth-child(2) { animation-delay: -0.16s; }
+                @keyframes copilot-bounce {
+                    0%, 80%, 100% { transform: scale(0); }
+                    40% { transform: scale(1); }
+                }
+                .message-anim { animation: msg-fade-up 0.3s ease-out forwards; }
+                @keyframes msg-fade-up {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            </style>
             <div class="copilot-launcher" title="Open Copilot">
                 <i class="ri-robot-2-line"></i>
             </div>
@@ -60,6 +121,11 @@ class Copilot {
                             ${this.formatMessage(m.text)}
                         </div>
                     `).join('')}
+                </div>
+                <div class="copilot-quick-actions">
+                    <button class="copilot-quick-btn" data-query="มีประกาศหรือข่าวสารอะไรใหม่บ้าง?"><i class="ri-newspaper-line"></i> ข่าวสาร</button>
+                    <button class="copilot-quick-btn" data-query="ขอข้อมูลส่วนตัวของฉันหน่อย"><i class="ri-user-line"></i> ข้อมูล</button>
+                    <button class="copilot-quick-btn" data-query="ระเบียบการลาเป็นอย่างไร?"><i class="ri-file-list-3-line"></i> ระเบียบการลา</button>
                 </div>
                 <div class="copilot-input-area">
                     <input type="text" class="copilot-input" placeholder="พิมพ์คำสั่ง... (เช่น 'จองรถ')">
@@ -112,6 +178,15 @@ class Copilot {
         input.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage();
         });
+
+        const quickBtns = document.querySelectorAll('.copilot-quick-btn');
+        quickBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const query = btn.getAttribute('data-query');
+                this.addMessage('user', query);
+                this.processCommand(query);
+            });
+        });
     }
 
     addMessage(sender, text) {
@@ -119,7 +194,7 @@ class Copilot {
         this.saveState();
 
         const div = document.createElement('div');
-        div.className = `message ${sender}`;
+        div.className = `message ${sender} message-anim`;
         div.innerHTML = this.formatMessage(text);
         this.messagesContainer.appendChild(div);
         this.scrollToBottom();
@@ -138,20 +213,23 @@ class Copilot {
 
     // --- LOGIC CORE (Real AI via API) ---
     processCommand(text) {
-        // Simulate "Thinking"
+        // Hide quick actions on send
+        const quickActions = document.querySelector('.copilot-quick-actions');
+        if (quickActions) quickActions.style.display = 'none';
+
+        // Simulate "Thinking" with new animation
         const typingDiv = document.createElement('div');
-        typingDiv.className = 'message bot typing-indicator';
-        typingDiv.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+        typingDiv.className = 'message-anim copilot-typing';
+        typingDiv.innerHTML = '<div class="copilot-dot"></div><div class="copilot-dot"></div><div class="copilot-dot"></div>';
         this.messagesContainer.appendChild(typingDiv);
         this.scrollToBottom();
 
         setTimeout(() => {
-            typingDiv.remove();
-            this.executeLogic(text.toLowerCase());
+            this.executeLogic(text.toLowerCase(), typingDiv);
         }, 600 + Math.random() * 500);
     }
 
-    async executeLogic(cmd) {
+    async executeLogic(cmd, typingDiv) {
         try {
             // Get last 10 messages for context
             const history = this.messages.slice(-10).map(m => ({
@@ -186,8 +264,14 @@ class Copilot {
             const data = await response.json();
             let reply = data.reply || "ขออภัย ระบบมีปัญหา กรุณาลองใหม่";
 
+            if (typingDiv) typingDiv.remove();
+
             // แสดงข้อความก่อน
             this.addMessage('bot', reply);
+
+            // Show quick actions again
+            const quickActions = document.querySelector('.copilot-quick-actions');
+            if (quickActions) quickActions.style.display = 'flex';
 
             // ถ้ามี action ให้ navigate (action ถูกแยกมาจาก PHP แล้ว)
             if (data.action) {
@@ -208,7 +292,11 @@ class Copilot {
 
         } catch (error) {
             console.error(error);
+            if (typingDiv) typingDiv.remove();
             this.addMessage('bot', "เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่");
+            
+            const quickActions = document.querySelector('.copilot-quick-actions');
+            if (quickActions) quickActions.style.display = 'flex';
         }
     }
 }

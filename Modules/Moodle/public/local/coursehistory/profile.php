@@ -60,9 +60,11 @@ foreach ($statcards as $card) {
     echo html_writer::start_div('card-body py-3');
     echo html_writer::tag('div', $card[3], ['style' => 'font-size:1.5em;']);
     echo html_writer::tag('div', $card[1], ['class' => 'h4 mb-0 font-weight-bold']);
-    echo html_writer::tag('small',
+    echo html_writer::tag(
+        'small',
         get_string('stat_' . $card[0], 'local_coursehistory'),
-        ['class' => "badge $card[2]"]);
+        ['class' => "badge $card[2]"]
+    );
     echo html_writer::end_div();
     echo html_writer::end_div();
     echo html_writer::end_div();
@@ -151,13 +153,6 @@ echo html_writer::end_div(); // row
 echo html_writer::end_div(); // card-body
 echo html_writer::end_div(); // card
 
-// --- Calendar Section ---
-echo html_writer::start_div('row mb-4');
-echo html_writer::start_div('col-12');
-echo html_writer::tag('div', '', ['id' => 'course-calendar']);
-echo html_writer::end_div(); // col
-echo html_writer::end_div(); // row
-
 // --- ตารางรายการหลักสูตร ---
 $submissions = local_coursehistory_get_all_course_history($userid);
 
@@ -175,7 +170,6 @@ if (empty($submissions)) {
         get_string('occurrence', 'local_coursehistory'),
         get_string('instructorname', 'local_coursehistory'),
         get_string('organization', 'local_coursehistory'),
-        get_string('sourcetype', 'local_coursehistory'),
         get_string('startdate', 'local_coursehistory'),
         get_string('enddate', 'local_coursehistory'),
         get_string('coursematch', 'local_coursehistory'),
@@ -199,35 +193,38 @@ if (empty($submissions)) {
         $sourceBadge = '';
         if (isset($s->source_type)) {
             if ($s->source_type === 'internal') {
-                $sourceBadge = html_writer::tag('span', '🏠 ' . get_string('internal_course', 'local_coursehistory'), 
-                    ['class' => 'badge badge-info']);
+                $sourceBadge = html_writer::tag(
+                    'span',
+                    '🏠 ' . get_string('internal_course', 'local_coursehistory'),
+                    ['class' => 'badge badge-info']
+                );
             } else {
-                $sourceBadge = html_writer::tag('span', '🌍 ' . get_string('external_course', 'local_coursehistory'), 
-                    ['class' => 'badge badge-secondary']);
+                $sourceBadge = html_writer::tag(
+                    'span',
+                    '🌍 ' . get_string('external_course', 'local_coursehistory'),
+                    ['class' => 'badge badge-secondary']
+                );
             }
         }
-
         // Course match
         $matchbadge = $s->matchedcourseid
             ? html_writer::tag('span', '✅', ['class' => 'badge badge-success', 'title' => get_string('matched', 'local_coursehistory')])
             : html_writer::tag('span', '—', ['class' => 'text-muted']);
-
         // Status badge
         $statusbadge = local_coursehistory_status_badge($s->status);
-
         // View button
-        $actions = html_writer::link($viewurl,
+        $actions = html_writer::link(
+            $viewurl,
             get_string('view', 'local_coursehistory'),
-            ['class' => 'btn btn-sm btn-outline-info']);
-
+            ['class' => 'btn btn-sm btn-outline-info']
+        );
         $table->data[] = [
             (!empty($s->idnumber) ? format_string($s->idnumber) : '—'),
-            html_writer::link($viewurl, format_string($s->coursename)),
-            (!empty($s->coursetype) ? get_string('coursetype_'.$s->coursetype, 'local_coursehistory') : '—'),
+            html_writer::link($viewurl, format_string($s->coursename)) . ' ' . $sourceBadge,
+            (!empty($s->coursetype) ? get_string('coursetype_' . $s->coursetype, 'local_coursehistory') : '—'),
             (!empty($s->occurrence) ? format_string($s->occurrence) : '—'),
             format_string($s->instructorname),
             format_string($s->organization),
-            $sourceBadge,
             (!empty($s->startdate) ? userdate($s->startdate, '%d/%m/%Y %H:%M') : '—'),
             (!empty($s->enddate) ? userdate($s->enddate, '%d/%m/%Y %H:%M') : '—'),
             $matchbadge,

@@ -13,7 +13,6 @@ header("Pragma: no-cache");
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 
-file_put_contents('/srv/myhr/dev/logs/route_debug.log', date('Y-m-d H:i:s') . " - START\nURI: " . $_SERVER['REQUEST_URI'] . "\n", FILE_APPEND);
 
 // Use optimized session configuration (fixes Antivirus slowdown)
 require_once __DIR__ . '/core/Config/SessionConfig.php';
@@ -48,7 +47,7 @@ if (!$isAuthRequest) {
 session_write_close();
 
 // CSRF Protection for state-changing requests (POST, PUT, DELETE)
-$csrfExemptRoutes = ['auth/microsoft', 'hrnews/published', 'api/auth', 'auth/rate-limits', 'auth/clear-rate-limit', 'auth/clear-all-rate-limits']; // Routes that don't need CSRF
+$csrfExemptRoutes = ['auth/microsoft', 'hrnews/published', 'api/auth', 'auth/rate-limits', 'auth/clear-rate-limit', 'auth/clear-all-rate-limits', 'notifications']; // Routes that don't need CSRF
 
 // Better route detection for API endpoints
 $requestUri = $_SERVER['REQUEST_URI'] ?? '';
@@ -62,7 +61,7 @@ $isApiAuthRequest = (count($pathSegments) >= 2 && $pathSegments[0] === 'api' && 
 if (!$isApiAuthRequest) {
     // Extract first two meaningful segments for route detection
     $cleanSegments = array_values(array_filter($pathSegments, function ($s) {
-        return $s !== '' && $s !== 'api';
+        return $s !== '' && $s !== 'api' && $s !== 'routes.php' && $s !== 'index.php';
     }));
     $currentRoute = implode('/', array_slice($cleanSegments, 0, 2));
 } else {
@@ -99,7 +98,7 @@ $uri = explode('/', $uri);
 
 // Remove /api/ prefix if present and find the resource
 $resourceIndex = 0;
-$validResources = ['auth', 'bookings', 'cars', 'settings', 'users', 'dashboard', 'pdf', 'reports', 'email_logs', 'approval', 'fleetcards', 'modules', 'hrnews', 'dormitory', 'dorm', 'permissions', 'notifications', 'activity', 'scheduled_reports', 'yearlyactivity', 'sso', 'employees', 'iga'];
+$validResources = ['auth', 'bookings', 'cars', 'settings', 'users', 'dashboard', 'pdf', 'reports', 'email_logs', 'notification_logs', 'approval', 'fleetcards', 'modules', 'hrnews', 'dormitory', 'dorm', 'permissions', 'notifications', 'activity', 'scheduled_reports', 'yearlyactivity', 'sso', 'employees', 'iga'];
 // Remove empty segments and find resource
 $cleanUri = array_values(array_filter($uri, function ($segment) {
     return $segment !== '' && $segment !== 'api';
@@ -166,43 +165,6 @@ if (isset($resource)) {
             $controller = new CarController();
             $controller->processRequest();
             break;
-        /*
-        case 'settings':
-            include_once __DIR__ . '/modules/CarBooking/Controllers/SettingController.php';
-            $controller = new SettingController();
-            $controller->processRequest();
-            break;
-        case 'workflow':
-            include_once __DIR__ . '/modules/CarBooking/Controllers/WorkflowController.php';
-            $controller = new WorkflowController();
-            $controller->processRequest();
-            break;
-        case 'users':
-            include_once __DIR__ . '/modules/CarBooking/Controllers/UserController.php';
-            $controller = new UserController();
-            $controller->processRequest();
-            break;
-        case 'approval':
-            include_once __DIR__ . '/modules/CarBooking/Controllers/ApprovalController.php';
-            $controller = new ApprovalController();
-            $controller->processRequest();
-            break;
-        case 'pdf':
-            include_once __DIR__ . '/modules/CarBooking/Controllers/PDFController.php';
-            $controller = new PDFController();
-            $controller->processRequest();
-            break;
-        case 'dashboard':
-            include_once __DIR__ . '/modules/CarBooking/Controllers/DashboardController.php';
-            $controller = new DashboardController();
-            $controller->processRequest();
-            break;
-        case 'reports':
-            include_once __DIR__ . '/modules/CarBooking/Controllers/ReportController.php';
-            $controller = new ReportController();
-            $controller->generateUsageReport();
-            break;
-        */
         case 'modules':
             include_once __DIR__ . '/Modules/HRServices/Controllers/HRServicesController.php';
             $controller = new ModuleController();
@@ -233,10 +195,6 @@ if (isset($resource)) {
                 break;
             }
             $controllerMap = [
-                'dashboard' => 'DashboardController',
-                'buildings' => 'BuildingController',
-                'rooms' => 'RoomController',
-                'billing' => 'BillingController',
                 'dashboard' => 'DashboardController',
                 'buildings' => 'BuildingController',
                 'rooms' => 'RoomController',
@@ -279,6 +237,11 @@ if (isset($resource)) {
         case 'email_logs':
             include_once __DIR__ . '/core/Controllers/EmailLogController.php';
             $controller = new EmailLogController();
+            $controller->processRequest();
+            break;
+        case 'notification_logs':
+            include_once __DIR__ . '/core/Controllers/NotificationLogController.php';
+            $controller = new NotificationLogController();
             $controller->processRequest();
             break;
         case 'sso':
@@ -372,13 +335,6 @@ if (isset($resource)) {
             }
             exit;
             break;
-        /*
-        case 'fleetcards':
-            include_once __DIR__ . '/modules/CarBooking/Controllers/FleetCardController.php';
-            $controller = new FleetCardController();
-            $controller->processRequest();
-            break;
-        */
 
         default:
             $basePath = rtrim(Env::get('APP_BASE_PATH', ''), '/');
@@ -391,9 +347,8 @@ if (isset($resource)) {
             }
             header("Location: " . $basePath . "/404.php");
             exit;
-            break;
-    }
-} else {
+        }
+    } else {
     // Fallback for debugging or root access
     $basePathEnv = rtrim(Env::get('APP_BASE_PATH', ''), '/');
     $basePath = $basePathEnv ? $basePathEnv : '';

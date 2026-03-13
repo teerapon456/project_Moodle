@@ -40,3 +40,6 @@ tailwindcss.exe
 
 # Docker certificates
 docker/nginx/certs/
+
+# Shared Uploads
+public/uploads/

@@ -502,5 +502,3 @@ if (isset($_SESSION['alert'])) {
         fetchData();
     });
 </script>
-
-<?php include __DIR__ . '/../../../includes/footer.php'; ?>

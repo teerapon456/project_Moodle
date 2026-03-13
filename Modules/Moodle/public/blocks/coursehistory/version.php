@@ -7,11 +7,11 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2026030501;        // YYYYMMDDXX — bumped for permission changes
-$plugin->requires  = 2024042200;
+$plugin->version   = 2026031003;        // YYYYMMDDXX — Add coursetype and occurrence fields
+$plugin->requires  = 2024042200;        // Moodle 4.4+
 $plugin->component = 'block_coursehistory';
-$plugin->maturity  = MATURITY_BETA;
-$plugin->release   = '1.0.0';
+$plugin->maturity  = MATURITY_STABLE;
+$plugin->release   = '1.1.0';
 $plugin->dependencies = [
-    'local_coursehistory' => 2026030500,
+    'local_coursehistory' => 2026031000,
 ];

@@ -180,11 +180,20 @@ $profilePic = $user['profile_picture'] ?? null;
         </div>
     </a>
     <?php
+    // Assuming userHasModuleAccess function is defined elsewhere and available
+    // These variables are used in the $canShowServiceSettings calculation below.
+    // The instruction implies these definitions should be present here.
+    $activityPerm = userHasModuleAccess('ACTIVITY_DASHBOARD', (int)$user['role_id']);
+    $emailLogPerm = userHasModuleAccess('EMAIL_LOGS', (int)$user['role_id']);
+    $notifLogPerm = userHasModuleAccess('NOTIFICATION_LOGS', (int)$user['role_id']);
+    $scheduledPerm = userHasModuleAccess('SCHEDULED_REPORTS', (int)$user['role_id']);
+
     $canShowServiceSettings = !empty($userPerms['can_edit']) ||
         (!empty($hrNewsPerm['can_manage']) || !empty($hrNewsPerm['can_edit'])) ||
         !empty($permManage['can_view']) ||
         !empty($activityPerm['can_view']) ||
         !empty($emailLogPerm['can_view']) ||
+        !empty($notifLogPerm['can_view']) ||
         !empty($scheduledPerm['can_view']);
     ?>
 
@@ -232,6 +241,15 @@ $profilePic = $user['profile_picture'] ?? null;
                 <div>
                     <div class="font-bold text-sm text-gray-900">Email Logs</div>
                     <div class="text-xs text-gray-500">ประวัติการส่งอีเมล</div>
+                </div>
+            </a>
+        <?php endif; ?>
+        <?php if (!empty($notifLogPerm['can_view'])): ?>
+            <a href="<?= $linkBase ?>Modules/NotificationLogs/public/index.php" class="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 text-inherit no-underline">
+                <i class="ri-notification-3-line text-xl mt-0.5" style="color:#A21D21;"></i>
+                <div>
+                    <div class="font-bold text-sm text-gray-900">Notification Logs</div>
+                    <div class="text-xs text-gray-500">ประวัติการแจ้งเตือนทั้งหมด</div>
                 </div>
             </a>
         <?php endif; ?>

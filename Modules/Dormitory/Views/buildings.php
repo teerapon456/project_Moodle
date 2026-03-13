@@ -18,7 +18,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 </div>
 
 <!-- Add/Edit Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 opacity-0 invisible transition-all duration-200 p-5" id="buildingModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] opacity-0 invisible transition-all duration-200 p-5" id="buildingModal">
     <div class="bg-white rounded-xl w-full max-w-lg max-h-[calc(100vh-40px)] flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="text-lg font-semibold text-gray-900" id="modalTitle">เพิ่มอาคาร</h3>

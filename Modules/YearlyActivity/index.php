@@ -21,12 +21,20 @@ $basePath = preg_replace('#/Modules/YearlyActivity$#i', '', $startDir);
 if ($basePath === '') $basePath = '/';
 $baseRoot = rtrim($basePath, '/');
 
-// Determine asset base: check if DocumentRoot points to public/ folder (Docker) or htdocs (XAMPP)
-$docRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/');
-if ($docRoot && is_dir($docRoot . '/assets')) {
-    $assetBase = ($baseRoot ? $baseRoot : '') . '/';
+// Determine asset base correctly for Docker environment
+if (file_exists(__DIR__ . '/../../core/Helpers/UrlHelper.php')) {
+    require_once __DIR__ . '/../../core/Helpers/UrlHelper.php';
+    $assetBase = \Core\Helpers\UrlHelper::getAssetBase();
+    $linkBase = \Core\Helpers\UrlHelper::getLinkBase();
 } else {
-    $assetBase = $baseRoot . '/public/';
+    // Fallback logic
+    $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/');
+    if ($docRoot && (is_dir($docRoot . '/assets') || is_dir($docRoot . '/public/assets'))) {
+        $assetBase = '/';
+    } else {
+        $assetBase = $baseRoot . '/public/';
+    }
+    $linkBase = $baseRoot . '/';
 }
 $moduleAssets = $baseRoot . '/Modules/YearlyActivity/public/assets/';
 
@@ -512,15 +520,27 @@ if (isset($_GET['action'])) {
         exit;
     }
 }
+
+// Variables for Sidebar/Topbar
+$pageTitle = 'Yearly Activities';
+if ($page === 'dashboard') $pageTitle = 'Dashboard';
+elseif ($page === 'my_calendars') $pageTitle = 'My Calendars';
+elseif ($page === 'reports') $pageTitle = 'Reports';
+
+$baseRoot = $basePath;
 ?>
 <!DOCTYPE html>
-
 <html lang="th">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yearly Activities - MyHR Portal</title>
+    <title><?= $pageTitle ?> - MyHR Portal</title>
+
+    <!-- Google Fonts - Kanit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Tailwind CSS (Local) -->
     <link href="<?= $assetBase ?>assets/css/tailwind.css" rel="stylesheet">
@@ -536,176 +556,116 @@ if (isset($_GET['action'])) {
 
     <style>
         body {
-            background: #f5f7fa;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Kanit', sans-serif;
         }
     </style>
 </head>
 
-<body class="min-h-screen">
-
-    <!-- Module Header -->
+<body class="bg-gray-100 min-h-screen">
     <?php
-    require_once __DIR__ . '/Controllers/NotificationController.php';
-    $notifController = new NotificationController();
-    $unreadCount = $notifController->getUnreadCount();
-    $notifications = $notifController->getMyNotifications(5);
-    ?>
-    <header class="bg-gradient-to-r from-primary to-primary-light text-white px-4 sm:px-6 py-3 sm:py-4 shadow-lg">
-        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-            <div class="flex items-center gap-3 sm:gap-4">
-                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur">
-                    <i class="ri-calendar-event-line text-xl sm:text-2xl"></i>
-                </div>
-                <div>
-                    <h1 class="text-lg sm:text-xl font-bold">Yearly Activities</h1>
-                    <p class="text-xs sm:text-sm text-white/80 hidden sm:block">Activity Tracing System</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-2 sm:gap-4 w-full sm:w-auto justify-end">
-                <!-- Settings -->
-                <a href="?page=settings" class="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition text-white">
-                    <i class="ri-settings-3-line text-xl"></i>
-                </a>
+    // Sidebar Configuration
+    $sidebarConfig = [
+        'app_key' => 'yearlyactivity',
+        'title' => 'Yearly Activities',
+        'icon' => 'ri-calendar-check-fill',
+        'home_link' => $linkBase . 'Modules/HRServices/public/index.php',
+        'home_text' => 'กลับสู่หน้าหลัก',
+        'user' => [
+            'initial' => mb_substr($user['fullname'] ?? $user['name'] ?? $user['username'] ?? 'U', 0, 1),
+            'name' => htmlspecialchars($user['fullname'] ?? $user['name'] ?? $user['username']),
+            'role' => $user['role_name'] ?? 'User'
+        ],
+        'nav_groups' => [
+            [
+                'title' => null,
+                'items' => [
+                    ['id' => 'dashboard', 'link' => '?page=dashboard', 'icon' => 'ri-dashboard-3-line', 'text' => 'Dashboard'],
+                    ['id' => 'my_calendars', 'link' => '?page=my_calendars', 'icon' => 'ri-calendar-todo-line', 'text' => 'My Calendars'],
+                    ['id' => 'reports', 'link' => '?page=reports', 'icon' => 'ri-file-chart-line', 'text' => 'Reports']
+                ]
+            ],
+            [
+                'title' => 'ตั้งค่า',
+                'items' => [
+                    ['id' => 'settings', 'link' => '?page=settings', 'icon' => 'ri-settings-3-line', 'text' => 'ตั้งค่าส่วนตัว']
+                ]
+            ]
+        ]
+    ];
 
-                <!-- Notification Bell -->
-                <div class="relative" id="notif-container">
-                    <button id="notification-bell" class="relative p-2 bg-white/10 hover:bg-white/20 rounded-lg transition">
-                        <i class="ri-notification-3-line text-xl"></i>
-                        <?php if ($unreadCount > 0): ?>
-                            <span id="notification-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                                <?= $unreadCount > 9 ? '9+' : $unreadCount ?>
-                            </span>
-                        <?php else: ?>
-                            <span id="notification-badge" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">0</span>
-                        <?php endif; ?>
-                    </button>
-                    <!-- Notification Dropdown -->
-                    <div id="notification-dropdown" class="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 hidden z-50 overflow-hidden">
-                        <div class="p-4 border-b border-gray-100 flex justify-between items-center">
-                            <h3 class="font-bold text-gray-800">Notifications</h3>
-                            <button id="mark-all-read-btn" class="text-xs text-primary hover:underline">Mark all read</button>
-                        </div>
-                        <div id="notification-list" class="max-h-80 overflow-y-auto">
-                            <?php if (empty($notifications)): ?>
-                                <div class="p-8 text-center text-gray-400">
-                                    <i class="ri-notification-off-line text-3xl mb-2"></i>
-                                    <p class="text-sm">No notifications</p>
-                                </div>
-                            <?php else: ?>
-                                <?php foreach ($notifications as $notif):
-                                    $iconMap = ['info' => 'ri-information-line text-blue-500', 'success' => 'ri-check-line text-green-500', 'warning' => 'ri-alert-line text-orange-500', 'error' => 'ri-error-warning-line text-red-500'];
-                                    $icon = $iconMap[$notif['type']] ?? $iconMap['info'];
-                                ?>
-                                    <div class="notification-item block p-4 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 <?= $notif['is_read'] ? 'opacity-60' : '' ?>"
-                                        data-id="<?= $notif['id'] ?>"
-                                        onclick="handleNotificationClick('<?= $baseRoot . '/' . ltrim($notif['link'] ?: '#', '/') ?>', event)"
-                                        style="cursor: pointer;">
-                                        <div class="flex gap-3">
-                                            <i class="<?= $icon ?> text-xl mt-0.5"></i>
-                                            <div class="flex-1 min-w-0">
-                                                <div class="font-medium text-gray-800 text-sm"><?= htmlspecialchars($notif['title']) ?></div>
-                                                <div class="text-xs text-gray-500 truncate"><?= htmlspecialchars($notif['message']) ?></div>
-                                                <div class="text-xs text-gray-400 mt-1"><?= date('M j, g:i A', strtotime($notif['created_at'])) ?></div>
-                                            </div>
-                                            <?php if (!$notif['is_read']): ?>
-                                                <span class="w-2 h-2 bg-blue-500 rounded-full mt-2"></span>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-                <span class="text-xs sm:text-sm text-white/80 hidden md:inline"><?= htmlspecialchars($user['fullname'] ?? $user['email'] ?? 'User') ?></span>
-                <a href="<?= $baseRoot ?>/public/index.php" class="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm transition">
-                    <i class="ri-home-4-line mr-1"></i> หน้าหลัก
-                </a>
-            </div>
+    // Map sub-pages to parent sidebar items
+    $parentPageMap = [
+        'calendar' => 'my_calendars',
+        'calendar_settings' => 'my_calendars',
+        'activity_detail' => 'dashboard',
+        'summary_5w2h' => 'dashboard',
+        'activity_wizard' => 'dashboard',
+        'form_5w2h' => 'dashboard',
+        'settings' => 'settings'
+    ];
+
+    include dirname(__DIR__, 2) . '/core/Views/components/sidebar.php';
+    ?>
+
+    <!-- Main Content Wrapper -->
+    <main class="main-wrapper no-transition min-h-screen" id="mainContent" style="padding-left: 0;">
+        <!-- Topbar -->
+        <?php include dirname(__DIR__, 2) . '/core/Views/components/topbar.php'; ?>
+
+        <!-- Content Area -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+            <?php
+            // Clean Controller Routing
+            // This replaces the need for "dispatcher view files"
+            switch ($page) {
+                case 'calendar':
+                    require_once __DIR__ . '/Controllers/CalendarController.php';
+                    (new CalendarController())->show($_GET['id'] ?? 0);
+                    break;
+
+                case 'calendar_settings':
+                    require_once __DIR__ . '/Controllers/CalendarController.php';
+                    (new CalendarController())->settings($_GET['id'] ?? 0);
+                    break;
+
+                case 'activity_detail':
+                case 'summary_5w2h':
+                    require_once __DIR__ . '/Controllers/ActivityController.php';
+                    (new ActivityController())->summary5w2h($_GET['id'] ?? 0);
+                    break;
+
+                case 'activity_wizard':
+                    require_once __DIR__ . '/Controllers/ActivityController.php';
+                    (new ActivityController())->wizard();
+                    break;
+
+                default:
+                    // Fallback for simple views (dashboard, my_calendars, reports, settings)
+                    $viewPath = __DIR__ . "/Views/$page.php";
+                    if (file_exists($viewPath)) {
+                        include $viewPath;
+                    } else {
+                        echo "
+                        <div class='flex flex-col items-center justify-center py-20 text-center bg-white rounded-xl shadow-sm border border-gray-100'>
+                            <div class='w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4'>
+                                <i class='ri-tools-line text-3xl text-gray-400'></i>
+                            </div>
+                            <h2 class='text-2xl font-bold text-gray-900 mb-2'>Under Development</h2>
+                            <p class='text-gray-500 max-w-md'>The page '$page' is currently being built. Check back soon!</p>
+                            <a href='?page=dashboard' class='mt-6 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors'>Return to Dashboard</a>
+                        </div>";
+                    }
+                    break;
+            }
+            ?>
         </div>
-    </header>
+    </main>
+
+    <!-- Global Variables for JS -->
     <script>
         window.APP_BASE_PATH = '<?= $baseRoot ?>';
         window.ASSET_BASE = '<?= $assetBase ?>';
     </script>
-    <script src="<?= $assetBase ?>assets/js/header-notifications.js"></script>
-
-    <!-- Module Navigation -->
-    <nav class="bg-white shadow-sm sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-3 sm:px-6">
-            <div class="flex gap-1 py-2 overflow-x-auto scrollbar-hide nav-scroll">
-                <?php
-                $navItems = [
-                    'dashboard' => ['icon' => 'ri-dashboard-3-line', 'label' => 'Dashboard'],
-                    'my_calendars' => ['icon' => 'ri-calendar-todo-line', 'label' => 'My Calendars'],
-                    'reports' => ['icon' => 'ri-file-chart-line', 'label' => 'Reports']
-                ];
-
-                foreach ($navItems as $key => $item) {
-                    $isActive = $page === $key;
-                    $activeClass = $isActive
-                        ? 'bg-primary text-white shadow-md'
-                        : 'text-gray-600 hover:bg-gray-100';
-                    $linkPrefix = '?';
-                    echo "<a href='?page=$key' class='flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap $activeClass'>";
-                    echo "<i class='{$item['icon']}'></i>";
-                    echo "<span>{$item['label']}</span>";
-                    echo "</a>";
-                }
-                ?>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Page Content -->
-    <main class="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
-        <?php
-        // Clean Controller Routing
-        // This replaces the need for "dispatcher view files"
-        switch ($page) {
-            case 'calendar':
-                require_once __DIR__ . '/Controllers/CalendarController.php';
-                (new CalendarController())->show($_GET['id'] ?? 0);
-                break;
-
-            case 'calendar_settings':
-                require_once __DIR__ . '/Controllers/CalendarController.php';
-                (new CalendarController())->settings($_GET['id'] ?? 0);
-                break;
-
-            case 'activity_detail':
-            case 'summary_5w2h':
-                require_once __DIR__ . '/Controllers/ActivityController.php';
-                (new ActivityController())->summary5w2h($_GET['id'] ?? 0);
-                break;
-
-            case 'activity_wizard':
-                require_once __DIR__ . '/Controllers/ActivityController.php';
-                (new ActivityController())->wizard();
-                break;
-
-            default:
-                // Fallback for simple views (dashboard, my_calendars, reports)
-                $viewPath = __DIR__ . "/Views/$page.php";
-                if (file_exists($viewPath)) {
-                    include $viewPath;
-                } else {
-                    echo "
-                    <div class='flex flex-col items-center justify-center py-20 text-center'>
-                        <div class='w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4'>
-                            <i class='ri-tools-line text-3xl text-gray-400'></i>
-                        </div>
-                        <h2 class='text-2xl font-bold text-gray-900 mb-2'>Under Development</h2>
-                        <p class='text-gray-500 max-w-md'>The page '$page' is currently being built. Check back soon!</p>
-                    </div>";
-                }
-                break;
-        }
-        ?>
-    </main>
-    </main>
-
 </body>
 
 </html>

@@ -48,6 +48,9 @@ class NotificationController extends BaseController
             case 'markAllAsRead':
                 $this->markAllAsRead($userId);
                 break;
+            case 'unreadCount':
+                $this->unreadCount($userId);
+                break;
             default:
                 $this->jsonResponse(['success' => false, 'message' => 'Unknown action'], 400);
         }
@@ -84,6 +87,15 @@ class NotificationController extends BaseController
     {
         $count = NotificationService::markAllAsRead($userId);
         $this->jsonResponse(['success' => true, 'marked' => $count]);
+    }
+
+    private function unreadCount($userId)
+    {
+        $unreadCount = NotificationService::getUnreadCount($userId);
+        $this->jsonResponse([
+            'success' => true,
+            'unread_count' => $unreadCount
+        ]);
     }
 
     private function jsonResponse($data, $code = 200)

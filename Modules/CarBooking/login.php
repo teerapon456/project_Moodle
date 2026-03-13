@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>เข้าสู่ระบบ - จองรถ (Car Booking)</title>
+    <title>เข้าสู่ระบบ - ระบบจองรถ (Car Booking)</title>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= $publicUrl ?>/assets/css/tailwind.css">
     <style>
@@ -143,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" id="password" name="password" type="password" placeholder="ระบุรหัสผ่าน" required>
             </div>
             <div class="flex items-center justify-between">
-                <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full" type="submit">
+                <button class="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full" type="submit">
                     เข้าสู่ระบบ
                 </button>
             </div>
@@ -162,7 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </a>
 
         <div class="text-center mt-6 text-sm text-gray-500">
-            <a href="/" class="text-blue-500 hover:text-blue-800">กลับหน้าหลัก Portal</a>
+            <a href="<?= $baseUrl ?>" class="text-blue-500 hover:text-blue-800">กลับหน้าหลัก Portal</a>
         </div>
     </div>
 </body>

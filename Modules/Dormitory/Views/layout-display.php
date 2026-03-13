@@ -72,7 +72,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 </div>
 
 <!-- Modal Structure (Reused from rooms.php) -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[52] opacity-0 invisible transition-all duration-200 p-5" id="roomModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] opacity-0 invisible transition-all duration-200 p-5" id="roomModal">
     <div class="bg-white rounded-2xl w-full max-w-[600px] max-h-[calc(100vh-40px)] flex flex-col shadow-2xl transform -translate-y-5 transition-transform overflow-hidden">
         <div class="flex items-center justify-between px-8 py-5 border-b border-gray-100 bg-white shrink-0">
             <div class="flex items-center gap-3">

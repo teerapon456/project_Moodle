@@ -63,7 +63,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 </div>
 
 <!-- Room Detail Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[52] opacity-0 invisible transition-all duration-200 p-5" id="roomModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] opacity-0 invisible transition-all duration-200 p-5" id="roomModal">
     <div class="bg-white rounded-xl w-full max-w-[700px] max-h-[calc(100vh-40px)] flex flex-col shadow-2xl transform -translate-y-5 transition-transform">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="text-lg font-semibold text-gray-900" id="roomModalTitle">รายละเอียดห้อง</h3>
@@ -76,7 +76,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 </div>
 
 <!-- Add Room Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[52] opacity-0 invisible transition-all duration-200 p-5" id="addRoomModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] opacity-0 invisible transition-all duration-200 p-5" id="addRoomModal">
     <div class="bg-white rounded-xl w-full max-w-lg max-h-[calc(100vh-40px)] flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="text-lg font-semibold text-gray-900">เพิ่มห้องพักใหม่</h3>
@@ -129,7 +129,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 </div>
 
 <!-- Edit Room Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[55] opacity-0 invisible transition-all duration-200 p-5" id="editRoomModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] opacity-0 invisible transition-all duration-200 p-5" id="editRoomModal">
     <div class="bg-white rounded-xl w-full max-w-lg max-h-[calc(100vh-40px)] flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="text-lg font-semibold text-gray-900">แก้ไขข้อมูลห้องพัก</h3>
@@ -192,7 +192,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 </div>
 
 <!-- Check-in Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[55] opacity-0 invisible transition-all duration-200 p-5" id="checkInModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] opacity-0 invisible transition-all duration-200 p-5" id="checkInModal">
     <div class="bg-white rounded-xl w-full max-w-lg max-h-[calc(100vh-40px)] flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="text-lg font-semibold text-gray-900">Check-in ผู้พักอาศัย</h3>
@@ -228,7 +228,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
                                 placeholder="พิมพ์รหัสพนักงาน หรือ ชื่อ-นามสกุล"
                                 autocomplete="off"
                                 oninput="searchEmployee(this.value)">
-                            <div class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-[200px] overflow-y-auto z-50 hidden" id="employeeResults"></div>
+                            <div class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-[200px] overflow-y-auto z-[1000] hidden" id="employeeResults"></div>
                         </div>
                     </div>
 
@@ -292,7 +292,7 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
 </div>
 
 <!-- Check-out Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-start justify-center z-[55] opacity-0 invisible transition-all duration-200 p-5 pt-16" id="checkOutModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] opacity-0 invisible transition-all duration-200 p-5" id="checkOutModal">
     <div class="bg-white rounded-xl w-full max-w-lg max-h-[calc(100vh-40px)] flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="text-lg font-semibold text-gray-900">Check-out ผู้พักอาศัย</h3>
@@ -868,8 +868,12 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
             return;
         }
 
+        closeModal('checkOutModal');
         const confirmed = await showConfirm(`ยืนยันการ Check-out จำนวน ${occupancyIds.length} คน?`, 'ยืนยัน Check-out');
-        if (!confirmed) return;
+        if (!confirmed) {
+            openModal('checkOutModal');
+            return;
+        }
 
         try {
             await apiCall('rooms', 'checkOut', {
@@ -884,8 +888,12 @@ if (!checkAdminPermission($canView, $isAdmin, 'ระบบหอพัก')) re
     }
 
     async function removeRelative(occupancyId, relativeIndex, relativeName) {
+        closeModal('roomModal');
         const confirmed = await showConfirm(`ยืนยันการลบ "${relativeName}" ออกจากผู้ติดตาม?`, 'ลบผู้ติดตาม');
-        if (!confirmed) return;
+        if (!confirmed) {
+            openModal('roomModal');
+            return;
+        }
 
         try {
             await apiCall('rooms', 'removeRelative', {

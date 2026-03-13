@@ -226,6 +226,44 @@ class NotificationClient {
             return { success: false, notifications: [] };
         }
     }
+
+    /**
+     * Get only unread count (lightweight)
+     */
+    async getUnreadCount() {
+        try {
+            const response = await fetch(`${this.apiUrl}?action=unreadCount`);
+            const data = await response.json();
+            if (data.success && this.onUnreadCount) {
+                this.onUnreadCount(data.unread_count);
+            }
+            return data;
+        } catch (e) {
+            console.error('Failed to get unread count:', e);
+            return { success: false, unread_count: 0 };
+        }
+    }
+
+    /**
+     * Start periodic polling as a fallback or supplement
+     */
+    startPolling(intervalMs = 60000) {
+        if (this.pollingInterval) clearInterval(this.pollingInterval);
+        this.pollingInterval = setInterval(() => {
+            // Only poll if SSE is NOT currently connected
+            // Or use it as a heartbeat
+            if (!this.eventSource || this.eventSource.readyState !== EventSource.OPEN) {
+                this.getUnreadCount();
+            }
+        }, intervalMs);
+    }
+
+    stopPolling() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
+    }
 }
 
 // Add CSS animation

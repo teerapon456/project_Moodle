@@ -47,7 +47,9 @@ class NotificationService
             $link
         ]);
 
-        return $pdo->lastInsertId();
+        $notifId = $pdo->lastInsertId();
+        
+        return $notifId;
     }
 
     /**

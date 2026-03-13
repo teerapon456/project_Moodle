@@ -13,19 +13,51 @@ require_once __DIR__ . '/../Controllers/BookingController.php';
 $controller = new BookingController($user);
 $myBookings = $canManage ? $controller->listAll() : $controller->listMine();
 
-// Load available assets for Edit Modal (if manager)
+// Filters from URL
+$fStatus = $_GET['status'] ?? '';
+$fCar = $_GET['car'] ?? '';
+$fFleet = $_GET['fleet'] ?? '';
+$fSearch = $_GET['q'] ?? '';
+
+// Load ALL assets for Filters (regardless of status, since we filter history)
+$allCars = [];
+$allFleetCards = [];
+try {
+    $db = new Database();
+    $conn = $db->getConnection();
+    // For filters, we want all cars that appear in bookings or are active
+    $allCars = $conn->query("SELECT id, name, brand, model, license_plate, status FROM cb_cars ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+    $allFleetCards = $conn->query("SELECT id, card_number, department, status FROM cb_fleet_cards ORDER BY card_number ASC")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {}
+
+// Also load available assets for Edit Modal (if manager)
 $cars = [];
 $fleetCards = [];
 if ($canManage) {
-    try {
-        $db = new Database();
-        $conn = $db->getConnection();
-        $stmt = $conn->query("SELECT id, name, brand, model, license_plate, capacity, status FROM cb_cars WHERE status = 'available' ORDER BY name ASC");
-        $cars = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $stmt = $conn->query("SELECT id, card_number, department, credit_limit FROM cb_fleet_cards WHERE status = 'active' ORDER BY card_number ASC");
-        $fleetCards = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
-    }
+    $cars = array_filter($allCars, fn($c) => ($c['status'] ?? '') === 'available');
+    $fleetCards = array_filter($allFleetCards, fn($f) => ($f['status'] ?? '') === 'active');
+}
+
+// Apply Filtering to Array
+if ($fStatus || $fCar || $fFleet || $fSearch) {
+    $myBookings = array_filter($myBookings, function($b) use ($fStatus, $fCar, $fFleet, $fSearch) {
+        if ($fStatus && $b['status'] !== $fStatus) return false;
+        if ($fCar && (!isset($b['assigned_car_id']) || $b['assigned_car_id'] != $fCar)) return false;
+        if ($fFleet && (!isset($b['fleet_card_id']) || $b['fleet_card_id'] != $fFleet)) return false;
+        if ($fSearch) {
+            $s = mb_strtolower($fSearch);
+            $haystack = mb_strtolower(
+                ($b['id'] ?? '') . ' ' .
+                ($b['fullname'] ?? '') . ' ' .
+                ($b['destination'] ?? '') . ' ' .
+                ($b['purpose'] ?? '') . ' ' .
+                ($b['assigned_car_plate'] ?? '') . ' ' .
+                ($b['fleet_card_number'] ?? '')
+            );
+            if (mb_strpos($haystack, $s) === false) return false;
+        }
+        return true;
+    });
 }
 
 // Pagination
@@ -35,6 +67,12 @@ $currentPage = isset($_GET['p']) ? max(1, (int)$_GET['p']) : 1;
 $totalPages = $total > 0 ? ceil($total / $perPage) : 1;
 $offset = ($currentPage - 1) * $perPage;
 $pagedBookings = array_slice($myBookings, $offset, $perPage);
+
+// Preservation of filters for links
+$queryParams = $_GET;
+unset($queryParams['p']);
+$queryString = http_build_query($queryParams);
+$pageBaseUrl = "?page=bookings" . ($queryString ? "&" . $queryString : "");
 
 $statusBadges = [
     'pending_supervisor' => 'bg-amber-100 text-amber-800',
@@ -68,18 +106,40 @@ $statusLabels = [
     <div class="flex flex-wrap items-center gap-3">
         <select class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" id="filterStatus" onchange="filterBookings()">
             <option value="">สถานะทั้งหมด</option>
-            <option value="pending_supervisor">รอหัวหน้าอนุมัติ</option>
-            <option value="pending_manager">รอ IPCD อนุมัติ</option>
-            <option value="approved">อนุมัติแล้ว</option>
-            <option value="in_use">กำลังใช้งาน</option>
-            <option value="pending_return">รอยืนยันคืน</option>
-            <option value="completed">เสร็จสิ้น</option>
-            <option value="rejected_supervisor">ปฏิเสธ (หัวหน้า)</option>
-            <option value="rejected_manager">ปฏิเสธ (IPCD)</option>
-            <option value="cancelled">ยกเลิก</option>
-            <option value="revoked">เพิกถอน</option>
+            <?php foreach ($statusLabels as $val => $label): ?>
+                <option value="<?= $val ?>" <?= $fStatus === $val ? 'selected' : '' ?>><?= $label ?></option>
+            <?php endforeach; ?>
         </select>
-        <input type="text" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" id="searchInput" placeholder="ค้นหา..." onkeyup="filterBookings()">
+
+        <?php if ($canManage): ?>
+        <select class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" id="filterCar" onchange="filterBookings()">
+            <option value="">รถทั้งหมด</option>
+            <?php foreach ($allCars as $c): ?>
+                <option value="<?= $c['id'] ?>" <?= $fCar == $c['id'] ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($c['name'] ?: ($c['brand'] . ' ' . $c['model'])) ?> (<?= $c['license_plate'] ?>)
+                </option>
+            <?php endforeach; ?>
+        </select>
+
+        <select class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" id="filterFleet" onchange="filterBookings()">
+            <option value="">บัตร Fleet ทั้งหมด</option>
+            <?php foreach ($allFleetCards as $fc): ?>
+                <option value="<?= $fc['id'] ?>" <?= $fFleet == $fc['id'] ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($fc['card_number']) ?> (<?= $fc['department'] ?>)
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <?php endif; ?>
+
+        <input type="text" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" id="searchInput" placeholder="ค้นหา..." value="<?= htmlspecialchars($fSearch) ?>" onkeyup="if(event.key === 'Enter') filterBookings()">
+        <button class="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition-colors" onclick="filterBookings()" title="ค้นหา">
+            <i class="ri-search-line"></i>
+        </button>
+        <?php if ($fStatus || $fCar || $fFleet || $fSearch): ?>
+            <a href="?page=bookings" class="text-sm text-red-500 hover:text-red-700 underline flex items-center gap-1">
+                <i class="ri-refresh-line"></i> ล้างตัวกรอง
+            </a>
+        <?php endif; ?>
     </div>
     <?php if ($canEdit): ?>
         <div class="flex items-center gap-2">
@@ -166,7 +226,7 @@ $statusLabels = [
                         </div>
 
                         <!-- Destination -->
-                        <div class="flex items-start gap-3 mb-3">
+                        <div class="flex items-center gap-3 mb-3">
                             <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
                                 <i class="ri-map-pin-2-fill"></i>
                             </div>
@@ -329,10 +389,10 @@ $statusLabels = [
         <div class="flex items-center justify-between px-6 py-4 border-t border-gray-100">
             <span class="text-gray-500 text-sm">หน้า <?= $currentPage ?> จาก <?= $totalPages ?></span>
             <div class="flex gap-2">
-                <a href="?page=bookings&p=<?= max(1, $currentPage - 1) ?>" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors <?= $currentPage <= 1 ? 'opacity-50 pointer-events-none' : '' ?>">
+                <a href="<?= $pageBaseUrl ?>&p=<?= max(1, $currentPage - 1) ?>" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors <?= $currentPage <= 1 ? 'opacity-50 pointer-events-none' : '' ?>">
                     <i class="ri-arrow-left-s-line"></i> ก่อนหน้า
                 </a>
-                <a href="?page=bookings&p=<?= min($totalPages, $currentPage + 1) ?>" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors <?= $currentPage >= $totalPages ? 'opacity-50 pointer-events-none' : '' ?>">
+                <a href="<?= $pageBaseUrl ?>&p=<?= min($totalPages, $currentPage + 1) ?>" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors <?= $currentPage >= $totalPages ? 'opacity-50 pointer-events-none' : '' ?>">
                     ถัดไป <i class="ri-arrow-right-s-line"></i>
                 </a>
             </div>
@@ -341,7 +401,7 @@ $statusLabels = [
 </div>
 
 <!-- Booking Detail Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5 opacity-0 invisible transition-all" id="bookingDetailModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] p-5 opacity-0 invisible transition-all" id="bookingDetailModal">
     <div class="bg-white rounded-xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="font-semibold text-gray-900">รายละเอียดการจอง</h3>
@@ -355,7 +415,7 @@ $statusLabels = [
 </div>
 
 <!-- Cancel Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5 opacity-0 invisible transition-all" id="cancelModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] p-5 opacity-0 invisible transition-all" id="cancelModal">
     <div class="bg-white rounded-xl w-full max-w-md shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="font-semibold text-gray-900">ยกเลิกคำขอจองรถ</h3>
@@ -376,7 +436,7 @@ $statusLabels = [
 </div>
 
 <!-- Edit Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5 opacity-0 invisible transition-all" id="editModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] p-5 opacity-0 invisible transition-all" id="editModal">
     <div class="bg-white rounded-xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="font-semibold text-gray-900">แก้ไขคำขอ</h3>
@@ -460,7 +520,7 @@ $statusLabels = [
 </div>
 
 <!-- Revoke Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5 opacity-0 invisible transition-all" id="revokeModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] p-5 opacity-0 invisible transition-all" id="revokeModal">
     <div class="bg-white rounded-xl w-full max-w-md shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="font-semibold text-gray-900">ยกเลิกคำขอที่อนุมัติแล้ว</h3>
@@ -487,7 +547,7 @@ $statusLabels = [
 </div>
 
 <!-- Report Return Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5 opacity-0 invisible transition-all" id="reportReturnModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] p-5 opacity-0 invisible transition-all" id="reportReturnModal">
     <div class="bg-white rounded-xl w-full max-w-md shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="flex items-center gap-2 font-semibold text-green-600"><i class="ri-arrow-go-back-line"></i> แจ้งคืนรถ</h3>
@@ -510,7 +570,7 @@ $statusLabels = [
 </div>
 
 <!-- Resend Email Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5 opacity-0 invisible transition-all" id="resendEmailModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] p-5 opacity-0 invisible transition-all" id="resendEmailModal">
     <div class="bg-white rounded-xl w-full max-w-md shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="flex items-center gap-2 font-semibold text-indigo-600"><i class="ri-mail-send-line"></i> ส่งอีเมลอีกครั้ง</h3>
@@ -546,13 +606,24 @@ $statusLabels = [
 
 <script>
     function filterBookings() {
-        const status = document.getElementById('filterStatus').value.toLowerCase();
-        const search = document.getElementById('searchInput').value.toLowerCase();
-        document.querySelectorAll('#bookingsTable tbody tr[data-status]').forEach(row => {
-            const matchStatus = !status || row.dataset.status === status;
-            const matchSearch = !search || row.textContent.toLowerCase().includes(search);
-            row.style.display = (matchStatus && matchSearch) ? '' : 'none';
-        });
+        const sEl = document.getElementById('filterStatus');
+        const cEl = document.getElementById('filterCar');
+        const fEl = document.getElementById('filterFleet');
+        const qEl = document.getElementById('searchInput');
+
+        const status = sEl ? sEl.value : '';
+        const car = cEl ? cEl.value : '';
+        const fleet = fEl ? fEl.value : '';
+        const search = qEl ? qEl.value.trim() : '';
+
+        const params = new URLSearchParams(window.location.search);
+        params.delete('p'); // Reset to first page
+        if (status) params.set('status', status); else params.delete('status');
+        if (car) params.set('car', car); else params.delete('car');
+        if (fleet) params.set('fleet', fleet); else params.delete('fleet');
+        if (search) params.set('q', search); else params.delete('q');
+
+        window.location.search = params.toString();
     }
 
     function viewBookingDetail(booking) {
@@ -669,6 +740,7 @@ $statusLabels = [
             footerHtml = `<button class="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors" onclick="printRequest(${booking.id})"><i class="ri-printer-line"></i> พิมพ์</button>` + footerHtml;
         }
         footer.innerHTML = footerHtml;
+        if (window.MyHRModal) MyHRModal.setupCustomModal('bookingDetailModal');
         document.getElementById('bookingDetailModal').classList.add('active');
     }
 
@@ -679,6 +751,7 @@ $statusLabels = [
     function cancelBooking(id) {
         document.getElementById('cancelBookingId').value = id;
         document.getElementById('cancelReason').value = '';
+        if (window.MyHRModal) MyHRModal.setupCustomModal('cancelModal');
         document.getElementById('cancelModal').classList.add('active');
     }
 
@@ -790,6 +863,7 @@ $statusLabels = [
         }
         toggleEditAllocationType();
         loadAvailableEditAssets();
+        if (window.MyHRModal) MyHRModal.setupCustomModal('editModal');
         document.getElementById('editModal').classList.add('active');
     }
 
@@ -860,6 +934,7 @@ $statusLabels = [
     function openRevokeModal(id) {
         document.getElementById('revokeBookingId').value = id;
         document.getElementById('revokeReason').value = '';
+        if (window.MyHRModal) MyHRModal.setupCustomModal('revokeModal');
         document.getElementById('revokeModal').classList.add('active');
     }
 
@@ -912,6 +987,7 @@ $statusLabels = [
                 <p class="text-indigo-600 mt-1"><i class="ri-mail-line"></i> ส่งอีเมลไปยังหัวหน้างานเพื่อขออนุมัติ</p>
             </div>
         `;
+        if (window.MyHRModal) MyHRModal.setupCustomModal('resendEmailModal');
         document.getElementById('resendEmailModal').classList.add('active');
     }
 
@@ -977,6 +1053,7 @@ $statusLabels = [
         `;
 
         document.getElementById('reportReturnNotes').value = '';
+        if (window.MyHRModal) MyHRModal.setupCustomModal('reportReturnModal');
         document.getElementById('reportReturnModal').classList.add('active');
     }
 

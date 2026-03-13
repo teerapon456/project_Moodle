@@ -5,10 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>System Health Dashboard - MyHR Portal</title>
+    <!-- Base link enforcement to resolve trailing slash 404s -->
+    <base href="/health/">
     <!-- Tailwind CSS (Local) -->
-    <link rel="stylesheet" href="assets/css/tailwind.css">
+    <link rel="stylesheet" href="/assets/css/tailwind.css">
     <!-- Remixicons (Local) -->
-    <link rel="stylesheet" href="assets/css/remixicon.css">
+    <link rel="stylesheet" href="/assets/css/remixicon.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
 
@@ -94,7 +96,7 @@
             <div class="flex justify-between h-16">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-md border border-white/20">
-                        <img src="assets/images/brand/inteqc-logo.png" alt="logo" class="w-7 h-7" onerror="this.src='https://cdn-icons-png.flaticon.com/512/822/822143.png'">
+                        <img src="/assets/images/brand/inteqc-logo.png" alt="logo" class="w-7 h-7" onerror="this.src='https://cdn-icons-png.flaticon.com/512/822/822143.png'">
                     </div>
                     <div>
                         <span class="text-white text-lg font-bold tracking-tight block leading-tight">MyHR Dashboard</span>
@@ -128,9 +130,12 @@
                     <span>Last checked: <strong id="last-updated" class="text-gray-800">--:--:--</strong></span>
                 </div>
                 <div class="w-px h-4 bg-gray-300"></div>
-                <div class="flex items-center gap-1.5 text-gray-400">
-                    <i class="ri-history-line"></i>
-                    <span>Auto-refresh: <strong id="countdown-timer" class="text-red-600 font-bold">5s</strong></span>
+                <div class="flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-600 rounded-md border border-red-100 animate-pulse">
+                    <span class="relative flex h-2 w-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </span>
+                    <span class="text-[10px] font-black uppercase tracking-widest">Live</span>
                 </div>
             </div>
         </div>
@@ -146,6 +151,86 @@
                     <div class="mt-1 text-sm text-red-700">
                         <p>Unable to connect to the standalone health monitoring API.</p>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Resources Section -->
+        <div class="mb-8 bg-white rounded-2xl premium-shadow border border-gray-100 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                <h2 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <i class="ri-dashboard-fill text-red-600"></i>
+                    Host Server Resources
+                </h2>
+                <span class="text-xs text-gray-500 uppercase tracking-widest font-bold">Physical Node Status</span>
+            </div>
+            <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- CPU Utilization -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                                <i class="ri-pulse-line text-lg"></i>
+                            </div>
+                            <span class="text-xs text-gray-500 font-bold uppercase tracking-tight">CPU Usage</span>
+                        </div>
+                        <span id="cpu-percent" class="text-sm font-bold text-blue-600">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden shadow-inner">
+                        <div id="cpu-bar" class="bg-blue-500 h-full transition-all duration-1000" style="width: 0%"></div>
+                    </div>
+                    <p id="cpu-text" class="text-[10px] text-gray-400 font-medium text-right uppercase tracking-wider">Load: 0.00 (0 Cores)</p>
+                </div>
+
+                <!-- RAM Usage -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                <i class="ri-temp-cold-line text-lg"></i>
+                            </div>
+                            <span class="text-xs text-gray-500 font-bold uppercase tracking-tight">RAM Usage</span>
+                        </div>
+                        <span id="ram-percent" class="text-sm font-bold text-emerald-600">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden shadow-inner">
+                        <div id="ram-bar" class="bg-emerald-500 h-full transition-all duration-1000" style="width: 0%"></div>
+                    </div>
+                    <p id="ram-text" class="text-[10px] text-gray-400 font-medium text-right uppercase tracking-wider">-- / -- GB AVAILABLE</p>
+                </div>
+
+                <!-- Swap Pressure -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                                <i class="ri-database-2-line text-lg"></i>
+                            </div>
+                            <span class="text-xs text-gray-500 font-bold uppercase tracking-tight">Swap Pressure</span>
+                        </div>
+                        <span id="swap-percent" class="text-sm font-bold text-amber-600">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden shadow-inner">
+                        <div id="swap-bar" class="bg-amber-500 h-full transition-all duration-1000" style="width: 0%"></div>
+                    </div>
+                    <p id="swap-text" class="text-[10px] text-gray-400 font-medium text-right uppercase tracking-wider">-- / -- GB USED</p>
+                </div>
+
+                <!-- Disk Space -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                                <i class="ri-hard-drive-2-line text-lg"></i>
+                            </div>
+                            <span class="text-xs text-gray-500 font-bold uppercase tracking-tight">Disk Space</span>
+                        </div>
+                        <span id="disk-percent" class="text-sm font-bold text-purple-600">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden shadow-inner">
+                        <div id="disk-bar" class="bg-purple-500 h-full transition-all duration-1000" style="width: 0%"></div>
+                    </div>
+                    <p id="disk-text" class="text-[10px] text-gray-400 font-medium text-right uppercase tracking-wider">-- / -- GB FREE</p>
                 </div>
             </div>
         </div>
@@ -213,7 +298,7 @@
     </footer>
 
     <script>
-        const REFRESH_INTERVAL_SEC = 5;
+        const REFRESH_INTERVAL_SEC = 1;
         let countdown = REFRESH_INTERVAL_SEC;
         let timerInterval;
         let adminSecret = sessionStorage.getItem('health_secret') || '';
@@ -387,13 +472,13 @@
             }
 
             return `
-                <div id="${cardId}" class="card-enter bg-white rounded-2xl premium-shadow border border-gray-100 overflow-hidden group transition-all duration-300 transform hover:-translate-y-1" style="animation-delay: ${index * 0.05}s" data-online="${isOnline}">
+                <div id="${cardId}" data-service="${name}" class="card-enter bg-white rounded-2xl premium-shadow border border-gray-100 overflow-hidden group transition-all duration-300 transform hover:-translate-y-1" style="animation-delay: ${index * 0.05}s" data-online="${isOnline}">
                     <div class="p-6">
                         <div class="flex justify-between items-start mb-5">
                             <div class="w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm border border-black/5" style="background-color: ${meta.bg}; color: ${meta.color}">
                                 <i class="${meta.icon} text-3xl"></i>
                             </div>
-                            <div class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${isOnline ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100'} border">
+                            <div class="service-status-badge flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${isOnline ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100'} border">
                                 <i class="${badgeIcon}"></i>
                                 ${statusLabel}
                             </div>
@@ -414,6 +499,31 @@
                         
                         <div class="h-px w-full bg-gray-100 mb-4"></div>
                         
+                        <div class="space-y-4 mb-5">
+                            <!-- Container CPU -->
+                            <div class="service-cpu-area ${isOnline ? '' : 'hidden'}">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Container CPU</span>
+                                    <span class="text-xs font-bold text-blue-600 service-cpu-percent">${data.container_stats ? data.container_stats.cpu_percent + '%' : '--%'}</span>
+                                </div>
+                                <div class="w-full bg-gray-50 rounded-full h-1.5 overflow-hidden">
+                                    <div class="service-cpu-bar bg-blue-500 h-full transition-all duration-300" style="width: ${data.container_stats ? Math.min(data.container_stats.cpu_percent, 100) : 0}%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Container RAM -->
+                            <div class="service-ram-area ${isOnline ? '' : 'hidden'}">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Container RAM</span>
+                                    <span class="text-xs font-bold text-emerald-600 service-ram-percent">${data.container_stats ? data.container_stats.mem_percent + '%' : '--%'}</span>
+                                </div>
+                                <div class="w-full bg-gray-50 rounded-full h-1.5 overflow-hidden">
+                                    <div class="service-ram-bar bg-emerald-500 h-full transition-all duration-300" style="width: ${data.container_stats ? data.container_stats.mem_percent : 0}%"></div>
+                                </div>
+                                <div class="text-[9px] text-gray-400 text-right font-medium service-ram-text mt-1">${data.container_stats ? data.container_stats.mem_usage_mb + ' / ' + data.container_stats.mem_limit_mb + ' MB' : '-- / -- MB'}</div>
+                            </div>
+                        </div>
+
                         <div class="flex items-center justify-between mb-4">
                             <div class="flex items-center gap-2">
                                 <span class="status-dot ${dotClass}"></span>
@@ -455,75 +565,111 @@
                     </div>
                 </div>
             `;
-        }
+        }        let isFetching = false;
+        let lastUpdateTime = null;
 
         async function fetchHealthData() {
+            if (isFetching) return;
+            isFetching = true;
+
             const btn = document.getElementById('refresh-btn');
             btn.classList.add('animate-spin');
 
             try {
-                // Fetch from the API endpoint directly via its own container
-                const response = await fetch('api.php', {
-                    cache: 'no-store'
-                });
+                const response = await fetch('api.php', { cache: 'no-store' });
                 if (!response.ok) throw new Error('API Response Error');
-
+                
                 const data = await response.json();
-
                 document.getElementById('error-banner').classList.add('hidden');
 
-                // Update Timestamp
-                const now = new Date();
-                document.getElementById('last-updated').textContent = now.toLocaleTimeString('th-TH');
+                // Update Last Updated Time only on success
+                lastUpdateTime = new Date();
+                document.getElementById('last-updated').textContent = lastUpdateTime.toLocaleTimeString('th-TH');
 
-                // Update Overall Badge
-                const overallBadge = document.getElementById('overall-status-badge');
-                overallBadge.classList.remove('hidden', 'bg-emerald-500', 'bg-red-500', 'bg-yellow-500', 'border-emerald-400', 'border-red-400', 'text-white');
+                // Host Server Resources
+                if (data.system_metrics) {
+                    const sm = data.system_metrics;
+                    
+                    // CPU
+                    const cpuPercent = sm.cpu_percent || 0;
+                    document.getElementById('cpu-percent').textContent = `${cpuPercent.toFixed(1)}%`;
+                    document.getElementById('cpu-bar').style.width = `${Math.min(cpuPercent, 100)}%`;
+                    document.getElementById('cpu-text').textContent = `LOAD: ${sm.load} (${sm.cores} Cores)`;
 
-                if (data.status === 'healthy') {
-                    overallBadge.classList.add('bg-emerald-500', 'border-emerald-400', 'text-white');
-                    overallBadge.innerHTML = '<i class="ri-checkbox-circle-fill"></i> All Systems Operational';
-                } else {
-                    overallBadge.classList.add('bg-yellow-500', 'border-yellow-400', 'text-white');
-                    overallBadge.innerHTML = '<i class="ri-error-warning-fill"></i> Partial Degradation';
+                    // CPU Color Coding
+                    const cpuBar = document.getElementById('cpu-bar');
+                    if (cpuPercent > 90) cpuBar.className = 'bg-red-500 h-full transition-all duration-300';
+                    else if (cpuPercent > 70) cpuBar.className = 'bg-amber-500 h-full transition-all duration-300';
+                    else cpuBar.className = 'bg-blue-500 h-full transition-all duration-300';
+                    
+                    // RAM
+                    const ramTotalGB = (sm.ram.total / 1024 / 1024).toFixed(1);
+                    const ramAvailGB = (sm.ram.available / 1024 / 1024).toFixed(1);
+                    document.getElementById('ram-percent').textContent = `${sm.ram.used_percent}%`;
+                    document.getElementById('ram-bar').style.width = `${sm.ram.used_percent}%`;
+                    document.getElementById('ram-text').textContent = `${ramAvailGB} / ${ramTotalGB} GB AVAILABLE`;
+                    
+                    // Swap
+                    const swapTotalGB = (sm.swap.total / 1024 / 1024).toFixed(1);
+                    const swapFreeGB = (sm.swap.free / 1024 / 1024).toFixed(1);
+                    const swapUsedGB = (swapTotalGB - swapFreeGB).toFixed(1);
+                    document.getElementById('swap-percent').textContent = `${sm.swap.used_percent}%`;
+                    document.getElementById('swap-bar').style.width = `${sm.swap.used_percent}%`;
+                    document.getElementById('swap-text').textContent = `${swapUsedGB} / ${swapTotalGB} GB USED`;
+
+                    // RAM Color Coding
+                    const ramBar = document.getElementById('ram-bar');
+                    if (sm.ram.used_percent > 90) ramBar.className = 'bg-red-500 h-full transition-all duration-300';
+                    else if (sm.ram.used_percent > 70) ramBar.className = 'bg-amber-500 h-full transition-all duration-300';
+                    else ramBar.className = 'bg-emerald-500 h-full transition-all duration-300';
+
+                    // Swap Color Coding
+                    const swapBar = document.getElementById('swap-bar');
+                    if (sm.swap.used_percent > 50) swapBar.className = 'bg-red-500 h-full transition-all duration-300';
+                    else if (sm.swap.used_percent > 20) swapBar.className = 'bg-amber-500 h-full transition-all duration-300';
+                    else swapBar.className = 'bg-emerald-500 h-full transition-all duration-300';
+
+                    // Disk
+                    if (sm.disk) {
+                        document.getElementById('disk-percent').textContent = `${sm.disk.used_percent}%`;
+                        document.getElementById('disk-bar').style.width = `${sm.disk.used_percent}%`;
+                        document.getElementById('disk-text').textContent = `${sm.disk.free} / ${sm.disk.total} GB FREE`;
+
+                        // Disk Color Coding
+                        const diskBar = document.getElementById('disk-bar');
+                        if (sm.disk.used_percent > 90) diskBar.className = 'bg-red-500 h-full transition-all duration-300';
+                        else if (sm.disk.used_percent > 80) diskBar.className = 'bg-amber-500 h-full transition-all duration-300';
+                        else diskBar.className = 'bg-purple-500 h-full transition-all duration-300';
+                    }
                 }
 
-                // Update Grid without flashing
+                // Services grid
                 const grid = document.getElementById('services-grid');
+                
+                // Clear ALL initial skeletons if any exist
+                if (grid.querySelector('.skeleton')) {
+                    grid.innerHTML = '';
+                }
+
                 let index = 0;
-
-                const services = Object.entries(data.services);
-
-                // Clear initial skeletons only if this is the first real load
-                const hasSkeletons = grid.querySelector('.skeleton');
-                if (hasSkeletons && services.length > 0) grid.innerHTML = '';
-
-                for (const [serviceName, serviceData] of services) {
-                    const cardId = `service-card-${serviceName.replace(/\s+/g, '-').toLowerCase()}`;
-                    const existingCard = document.getElementById(cardId);
+                for (const [serviceName, serviceData] of Object.entries(data.services)) {
+                    const isOnline = serviceData.status === 'online';
+                    const existingCard = document.querySelector(`[data-service="${serviceName}"]`);
 
                     if (existingCard) {
-                        const isOnline = serviceData.status === 'online';
-
-                        // Update status badge
-                        const badge = existingCard.querySelector('.rounded-full.text-xs');
-                        if (badge) {
-                            badge.className = `flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${isOnline ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-700 border-red-200'} border`;
-                            badge.innerHTML = `<i class="${isOnline ? 'ri-checkbox-circle-fill' : 'ri-close-circle-fill'}"></i> ${isOnline ? 'Online' : 'Offline'}`;
-                        }
-
-                        // Update indicator
-                        const indicator = existingCard.querySelector('.status-dot');
-                        if (indicator) {
-                            indicator.className = `status-dot ${isOnline ? 'status-dot-green' : 'status-dot-red'}`;
-                        }
+                        // Update existing card
+                        const statusBadge = existingCard.querySelector('.service-status-badge');
+                        statusBadge.className = `service-status-badge flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${isOnline ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100'} border`;
+                        statusBadge.innerHTML = isOnline ? 
+                            '<i class="ri-checkbox-circle-fill"></i> Online' : 
+                            '<i class="ri-close-circle-fill"></i> Offline';
 
                         // Update latency
                         const latencySpan = existingCard.querySelector('.service-latency');
                         if (latencySpan) {
                             const latencyContainer = latencySpan.parentElement;
                             const latencyColor = isOnline ? (serviceData.latency < 50 ? 'text-emerald-600' : (serviceData.latency < 200 ? 'text-yellow-600' : 'text-orange-600')) : 'text-gray-400';
-                            latencyContainer.className = `flex items-center gap-1.5 text-sm font-semibold ${latencyColor}`;
+                            latencyContainer.className = `flex items-center gap-1.5 text-sm font-bold ${latencyColor}`;
                             latencySpan.textContent = isOnline ? `${serviceData.latency} ms` : '--';
                         }
 
@@ -532,6 +678,36 @@
                         const uptimeSpan = existingCard.querySelector('.service-uptime');
                         uptimeSpan.textContent = serviceData.uptime || '--';
                         uptimeSpan.className = `font-medium service-uptime ${isOnline ? 'text-emerald-600' : 'text-gray-400'}`;
+                        
+                        const cpuArea = existingCard.querySelector('.service-cpu-area');
+                        const ramArea = existingCard.querySelector('.service-ram-area');
+
+                        if (isOnline && serviceData.container_stats) {
+                            if (cpuArea) cpuArea.classList.remove('hidden');
+                            if (ramArea) ramArea.classList.remove('hidden');
+
+                            const cs = serviceData.container_stats;
+                            const cCpu = cs.cpu_percent || 0;
+                            const cRamPercent = cs.mem_percent || 0;
+
+                            existingCard.querySelector('.service-cpu-percent').textContent = `${cCpu}%`;
+                            existingCard.querySelector('.service-cpu-bar').style.width = `${Math.min(cCpu, 100)}%`;
+                            
+                            existingCard.querySelector('.service-ram-percent').textContent = `${cRamPercent}%`;
+                            existingCard.querySelector('.service-ram-bar').style.width = `${cRamPercent}%`;
+                            existingCard.querySelector('.service-ram-text').textContent = `${cs.mem_usage_mb} / ${cs.mem_limit_mb} MB`;
+                            
+                            // RAM Color
+                            const rBar = existingCard.querySelector('.service-ram-bar');
+                            if (cRamPercent > 90) rBar.className = 'service-ram-bar bg-red-500 h-full transition-all duration-300';
+                            else if (cRamPercent > 70) rBar.className = 'service-ram-bar bg-amber-500 h-full transition-all duration-300';
+                            else rBar.className = 'service-ram-bar bg-emerald-500 h-full transition-all duration-300';
+                            
+                            // Add pulsating effect if stale? (Optional for later)
+                        } else {
+                            if (cpuArea) cpuArea.classList.add('hidden');
+                            if (ramArea) ramArea.classList.add('hidden');
+                        }
 
                         // Update Control Area (Button)
                         const controlArea = existingCard.querySelector('.service-control-area');
@@ -539,7 +715,6 @@
                             const oldStatus = existingCard.getAttribute('data-online');
                             const newStatus = isOnline.toString();
                             if (oldStatus !== newStatus || (!isOnline && controlArea.innerHTML.includes('...'))) {
-                                // Update content if status changed or if we need to refresh error message
                                 if (!isOnline && serviceName !== 'Health Check') {
                                     controlArea.innerHTML = `
                                         <div class="mb-4 p-4 bg-red-50 rounded-2xl border border-red-200 shadow-inner">
@@ -567,33 +742,41 @@
                     index++;
                 }
 
+                // Update Overall Badge
+                const overallBadge = document.getElementById('overall-status-badge');
+                overallBadge.classList.remove('hidden', 'bg-emerald-500', 'bg-red-500', 'bg-yellow-500', 'border-emerald-400', 'border-red-400', 'text-white');
+
+                if (data.status === 'healthy') {
+                    overallBadge.classList.add('bg-emerald-500', 'border-emerald-400', 'text-white');
+                    overallBadge.innerHTML = '<i class="ri-checkbox-circle-fill"></i> All Systems Operational';
+                } else {
+                    overallBadge.classList.add('bg-red-500', 'border-red-400', 'text-white');
+                    overallBadge.innerHTML = '<i class="ri-error-warning-fill"></i> Systems Degraded';
+                }
+
             } catch (error) {
                 console.error('Health Check Error:', error);
                 document.getElementById('error-banner').classList.remove('hidden');
                 document.getElementById('overall-status-badge').classList.add('hidden');
             } finally {
-                setTimeout(() => btn.classList.remove('animate-spin'), 500);
-                resetCountdown();
+                btn.classList.remove('animate-spin');
+                isFetching = false;
             }
         }
 
-        function resetCountdown() {
-            clearInterval(timerInterval);
-            countdown = REFRESH_INTERVAL_SEC;
-            document.getElementById('countdown-timer').textContent = `${countdown}s`;
-
-            timerInterval = setInterval(() => {
-                countdown--;
-                if (countdown < 0) {
-                    fetchHealthData();
-                } else {
-                    document.getElementById('countdown-timer').textContent = `${countdown}s`;
-                }
-            }, 1000);
+        function startDashboard() {
+            // Initial fetch
+            fetchHealthData();
+            
+            // Poll data every 3 seconds to ensure system stability
+            // 1 second was too aggressive for a loaded Docker daemon
+            setInterval(() => {
+                if (!isFetching) fetchHealthData();
+            }, 3000);
         }
 
         // Initial Load
-        document.addEventListener('DOMContentLoaded', fetchHealthData);
+        document.addEventListener('DOMContentLoaded', startDashboard);
     </script>
 </body>
 

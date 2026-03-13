@@ -32,7 +32,7 @@ $statusLabels = [
 ?>
 
 <!-- Page Header -->
-<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+<div class="flex flex-col sm:flex-row justify-between items-center sm:items-center gap-4 mb-6">
     <div>
         <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
             <i class="ri-car-line text-primary"></i>
@@ -193,7 +193,7 @@ $statusLabels = [
 </div>
 
 <!-- Confirm Return Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5 opacity-0 invisible transition-all" id="confirmReturnModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] p-5 opacity-0 invisible transition-all" id="confirmReturnModal">
     <div class="bg-white rounded-xl w-full max-w-md shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="flex items-center gap-2 font-semibold text-blue-600"><i class="ri-checkbox-circle-line"></i> ยืนยันคืนรถ</h3>

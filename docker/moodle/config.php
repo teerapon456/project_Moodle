@@ -14,10 +14,10 @@ $CFG = new stdClass();
 //=========================================================================
 $CFG->dbtype    = 'mysqli';
 $CFG->dblibrary = 'native';
-$CFG->dbhost    = getenv('MOODLE_DB_HOST') ?: 'moodle_db';
+$CFG->dbhost    = getenv('MOODLE_DB_HOST') ?: 'db';
 $CFG->dbname    = getenv('MOODLE_DB_NAME') ?: 'moodle';
-$CFG->dbuser    = getenv('MOODLE_DB_USER') ?: 'moodle_user';
-$CFG->dbpass    = getenv('MOODLE_DB_PASS') ?: 'Moodle_S3cur3_P@ss_2026!';
+$CFG->dbuser    = getenv('MOODLE_DB_USER') ?: 'myhr_user';
+$CFG->dbpass    = getenv('MOODLE_DB_PASS') ?: 'MyHR_S3cur3_P@ss_2026!';
 $CFG->prefix    = 'mdl_';
 $CFG->dboptions = array(
     'dbpersist' => 0,
@@ -29,7 +29,9 @@ $CFG->dboptions = array(
 //=========================================================================
 // Web Address Settings (from environment variable)
 //=========================================================================
-$CFG->wwwroot   = getenv('MOODLE_WWWROOT') ?: getenv('MOODLE_PUBLIC_URL') ?: 'https://172.17.100.55:8090/moodle';
+$protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https' : 'http';
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$CFG->wwwroot   = getenv('MOODLE_WWWROOT') ?: getenv('MOODLE_PUBLIC_URL') ?: "$protocol://$host/moodle";
 
 $CFG->dataroot = '/var/www/moodledata';
 $CFG->lang = 'th';

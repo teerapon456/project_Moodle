@@ -1,107 +1,399 @@
-{{!
-    Department Cohort Management Template
-}}
-<div class="local_departmentcohorts_container">
-    <h3 class="mb-4">{{#str}}managedeptcohorts, local_departmentcohorts{{/str}}</h3>
+<div class="local-departmentcohorts-container">
 
-    <div class="card mb-4 shadow-sm">
+    <div class="page-header mb-4">
+        <h3>{{#str}}managecohorts, local_departmentcohorts{{/str}}</h3>
+        <p class="text-muted">
+            {{#str}}managecohortsdesc, local_departmentcohorts{{/str}}
+        </p>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="card mb-4">
         <div class="card-body">
-            <form action="{{baseurl}}" method="get" class="row align-items-end g-3">
-                <input type="hidden" name="search_submitted" value="1">
-                <div class="col-auto">
-                    <label for="deptsearch" class="fw-bold mb-1 d-block">{{#str}}searchdept, local_departmentcohorts{{/str}}:</label>
-                    <input type="text" id="deptsearch" name="search" value="{{search}}" class="form-control" style="min-width:250px" placeholder="e.g. IT, HR">
+
+            <form method="get" action="{{baseurl}}" class="row g-3">
+
+                <!-- Search -->
+                <div class="col-md-4">
+                    <input type="text"
+                           name="search"
+                           value="{{search}}"
+                           class="form-control"
+                           placeholder="{{#str}}searchcohort, local_departmentcohorts{{/str}}">
                 </div>
-                <div class="col-auto">
-                    <button type="submit" class="btn btn-primary d-flex align-items-center">
-                        <i class="icon fa fa-search fa-fw mr-1" aria-hidden="true"></i>
-                        {{#str}}search, core{{/str}}
+
+                <!-- Type Filter -->
+                <div class="col-md-5">
+                    <select name="type" class="form-select" onchange="this.form.submit()">
+                        <option value="department" {{#is_dept}}selected{{/is_dept}}>{{#str}}bydepartment, local_departmentcohorts{{/str}}</option>
+                        <option value="institution" {{#is_inst}}selected{{/is_inst}}>{{#str}}byinstitution, local_departmentcohorts{{/str}}</option>
+                        <option value="custom" {{#is_custom}}selected{{/is_custom}}>{{#str}}bycustom, local_departmentcohorts{{/str}}</option>
+                        <option value="upload" {{#is_upload}}selected{{/is_upload}}>{{#str}}byupload, local_departmentcohorts{{/str}}</option>
+                        <option value="managed" {{#is_managed}}selected{{/is_managed}}>{{#str}}bymanaged, local_departmentcohorts{{/str}}</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100">
+                        {{#str}}filter, core{{/str}}
                     </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+    <!-- Dynamic Table View -->
+    
+    {{^is_custom}}{{^is_upload}}{{^is_managed}}
+    <!-- Sync All Button -->
+    {{#cohorts}}{{/cohorts}}
+    <div class="d-flex justify-content-end mb-3">
+        <form method="post" action="{{baseurl}}" class="d-inline">
+            <input type="hidden" name="sesskey" value="{{sesskey}}">
+            <input type="hidden" name="action" value="syncall">
+            <input type="hidden" name="type" value="{{type}}">
+            <button class="btn btn-success" onclick="return confirm('{{#str}}syncallconfirm, local_departmentcohorts{{/str}}');">
+                <i class="fa fa-refresh me-1"></i>{{#str}}syncall, local_departmentcohorts{{/str}}
+            </button>
+        </form>
+    </div>
+    <!-- Cohort Table (Department/Institution) -->
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>{{#is_dept}}{{#str}}department, local_departmentcohorts{{/str}}{{/is_dept}}{{#is_inst}}{{#str}}institution, local_departmentcohorts{{/str}}{{/is_inst}}</th>
+                        <th>{{#str}}users{{/str}}</th>
+                        <th class="text-end">{{#str}}actions{{/str}}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#cohorts}}
+                    <tr>
+                        <td>
+                            <strong>{{name}}</strong>
+                            {{#has_cohort}}<span class="badge bg-success ms-2">{{#str}}status_synced, local_departmentcohorts{{/str}}</span>{{/has_cohort}}
+                            {{^has_cohort}}<span class="badge bg-secondary ms-2">{{#str}}status_unlinked, local_departmentcohorts{{/str}}</span>{{/has_cohort}}
+                        </td>
+                        <td><span class="badge bg-info">{{usercount}}</span></td>
+                        <td class="text-end">
+                            <button type="button" class="btn btn-sm btn-outline-secondary view-users-btn" 
+                                    data-group="{{name}}" data-type="{{group_type}}"
+                                    data-bs-toggle="modal" data-bs-target="#userPreviewModal">
+                                {{#str}}view{{/str}}
+                            </button>
+                            <form method="post" action="{{syncurl}}" class="d-inline">
+                                <input type="hidden" name="sesskey" value="{{sesskey}}">
+                                <input type="hidden" name="cohortid" value="{{id}}">
+                                <button class="btn btn-sm btn-primary">
+                                    {{#str}}syncmembers, local_departmentcohorts{{/str}}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {{/cohorts}}
+                    {{^cohorts}}
+                    <tr>
+                        <td colspan="3" class="text-center py-4 text-muted">
+                            {{#str}}nocohortsfound, local_departmentcohorts{{/str}}
+                        </td>
+                    </tr>
+                    {{/cohorts}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {{/is_managed}}{{/is_upload}}{{/is_custom}}
+
+    {{#is_custom}}
+    <!-- Custom Cohort Table (All Users) -->
+    <form method="post" action="{{create_custom_url}}" id="customCohortForm">
+        <input type="hidden" name="sesskey" value="{{sesskey}}">
+        
+        <!-- Cohort Creation Bar -->
+        <div class="card mb-3 border-primary">
+            <div class="card-body d-flex gap-3 align-items-center bg-light">
+                <label for="cohortname" class="fw-bold mb-0 text-nowrap">{{#str}}customcohortname, local_departmentcohorts{{/str}}:</label>
+                <input type="text" name="cohortname" id="cohortname" class="form-control" required placeholder="e.g. Trainees 2026">
+                <button type="submit" class="btn btn-primary text-nowrap" id="createCustomBtn">
+                    {{#str}}createcustomcohort, local_departmentcohorts{{/str}}
+                </button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-body p-0 table-responsive" style="max-height: 500px">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th style="width: 50px;">
+                                <input class="form-check-input" type="checkbox" id="selectAllUsers">
+                            </th>
+                            <th>{{#str}}firstname, local_departmentcohorts{{/str}}</th>
+                            <th>{{#str}}lastname, local_departmentcohorts{{/str}}</th>
+                            <th>{{#str}}email, local_departmentcohorts{{/str}}</th>
+                            <th>{{#str}}department, local_departmentcohorts{{/str}}</th>
+                            <th>{{#str}}institution, local_departmentcohorts{{/str}}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#allusers}}
+                        <tr>
+                            <td>
+                                <input class="form-check-input user-checkbox" type="checkbox" name="userids[]" value="{{id}}">
+                            </td>
+                            <td>{{firstname}}</td>
+                            <td>{{lastname}}</td>
+                            <td>{{email}}</td>
+                            <td>{{department}}</td>
+                            <td>{{institution}}</td>
+                        </tr>
+                        {{/allusers}}
+                        {{^has_users}}
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">
+                                {{#str}}nousersfound, local_departmentcohorts{{/str}}
+                            </td>
+                        </tr>
+                        {{/has_users}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </form>
+    {{/is_custom}}
+
+    {{#is_upload}}
+    <!-- Upload CSV Mode -->
+    <div class="card mb-3 border-primary">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-1"><i class="fa fa-upload me-2"></i>{{#str}}uploadfile, local_departmentcohorts{{/str}}</h5>
+                <small class="text-muted">{{#str}}uploadhelp, local_departmentcohorts{{/str}}</small>
+            </div>
+            <a href="{{download_template_url}}" class="btn btn-outline-success">
+                <i class="fa fa-download me-1"></i>{{#str}}downloadtemplate, local_departmentcohorts{{/str}}
+            </a>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{upload_url}}" enctype="multipart/form-data">
+                <input type="hidden" name="sesskey" value="{{sesskey}}">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-8">
+                        <label for="csvfile" class="form-label fw-bold">{{#str}}selectfile, local_departmentcohorts{{/str}}</label>
+                        <input class="form-control" type="file" name="csvfile" id="csvfile" accept=".csv" required>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fa fa-cog me-1"></i>{{#str}}uploadprocessing, local_departmentcohorts{{/str}}
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 
-    <div class="row">
-        <!-- Left: Department List -->
-        <div class="col-md-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0 fw-bold">{{#str}}deptlist, local_departmentcohorts{{/str}}</h5>
-                </div>
-                <div class="list-group list-group-flush" style="max-height: 500px; overflow-y: auto;">
-                    {{#departments}}
-                    <a href="{{baseurl}}&dept={{urlname}}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center {{#active}}active{{/active}}">
-                        {{name}}
-                        {{#active}}<i class="fa fa-chevron-right small"></i>{{/active}}
-                    </a>
-                    {{/departments}}
-                    {{^departments}}
-                    <div class="p-3 text-muted italic">{{#str}}nodeptfound, local_departmentcohorts{{/str}}</div>
-                    {{/departments}}
-                </div>
-            </div>
+    <!-- Template Preview -->
+    <div class="card">
+        <div class="card-header bg-light">
+            <strong>ตัวอย่างรูปแบบไฟล์ CSV</strong>
         </div>
-
-        <!-- Right: Preview and Actions -->
-        <div class="col-md-8">
-            {{#selected_dept}}
-            <div class="card shadow-sm mb-4 border-primary">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center border-primary">
-                    <h5 class="mb-0 fw-bold text-primary">{{#str}}userspreview, local_departmentcohorts{{/str}}: {{selected_dept}}</h5>
-                    <span class="badge badge-primary">{{usercount}} Users</span>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-striped mb-0">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th>ID</th>
-                                    <th>First Name</th>
-                                    <th>Last Name</th>
-                                    <th>Email</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {{#users}}
-                                <tr>
-                                    <td>{{id}}</td>
-                                    <td>{{firstname}}</td>
-                                    <td>{{lastname}}</td>
-                                    <td>{{email}}</td>
-                                </tr>
-                                {{/users}}
-                                {{^users}}
-                                <tr><td colspan="4" class="text-center py-4 text-muted">No users found in this department.</td></tr>
-                                {{/users}}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="card-footer bg-white d-flex justify-content-center gap-3 py-3 border-top-0">
-                    <form action="{{baseurl}}" method="post" class="d-flex gap-2">
-                        <input type="hidden" name="dept" value="{{selected_dept}}">
-                        <input type="hidden" name="sesskey" value="{{sesskey}}">
-                        <button type="submit" name="action" value="create" class="btn btn-success px-4 fw-bold shadow-sm">
-                            <i class="fa fa-plus-circle mr-1"></i> {{#str}}createcohort, local_departmentcohorts{{/str}}
-                        </button>
-                        <button type="submit" name="action" value="sync" class="btn btn-primary px-4 fw-bold shadow-sm">
-                            <i class="fa fa-sync mr-1"></i> {{#str}}syncmembers, local_departmentcohorts{{/str}}
-                        </button>
-                    </form>
-                </div>
-            </div>
-            {{/selected_dept}}
-
-            {{^selected_dept}}
-            <div class="card shadow-sm h-100 border-dashed bg-light text-center py-5">
-                <div class="card-body py-5">
-                    <i class="fa fa-users fa-4x text-muted mb-3"></i>
-                    <h5 class="text-muted">Select a department to manage</h5>
-                    <p class="text-muted small">Choose a department from the left list to preview users and manage cohorts.</p>
-                </div>
-            </div>
-            {{/selected_dept}}
+        <div class="card-body p-0">
+            <table class="table table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>email</th>
+                        <th>cohortname</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="text-muted">user1@example.com</td>
+                        <td class="text-muted">Training Group A</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">user2@example.com</td>
+                        <td class="text-muted">Training Group A</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">user3@example.com</td>
+                        <td class="text-muted">Training Group B</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
+    {{/is_upload}}
+
+    {{#is_managed}}
+    <!-- Managed Cohorts Table -->
+    <div class="card">
+        <div class="card-header bg-light">
+            <strong><i class="fa fa-list me-2"></i>{{#str}}bymanaged, local_departmentcohorts{{/str}}</strong>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>{{#str}}cohortname, local_departmentcohorts{{/str}}</th>
+                        <th>{{#str}}users, local_departmentcohorts{{/str}}</th>
+                        <th>ID Number</th>
+                        <th class="text-end">{{#str}}actions, local_departmentcohorts{{/str}}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#managed_cohorts}}
+                    <tr>
+                        <td><strong>{{name}}</strong></td>
+                        <td><span class="badge bg-info">{{membercount}}</span></td>
+                        <td><small class="text-muted">{{idnumber}}</small></td>
+                        <td class="text-end">
+                            <a href="{{deleteurl}}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this cohort?');">
+                                <i class="fa fa-trash me-1"></i>{{#str}}delete{{/str}}
+                            </a>
+                        </td>
+                    </tr>
+                    {{/managed_cohorts}}
+                    {{^has_managed}}
+                    <tr>
+                        <td colspan="4" class="text-center py-4 text-muted">
+                            {{#str}}nocohortsfound, local_departmentcohorts{{/str}}
+                        </td>
+                    </tr>
+                    {{/has_managed}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {{/is_managed}}
+
+    <!-- Pagination -->
+
+    {{#pagination}}
+    <div class="mt-3">
+        {{{pagination}}}
+    </div>
+    {{/pagination}}
+
+    <!-- User Preview Modal -->
+    <div class="modal fade" id="userPreviewModal" tabindex="-1" aria-labelledby="userPreviewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="userPreviewModalLabel">
+                        {{#str}}userspreview, local_departmentcohorts{{/str}}: <span id="modalGroupName" class="text-primary fw-bold"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div id="modalLoading" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                    <table class="table table-striped table-hover mb-0 d-none" id="modalUsersTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>{{#str}}firstname, local_departmentcohorts{{/str}}</th>
+                                <th>{{#str}}lastname, local_departmentcohorts{{/str}}</th>
+                                <th>{{#str}}email, local_departmentcohorts{{/str}}</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalUsersBody">
+                            <!-- Users will be injected here -->
+                        </tbody>
+                    </table>
+                    <div id="modalNoUsers" class="text-center py-5 text-muted d-none">
+                        {{#str}}nousersfound, local_departmentcohorts{{/str}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{{#js}}
+require(['jquery'], function($) {
+    $(document).ready(function() {
+        
+        // Modal logic
+        $('.view-users-btn').on('click', function(e) {
+            e.preventDefault();
+            var groupName = $(this).data('group');
+            var groupType = $(this).data('type');
+            
+            $('#modalGroupName').text(groupName);
+            $('#modalLoading').removeClass('d-none');
+            $('#modalUsersTable, #modalNoUsers').addClass('d-none');
+            $('#modalUsersBody').empty();
+            
+            $.ajax({
+                url: M.cfg.wwwroot + '/local/departmentcohorts/ajax.php',
+                type: 'GET',
+                data: {
+                    action: 'preview',
+                    type: groupType,
+                    group: groupName
+                },
+                success: function(response) {
+                    $('#modalLoading').addClass('d-none');
+                    if (response.status === 'success' && response.data.length > 0) {
+                        var rows = '';
+                        $.each(response.data, function(i, user) {
+                            rows += '<tr>' +
+                                '<td>' + $('<div>').text(user.firstname).html() + '</td>' +
+                                '<td>' + $('<div>').text(user.lastname).html() + '</td>' +
+                                '<td>' + $('<div>').text(user.email).html() + '</td>' +
+                                '</tr>';
+                        });
+                        $('#modalUsersBody').html(rows);
+                        $('#modalUsersTable').removeClass('d-none');
+                    } else {
+                        $('#modalNoUsers').removeClass('d-none');
+                    }
+                },
+                error: function() {
+                    $('#modalLoading').addClass('d-none');
+                    $('#modalNoUsers').text('Error loading users.').removeClass('d-none');
+                }
+            });
+        });
+
+        // Select All checkboxes logic for Custom Cohort mode
+        $('#selectAllUsers').on('change', function() {
+            $('.user-checkbox').prop('checked', $(this).prop('checked'));
+            updateCustomBtnState();
+        });
+
+        $('.user-checkbox').on('change', function() {
+            if (!$(this).prop('checked')) {
+                $('#selectAllUsers').prop('checked', false);
+            } else if ($('.user-checkbox:not(:checked)').length === 0) {
+                $('#selectAllUsers').prop('checked', true);
+            }
+            updateCustomBtnState();
+        });
+
+        // Form validation
+        $('#customCohortForm').on('submit', function(e) {
+            if ($('.user-checkbox:checked').length === 0) {
+                e.preventDefault();
+                alert('Please select at least one user.');
+            }
+        });
+
+        function updateCustomBtnState() {
+            var checkedCount = $('.user-checkbox:checked').length;
+            if (checkedCount > 0) {
+                $('#createCustomBtn').removeAttr('disabled').text("{{#str}}createcustomcohort, local_departmentcohorts{{/str}} (" + checkedCount + " Users)");
+            } else {
+                $('#createCustomBtn').text("{{#str}}createcustomcohort, local_departmentcohorts{{/str}}");
+            }
+        }
+    });
+});
+{{/js}}
+
 </div>

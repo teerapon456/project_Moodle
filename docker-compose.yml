@@ -18,6 +18,10 @@ services:
     depends_on:
       - portal
       - moodle
+    deploy:
+      resources:
+        limits:
+          memory: 128M
     networks:
       - myhr-net
 
@@ -39,6 +43,10 @@ services:
     depends_on:
       - db
       - redis
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     networks:
       - myhr-net
 
@@ -54,6 +62,10 @@ services:
       - MYSQL_PASSWORD=${DB_PASS}
     volumes:
       - db_data:/var/lib/mysql
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     networks:
       - myhr-net
 
@@ -61,6 +73,10 @@ services:
   redis:
     image: redis:alpine
     container_name: myhr-redis
+    deploy:
+      resources:
+        limits:
+          memory: 128M
     networks:
       - myhr-net
 
@@ -93,37 +109,49 @@ services:
       - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL}
       - SMTP_FROM_NAME="INTEQC Moodle"
     depends_on:
-      - moodle_db
+      - db
       - redis
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     networks:
       - myhr-net
 
-  # Moodle Database (Separate from Portal)
-  moodle_db:
-    image: mysql:8.4
-    container_name: myhr-moodle-db
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MOODLE_DB_ROOT_PASSWORD}
-      - TZ=Asia/Bangkok
-      - MYSQL_DATABASE=${MOODLE_DB_NAME}
-      - MYSQL_USER=${MOODLE_DB_USER}
-      - MYSQL_PASSWORD=${MOODLE_DB_PASS}
-    volumes:
-      - moodle_db_data:/var/lib/mysql
-    networks:
-      - myhr-net
+#   # Moodle Database (Separate from Portal)
+#   moodle_db:
+#     image: mysql:8.4
+#     container_name: myhr-moodle-db
+#     environment:
+#       - MYSQL_ROOT_PASSWORD=${MOODLE_DB_ROOT_PASSWORD}
+#       - TZ=Asia/Bangkok
+#       - MYSQL_DATABASE=${MOODLE_DB_NAME}
+#       - MYSQL_USER=${MOODLE_DB_USER}
+#       - MYSQL_PASSWORD=${MOODLE_DB_PASS}
+#     volumes:
+#       - moodle_db_data:/var/lib/mysql
+#     deploy:
+#       resources:
+#         limits:
+#           memory: 512M
+#     networks:
+#       - myhr-net
 
   # phpMyAdmin (Auto-login)
   phpmyadmin:
     image: phpmyadmin:latest
     container_name: myhr-phpmyadmin
     environment:
-      - PMA_HOSTS=db,moodle_db
+      - PMA_HOSTS=db
       - PMA_USER=${PMA_USER}
       - PMA_PASSWORD=${PMA_PASSWORD}
       - PMA_ARBITRARY=1
     ports:
       - "8081:80"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     networks:
       - myhr-net
 
@@ -156,6 +184,10 @@ services:
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     networks:
       - myhr-net
 
@@ -171,9 +203,14 @@ services:
     volumes:
       - ./core:/var/www/html/core
       - ./Modules/CarBooking:/var/www/html/Modules/CarBooking
+      - ./public/uploads:/var/www/html/public/uploads
     depends_on:
       - db
       - redis
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     networks:
       - myhr-net
 
@@ -189,9 +226,14 @@ services:
     volumes:
       - ./core:/var/www/html/core
       - ./Modules/YearlyActivity:/var/www/html/Modules/YearlyActivity
+      - ./public/uploads:/var/www/html/public/uploads
     depends_on:
       - db
       - redis
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     networks:
       - myhr-net
 
@@ -217,6 +259,10 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     group_add:
       - "988"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     networks:
       - myhr-net
 
@@ -235,6 +281,11 @@ services:
       - ./Modules/Dormitory:/var/www/html/Modules/Dormitory
       - ./core:/var/www/html/core
       - ./vendor:/var/www/html/vendor
+      - ./public/uploads:/var/www/html/public/uploads
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     networks:
       - myhr-net
 
@@ -253,6 +304,11 @@ services:
       - ./Modules/IGA:/var/www/html/Modules/IGA
       - ./core:/var/www/html/core
       - ./vendor:/var/www/html/vendor
+      - ./public/uploads:/var/www/html/public/uploads
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     networks:
       - myhr-net
 
@@ -264,5 +320,4 @@ volumes:
   db_data:
     external: true
     name: dev_myhr-db-dev-data
-  moodle_db_data:
   moodledata:

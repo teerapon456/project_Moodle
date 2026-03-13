@@ -174,89 +174,6 @@ if (!in_array($page, $validPages)) {
             font-family: 'Kanit', sans-serif;
         }
 
-        /* Disable transitions on initial load to prevent flash */
-        .sidebar.no-transition,
-        .main-wrapper.no-transition {
-            transition: none !important;
-        }
-
-        /* Sidebar transitions */
-        .sidebar {
-            transition: width 0.3s ease, transform 0.3s ease;
-        }
-
-        .sidebar.collapsed {
-            width: 70px;
-        }
-
-        .sidebar.collapsed .sidebar-text {
-            display: none;
-        }
-
-        .sidebar.collapsed .nav-section {
-            display: none;
-        }
-
-        .sidebar.collapsed .user-details {
-            display: none;
-        }
-
-        .sidebar.collapsed .logo span {
-            display: none;
-        }
-
-        /* Hide scrollbar and center icons when collapsed */
-        .sidebar.collapsed nav {
-            overflow: hidden;
-            padding-left: 0;
-            padding-right: 0;
-        }
-
-        /* Sleek scrollbar for sidebar */
-        .sidebar nav::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .sidebar nav::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .sidebar nav::-webkit-scrollbar-thumb {
-            background-color: #e5e7eb;
-            border-radius: 20px;
-        }
-
-        .sidebar:hover nav::-webkit-scrollbar-thumb {
-            background-color: #d1d5db;
-        }
-
-        .sidebar.collapsed nav ul {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .sidebar.collapsed nav a {
-            width: 44px;
-            height: 44px;
-            padding: 0;
-            justify-content: center;
-            border-radius: 8px;
-        }
-
-        .sidebar.collapsed nav a i {
-            margin: 0;
-        }
-
-        .main-wrapper {
-            transition: margin-left 0.3s ease;
-            margin-left: 260px;
-        }
-
-        .main-wrapper.expanded {
-            margin-left: 70px;
-        }
-
         /* Toast */
         .toast {
             transform: translateX(100%);
@@ -268,87 +185,127 @@ if (!in_array($page, $validPages)) {
             transform: translateX(0);
             opacity: 1;
         }
-
-        /* Modal */
-        .modal-overlay {
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.2s ease;
-        }
-
-        .modal-overlay.active {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
-                width: 260px !important;
-                z-index: 50;
-            }
-
-            .sidebar.show {
-                transform: translateX(0);
-            }
-
-            .main-wrapper {
-                margin-left: 0 !important;
-            }
-        }
     </style>
 </head>
 
 <body class="bg-gray-100 min-h-screen">
-    <!-- Instant sidebar state restore (before render) -->
-    <script>
-        (function() {
-            const KEY = 'dormitory_sidebar_collapsed';
-            if (window.innerWidth > 768 && localStorage.getItem(KEY) === 'true') {
-                document.write('<style id="sidebar-instant-style">#sidebar{width:70px;overflow:hidden}#sidebar .sidebar-text,#sidebar .nav-section,#sidebar .user-details,#sidebar .logo span{display:none}#sidebar nav{overflow:hidden}#mainContent{margin-left:70px}</style>');
-            }
-        })();
-    </script>
-    <!-- Sidebar -->
-    <!-- Sidebar -->
-    <?php include __DIR__ . '/includes/sidebar.php'; ?>
+    <?php
+    $navGroups = [];
+
+    if ($isAdmin) {
+        $navGroups[] = [
+            'title' => null,
+            'items' => [
+                ['id' => 'dashboard', 'link' => '?page=dashboard', 'icon' => 'ri-home-4-line', 'text' => 'หน้าหลัก']
+            ]
+        ];
+    }
+
+    $residentGroupItems = [
+        ['id' => 'my-room', 'link' => '?page=my-room', 'icon' => 'ri-user-heart-line', 'text' => 'ห้องของฉัน']
+    ];
+    if ($canEdit) {
+        $residentGroupItems[] = ['id' => 'booking_form', 'link' => '?page=booking_form', 'icon' => 'ri-hotel-bed-line', 'text' => 'ขอเข้าพัก/ย้าย'];
+    }
+    $residentGroupItems[] = ['id' => 'request_history', 'link' => '?page=request_history', 'icon' => 'ri-history-line', 'text' => 'ประวัติคำขอ'];
+
+    $navGroups[] = [
+        'title' => 'ผู้พักอาศัย',
+        'items' => $residentGroupItems
+    ];
+
+    if ($isAdmin || $canApprove) {
+        $manageGroupItems = [];
+        if ($isAdmin) {
+            $manageGroupItems[] = ['id' => 'buildings', 'link' => '?page=buildings', 'icon' => 'ri-building-line', 'text' => 'อาคาร'];
+        }
+        if ($isAdmin || $canApprove) {
+            $manageGroupItems[] = ['id' => 'booking_manage', 'link' => '?page=booking_manage', 'icon' => 'ri-file-list-3-line', 'text' => 'จัดการคำขอ'];
+        }
+        if ($isAdmin) {
+            $manageGroupItems[] = ['id' => 'rooms', 'link' => '?page=rooms', 'icon' => 'ri-door-open-line', 'text' => 'ห้องพัก'];
+            $manageGroupItems[] = ['id' => 'history', 'link' => '?page=history', 'icon' => 'ri-history-line', 'text' => 'ประวัติการเข้าพัก'];
+        }
+
+        $navGroups[] = [
+            'title' => 'จัดการห้องพัก',
+            'items' => $manageGroupItems
+        ];
+    }
+
+    if ($isAdmin) {
+        $navGroups[] = [
+            'title' => 'ระบบบิล',
+            'items' => [
+                ['id' => 'meter-reading', 'link' => '?page=meter-reading', 'icon' => 'ri-dashboard-3-line', 'text' => 'บันทึกมิเตอร์'],
+                ['id' => 'invoices', 'link' => '?page=invoices', 'icon' => 'ri-file-list-3-line', 'text' => 'ใบแจ้งหนี้'],
+                ['id' => 'payments', 'link' => '?page=payments', 'icon' => 'ri-money-dollar-circle-line', 'text' => 'การชำระเงิน']
+            ]
+        ];
+    }
+
+    $maintenanceGroupItems = [
+        ['id' => 'maintenance-form', 'link' => '?page=maintenance-form', 'icon' => 'ri-add-circle-line', 'text' => 'แจ้งซ่อมใหม่']
+    ];
+    if ($isAdmin) {
+        $maintenanceGroupItems[] = ['id' => 'maintenance', 'link' => '?page=maintenance', 'icon' => 'ri-tools-line', 'text' => 'รายการแจ้งซ่อม'];
+    }
+
+    $navGroups[] = [
+        'title' => 'ระบบแจ้งซ่อม',
+        'items' => $maintenanceGroupItems
+    ];
+
+    if ($isAdmin) {
+        $navGroups[] = [
+            'title' => 'ตั้งค่า',
+            'items' => [
+                ['id' => 'settings', 'link' => '?page=settings', 'icon' => 'ri-settings-3-line', 'text' => 'ตั้งค่าระบบ'],
+                ['id' => 'audit-log', 'link' => '?page=audit-log', 'icon' => 'ri-file-list-2-line', 'text' => 'Audit Log']
+            ]
+        ];
+    }
+
+    $sidebarConfig = [
+        'app_key' => 'dormitory',
+        'title' => 'ระบบหอพัก',
+        'icon' => 'ri-building-2-line',
+        'home_link' => $linkBase . 'Modules/HRServices/public/index.php',
+        'home_text' => 'กลับสู่หน้าหลัก',
+        'user' => [
+            'initial' => mb_substr($user['fullname'] ?? $user['name'] ?? $user['username'] ?? 'U', 0, 1),
+            'name' => htmlspecialchars($user['fullname'] ?? $user['name'] ?? $user['username']),
+            'role' => $user['role_name'] ?? 'User'
+        ],
+        'nav_groups' => $navGroups
+    ];
+
+    include dirname(__DIR__, 2) . '/core/Views/components/sidebar.php';
+    ?>
 
     <!-- Main Content -->
     <main class="main-wrapper no-transition min-h-screen" id="mainContent">
-        <!-- Header -->
-        <header class="bg-white border-b border-gray-200 px-6 h-16 flex items-center justify-between sticky top-0 z-30">
-            <div class="flex items-center gap-4">
-                <button class="w-10 h-10 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-lg md:hidden" id="menuToggle">
-                    <i class="ri-menu-line text-xl"></i>
-                </button>
-                <h1 class="text-xl font-semibold text-gray-900">
-                    <?php
-                    $titles = [
-                        'dashboard' => 'หน้าหลัก',
-                        'buildings' => 'จัดการอาคาร',
-                        'rooms' => 'จัดการห้องพัก',
-                        'meter-reading' => 'บันทึกมิเตอร์',
-                        'invoices' => 'ใบแจ้งหนี้',
-                        'payments' => 'การชำระเงิน',
-                        'maintenance' => 'รายการแจ้งซ่อม',
-                        'maintenance-form' => 'แจ้งซ่อมใหม่',
-                        'settings' => 'ตั้งค่าระบบ',
-                        'history' => 'ประวัติการเข้าพัก',
-                        'audit-log' => 'Audit Log',
-                        'my-room' => 'ห้องของฉัน',
-                        'booking_form' => 'ขอเข้าพัก/ย้าย',
-                        'booking_manage' => 'จัดการคำขอเข้าพัก',
-                        'request_history' => 'ประวัติคำขอ'
-                    ];
-                    echo $titles[$page] ?? 'ระบบหอพัก';
-                    ?>
-                </h1>
-            </div>
-            <div class="flex items-center gap-2 text-gray-500 text-sm">
-                <i class="ri-calendar-line"></i>
-                <span id="currentDate"></span>
-            </div>
-        </header>
+        <?php
+        $titles = [
+            'dashboard' => 'หน้าหลัก',
+            'buildings' => 'จัดการอาคาร',
+            'rooms' => 'จัดการห้องพัก',
+            'meter-reading' => 'บันทึกมิเตอร์',
+            'invoices' => 'ใบแจ้งหนี้',
+            'payments' => 'การชำระเงิน',
+            'maintenance' => 'รายการแจ้งซ่อม',
+            'maintenance-form' => 'แจ้งซ่อมใหม่',
+            'settings' => 'ตั้งค่าระบบ',
+            'history' => 'ประวัติการเข้าพัก',
+            'audit-log' => 'Audit Log',
+            'my-room' => 'ห้องของฉัน',
+            'booking_form' => 'ขอเข้าพัก/ย้าย',
+            'booking_manage' => 'จัดการคำขอเข้าพัก',
+            'request_history' => 'ประวัติคำขอ'
+        ];
+        $pageTitle = $titles[$page] ?? 'ระบบหอพัก';
+        include dirname(__DIR__, 2) . '/core/Views/components/topbar.php';
+        ?>
 
         <!-- Content -->
         <div class="p-6" id="contentBody">
@@ -367,51 +324,9 @@ if (!in_array($page, $validPages)) {
     <div id="toastContainer" class="fixed bottom-6 right-6 z-50 space-y-3"></div>
 
     <!-- Scripts -->
+    <script src="<?= $baseRoot ?>/public/assets/js/shared-modals.js"></script>
     <script>
-        document.getElementById('currentDate').textContent = new Date().toLocaleDateString('th-TH', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-
-        // Sidebar toggle
-        const sidebar = document.getElementById('sidebar');
-        const mainContent = document.getElementById('mainContent');
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        const menuToggle = document.getElementById('menuToggle');
-        const SIDEBAR_STATE_KEY = 'dormitory_sidebar_collapsed';
-
-        function restoreSidebarState() {
-            if (window.innerWidth > 768) {
-                const isCollapsed = localStorage.getItem(SIDEBAR_STATE_KEY) === 'true';
-                if (isCollapsed) {
-                    sidebar.classList.add('collapsed');
-                    mainContent.classList.add('expanded');
-                }
-            }
-            // Remove instant style and re-enable transitions
-            requestAnimationFrame(() => {
-                const instantStyle = document.getElementById('sidebar-instant-style');
-                if (instantStyle) instantStyle.remove();
-                sidebar.classList.remove('no-transition');
-                mainContent.classList.remove('no-transition');
-            });
-        }
-
-        function toggleSidebar() {
-            if (window.innerWidth <= 768) {
-                sidebar.classList.toggle('show');
-            } else {
-                sidebar.classList.toggle('collapsed');
-                mainContent.classList.toggle('expanded');
-                localStorage.setItem(SIDEBAR_STATE_KEY, sidebar.classList.contains('collapsed'));
-            }
-        }
-
-        restoreSidebarState();
-        sidebarToggle?.addEventListener('click', toggleSidebar);
-        menuToggle?.addEventListener('click', toggleSidebar);
+        // No need for sidebar toggle scripts here as they are included in the shared component
 
         // Toast notification
         function showToast(message, type = 'info') {
@@ -484,89 +399,24 @@ if (!in_array($page, $validPages)) {
             }).format(num);
         }
 
-        // Custom dialogs
-        let confirmResolve = null,
-            promptResolve = null;
-
+        // Redirect old modal calls to new MyHRModal system
         function showConfirm(message, title = 'ยืนยัน') {
-            return new Promise((resolve) => {
-                confirmResolve = resolve;
-                document.getElementById('confirmTitle').textContent = title;
-                document.getElementById('confirmMessage').textContent = message;
-                document.getElementById('confirmModal').classList.add('active');
+            return MyHRModal.confirm({
+                message,
+                title
             });
-        }
-
-        function handleConfirm(result) {
-            document.getElementById('confirmModal').classList.remove('active');
-            if (confirmResolve) {
-                confirmResolve(result);
-                confirmResolve = null;
-            }
         }
 
         function showPrompt(message, title = 'กรุณากรอกข้อมูล', defaultValue = '') {
-            return new Promise((resolve) => {
-                promptResolve = resolve;
-                document.getElementById('promptTitle').textContent = title;
-                document.getElementById('promptMessage').textContent = message;
-                document.getElementById('promptInput').value = defaultValue;
-                document.getElementById('promptModal').classList.add('active');
-                setTimeout(() => document.getElementById('promptInput').focus(), 100);
+            return MyHRModal.prompt({
+                message,
+                title,
+                defaultValue
             });
         }
-
-        function handlePrompt(submit) {
-            document.getElementById('promptModal').classList.remove('active');
-            if (promptResolve) {
-                promptResolve(submit ? document.getElementById('promptInput').value : null);
-                promptResolve = null;
-            }
-        }
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && document.getElementById('promptModal').classList.contains('active')) handlePrompt(true);
-            if (e.key === 'Escape') {
-                if (document.getElementById('confirmModal').classList.contains('active')) handleConfirm(false);
-                if (document.getElementById('promptModal').classList.contains('active')) handlePrompt(false);
-            }
-        });
     </script>
 
-    <!-- Confirm Modal -->
-    <div class="modal-overlay fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5" id="confirmModal">
-        <div class="bg-white rounded-xl w-full max-w-sm shadow-2xl">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <h3 class="font-semibold text-gray-900" id="confirmTitle">ยืนยัน</h3>
-                <button class="text-gray-400 hover:text-gray-600 text-xl" onclick="handleConfirm(false)">&times;</button>
-            </div>
-            <div class="p-5">
-                <p id="confirmMessage" class="text-gray-600"></p>
-            </div>
-            <div class="flex justify-end gap-3 px-5 py-4 bg-gray-50 rounded-b-xl">
-                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors" onclick="handleConfirm(false)">ยกเลิก</button>
-                <button class="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg font-medium transition-colors" onclick="handleConfirm(true)">ยืนยัน</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Prompt Modal -->
-    <div class="modal-overlay fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5" id="promptModal">
-        <div class="bg-white rounded-xl w-full max-w-md shadow-2xl">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <h3 class="font-semibold text-gray-900" id="promptTitle">กรุณากรอกข้อมูล</h3>
-                <button class="text-gray-400 hover:text-gray-600 text-xl" onclick="handlePrompt(false)">&times;</button>
-            </div>
-            <div class="p-5">
-                <p id="promptMessage" class="text-gray-600 mb-4"></p>
-                <input type="text" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" id="promptInput">
-            </div>
-            <div class="flex justify-end gap-3 px-5 py-4 bg-gray-50 rounded-b-xl">
-                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors" onclick="handlePrompt(false)">ยกเลิก</button>
-                <button class="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg font-medium transition-colors" onclick="handlePrompt(true)">ตกลง</button>
-            </div>
-        </div>
-    </div>
+    <?php include dirname(__DIR__, 2) . '/core/Views/components/shared_modals.php'; ?>
 
     <!-- Page-specific scripts -->
     <?php if (file_exists(__DIR__ . "/public/js/{$page}.js")): ?>

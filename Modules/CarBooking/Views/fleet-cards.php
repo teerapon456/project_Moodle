@@ -104,7 +104,7 @@ $statusLabels = [
 </div>
 
 <!-- Fleet Card Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5 opacity-0 invisible transition-all" id="cardModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] p-5 opacity-0 invisible transition-all" id="cardModal">
     <div class="bg-white rounded-xl w-full max-w-lg shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="font-semibold text-gray-900" id="cardModalTitle">เพิ่ม Fleet Card</h3>

@@ -110,7 +110,7 @@ if (!checkViewPermission($canView, 'ระบบหอพัก')) return;
 </div>
 
 <!-- Success Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 opacity-0 invisible transition-all duration-200 p-5" id="successModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] opacity-0 invisible transition-all duration-200 p-5" id="successModal">
     <div class="bg-white rounded-xl w-full max-w-md shadow-2xl">
         <div class="text-center p-10">
             <div class="w-[72px] h-[72px] mx-auto bg-emerald-50 rounded-full flex items-center justify-center mb-5">

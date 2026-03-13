@@ -4,7 +4,7 @@ if (!checkViewPermission($canView, 'ระบบหอพัก')) return;
 ?>
 <!-- Invoices View - Migrated to Tailwind -->
 <!-- Filters -->
-<div class="flex flex-col md:flex-row flex-wrap items-start md:items-center justify-between gap-3 mb-5" id="filterContainer">
+<div class="flex flex-col md:flex-row flex-wrap items-center md:items-center justify-between gap-3 mb-5" id="filterContainer">
     <div class="flex flex-wrap gap-2 w-full md:w-auto">
         <select class="flex-1 md:flex-none md:min-w-[140px] px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary" id="filterBuilding">
             <option value="">ทุกอาคาร</option>
@@ -108,7 +108,7 @@ if (!checkViewPermission($canView, 'ระบบหอพัก')) return;
 </div>
 
 <!-- Payment Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 opacity-0 invisible transition-all duration-200 p-5" id="paymentModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] opacity-0 invisible transition-all duration-200 p-5" id="paymentModal">
     <div class="bg-white rounded-xl w-full max-w-lg max-h-[calc(100vh-40px)] flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="text-lg font-semibold text-gray-900">บันทึกการชำระเงิน</h3>
@@ -162,7 +162,7 @@ if (!checkViewPermission($canView, 'ระบบหอพัก')) return;
 </div>
 
 <!-- Invoice Detail Modal -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 opacity-0 invisible transition-all duration-200 p-5" id="invoiceDetailModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] opacity-0 invisible transition-all duration-200 p-5" id="invoiceDetailModal">
     <div class="bg-white rounded-xl w-full max-w-xl max-h-[calc(100vh-40px)] flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="text-lg font-semibold text-gray-900">รายละเอียดใบแจ้งหนี้</h3>
@@ -178,7 +178,7 @@ if (!checkViewPermission($canView, 'ระบบหอพัก')) return;
 </div>
 
 <!-- Slip Payment Modal (Resident) -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 opacity-0 invisible transition-all duration-200 p-5" id="slipPaymentModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] opacity-0 invisible transition-all duration-200 p-5" id="slipPaymentModal">
     <div class="bg-white rounded-xl w-full max-w-lg max-h-[calc(100vh-40px)] flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="text-lg font-semibold text-gray-900">แจ้งชำระเงิน</h3>
@@ -214,7 +214,7 @@ if (!checkViewPermission($canView, 'ระบบหอพัก')) return;
 </div>
 
 <!-- Verify Payment Modal (Admin) -->
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 opacity-0 invisible transition-all duration-200 p-5" id="verifyPaymentModal">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] opacity-0 invisible transition-all duration-200 p-5" id="verifyPaymentModal">
     <div class="bg-white rounded-xl w-full max-w-xl max-h-[calc(100vh-40px)] flex flex-col shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h3 class="text-lg font-semibold text-gray-900">ตรวจสอบการชำระเงิน</h3>
@@ -396,7 +396,7 @@ if (!checkViewPermission($canView, 'ระบบหอพัก')) return;
             const canPay = (inv.status === 'pending' || inv.status === 'partial' || inv.status === 'overdue') && !isAdmin;
             return `
             <div class="p-4 ${borderColors[inv.status] || 'border-l-gray-300'} border-l-4">
-                <div class="flex items-start justify-between mb-2">
+                <div class="flex items-center justify-between mb-2">
                     <div>
                         <span class="font-bold text-primary">${inv.invoice_number}</span>
                         <span class="text-gray-500 text-sm ml-2">${inv.month_cycle}</span>

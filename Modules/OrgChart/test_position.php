@@ -1,5 +1,7 @@
 <?php
-$SQLSRV_HOST = '172.17.100.26';
+require_once __DIR__ . '/../../core/Config/Env.php';
+use Core\Config\Env;
+$SQLSRV_HOST = Env::get('SQLSRV_HOST', '172.17.100.26');
 $SQLSRV_DB = 'HRMULTI_INTEQC';
 $SQLSRV_UID = 'HRIS';
 $SQLSRV_PWD = 'Hris@2024';

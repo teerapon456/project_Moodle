@@ -61,3 +61,52 @@ To issue certificate:
 
     $template = \tool_certificate\template::instance($templateid);
     $template->issue_certificate(....)
+
+🗂️ โครงสร้างหลัก
+57 Classes - จัดการตรรกะหลัก (Templates, Issues, Permissions, Forms)
+58 Elements - องค์ประกอบสำหรับออกแบบใบรับรอง (ข้อความ, รูปภาพ, QR code, ฯลฯ)
+4 ภาษา - รองรับหลายภาษา (English, Thai, อื่นๆ)
+ฐานข้อมูล - 4 ตารางหลัก + ตารางรอง
+📋 ฟีเจอร์หลัก
+1. จัดการเทมเพลต (Template Management)
+สร้าง/แก้ไขเทมเพลตใบรับรอง
+ออกแบบด้วย drag & drop
+เพิ่มองค์ประกอบต่างๆ (text, images, QR codes)
+จัดการสิทธิ์และการแชร์
+2. จัดการใบรับรอง (Certificate Management)
+Dashboard - ภาพรวมสถิติและรายการใบรับรอง
+CRUD Operations - สร้าง/ดู/แก้ไข/ลบใบรับรองที่ออกแล้ว
+Bulk Operations - จัดการหลายใบพร้อมกัน
+Search & Filter - ค้นหาและกรองใบรับรอง
+3. การออกใบรับรอง (Issuance)
+ออกใบรับรองแบบเดี่ยวหรือเป็นกลุ่ม
+ออกอัตโนมัติตามเงื่อนไขหลักสูตร
+อีเมลแจ้งเตือนผู้รับ
+รองรับภาษาต่างๆ
+4. การตรวจสอบ (Verification)
+ตรวจสอบความถูกต้องด้วยรหัส
+ดูใบรับรองออนไลน์
+API สำหรับระบบภายนอก
+5. จัดการไฟล์และรูปภาพ
+อัปโหลดและจัดการรูปภาพ
+ระบบไฟล์ Moodle
+รองรับหลายประเภทไฟล์
+🗄️ ฐานข้อมูล
+tool_certificate_templates - เทมเพลตใบรับรอง
+tool_certificate_issues - ใบรับรองที่ออกแล้ว
+tool_certificate_pages - หน้าในใบรับรอง
+tool_certificate_elements - องค์ประกอบในหน้า
+🎨 ส่วนติดต่อผู้ใช้
+Admin Dashboard - จัดการระบบทั้งหมด
+My Certificates - ดูใบรับรองของตัวเอง
+Template Designer - ออกแบบใบรับรองแบบ WYSIWYG
+Verification Page - ตรวจสอบใบรับรองสาธารณะ
+🔧 การปรับแต่ง
+Custom Elements - เพิ่มองค์ประกอบใหม่ได้
+Multi-language - รองรับหลายภาษา
+Permissions - ระบบสิทธิ์ละเอียด
+Events & Hooks - ต่อกับระบบอื่นได้
+📱 การรองรับ
+Mobile App - รองรับแอปมือถือ Moodle
+Web Services - API สำหรับระบบภายนอก
+LinkedIn Integration - แชร์ใบรับรองไป LinkedIn

@@ -48,11 +48,11 @@ if ($courseindexopen) {
 }
 
 $blockshtml = $OUTPUT->blocks('side-pre');
-$hasblocks = (strpos($blockshtml, 'data-block=') !== false || !empty($addblockbutton));
+$hasblocks = false; // เปลี่ยนให้เป็น false บังคับซ่อน Drawer ด้านขวา (Blocks)
 if (!$hasblocks) {
     $blockdraweropen = false;
 }
-$courseindex = core_course_drawer();
+$courseindex = false; // เปลี่ยนให้เป็น false บังคับซ่อน Drawer ด้านซ้าย (Course Index / Nav)
 if (!$courseindex) {
     $courseindexopen = false;
 }

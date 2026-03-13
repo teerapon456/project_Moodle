@@ -22,15 +22,15 @@
  */
 
 require('../../config.php');
-require_once($CFG->libdir.'/adminlib.php');
-require_once($CFG->dirroot.'/user/profile/lib.php');
-require_once($CFG->dirroot.'/user/profile/definelib.php');
+require_once($CFG->libdir . '/adminlib.php');
+require_once($CFG->dirroot . '/user/profile/lib.php');
+require_once($CFG->dirroot . '/user/profile/definelib.php');
 
 admin_externalpage_setup('profilefields');
 
 $action   = optional_param('action', '', PARAM_ALPHA);
 
-$redirect = $CFG->wwwroot.'/user/profile/index.php';
+$redirect = $CFG->wwwroot . '/user/profile/index.php';
 
 $strdefaultcategory = get_string('profiledefaultcategory', 'admin');
 $strcreatefield     = get_string('profilecreatefield', 'admin');
@@ -77,7 +77,7 @@ switch ($action) {
 
         // Ask for confirmation, as there is user data available for field.
         $fieldname = $DB->get_field('user_info_field', 'name', array('id' => $id));
-        $optionsyes = array ('id' => $id, 'confirm' => 1, 'action' => 'deletefield', 'sesskey' => sesskey());
+        $optionsyes = array('id' => $id, 'confirm' => 1, 'action' => 'deletefield', 'sesskey' => sesskey());
         $strheading = get_string('profiledeletefield', 'admin', format_string($fieldname));
         $PAGE->navbar->add($strheading);
         echo $OUTPUT->header();
@@ -137,9 +137,17 @@ foreach ($categories as $category) {
     $menu = new \action_menu();
     $menu->set_menu_trigger($strcreatefield);
     foreach ($options as $type => $fieldname) {
-        $action = new \action_menu_link_secondary(new \moodle_url('#'), null, $fieldname,
-            ['data-action' => 'createfield', 'data-categoryid' => $category->id, 'data-datatype' => $type,
-                'data-datatypename' => $fieldname]);
+        $action = new \action_menu_link_secondary(
+            new \moodle_url('#'),
+            null,
+            $fieldname,
+            [
+                'data-action' => 'createfield',
+                'data-categoryid' => $category->id,
+                'data-datatype' => $type,
+                'data-datatypename' => $fieldname
+            ]
+        );
         $menu->add($action);
     }
     $menu->attributes['class'] .= ' float-start me-1';

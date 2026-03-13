@@ -31,11 +31,20 @@ require_once($CFG->dirroot . '/' . $CFG->admin . '/tool/certificate/adminlib.php
 if ($hassiteconfig || \tool_certificate\permission::can_view_admin_tree()) {
     $ADMIN->add(
         'root',
-        new admin_category('certificates', new lang_string('certificates', 'tool_certificate')),
+        new admin_category('certificatemanagement', new lang_string('certificatemanagement', 'tool_certificate')),
         'location'
     );
 
-    $ADMIN->add('certificates', new \tool_certificate\admin_externalpage(
+    $ADMIN->add('certificatemanagement', new \tool_certificate\admin_externalpage(
+        'tool_certificate/dashboard',
+        get_string('certificatemanagement', 'tool_certificate'),
+        new moodle_url('/admin/tool/certificate/dashboard.php'),
+        function () {
+                    return \tool_certificate\permission::can_view_admin_tree();
+        }
+    ));
+
+    $ADMIN->add('certificatemanagement', new \tool_certificate\admin_externalpage(
         'tool_certificate/managetemplates',
         get_string('managetemplates', 'tool_certificate'),
         new moodle_url('/admin/tool/certificate/manage_templates.php'),
@@ -44,7 +53,7 @@ if ($hassiteconfig || \tool_certificate\permission::can_view_admin_tree()) {
         }
     ));
 
-    $ADMIN->add('certificates', new \tool_certificate\admin_externalpage(
+    $ADMIN->add('certificatemanagement', new \tool_certificate\admin_externalpage(
         'tool_certificate/verify',
         get_string('verifycertificates', 'tool_certificate'),
         new moodle_url('/admin/tool/certificate/index.php'),
@@ -53,7 +62,7 @@ if ($hassiteconfig || \tool_certificate\permission::can_view_admin_tree()) {
         }
     ));
 
-    $ADMIN->add('certificates', new \tool_certificate\admin_externalpage(
+    $ADMIN->add('certificatemanagement', new \tool_certificate\admin_externalpage(
         'tool_certificate/images',
         get_string('certificateimages', 'tool_certificate'),
         new moodle_url('/admin/tool/certificate/upload_image.php'),
@@ -122,7 +131,7 @@ if ($hassiteconfig) {
         ['multilang' => 1]
     ));
 
-    $ADMIN->add('certificates', $settings);
+    $ADMIN->add('certificatemanagement', $settings);
 
     // Add Certificate Element plugins settings.
     $ADMIN->add('modules', new admin_category(

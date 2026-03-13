@@ -29,7 +29,8 @@ use core_admin\admin_search;
  * @copyright  2023 Andrew Lyons <andrew@nicols.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class admin_setting_plugin_manager extends admin_setting {
+class admin_setting_plugin_manager extends admin_setting
+{
     /** @var core_plugin_manager The plugin manager instance */
     protected core_plugin_manager $pluginmanager;
 
@@ -60,7 +61,8 @@ class admin_setting_plugin_manager extends admin_setting {
      *
      * @return true
      */
-    public function get_setting(): bool {
+    public function get_setting(): bool
+    {
         return true;
     }
 
@@ -69,7 +71,8 @@ class admin_setting_plugin_manager extends admin_setting {
      *
      * @return true
      */
-    public function get_defaultsetting(): bool {
+    public function get_defaultsetting(): bool
+    {
         return true;
     }
 
@@ -79,7 +82,8 @@ class admin_setting_plugin_manager extends admin_setting {
      * @return string Always returns ''
      */
     // phpcs:disable VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable
-    public function write_setting($data): string {
+    public function write_setting($data): string
+    {
         // Do not write any setting.
         return '';
     }
@@ -90,7 +94,8 @@ class admin_setting_plugin_manager extends admin_setting {
      * @param string $query The string to search for
      * @return bool Returns true if found, false if not
      */
-    public function is_related($query) {
+    public function is_related($query)
+    {
         if (parent::is_related($query)) {
             return true;
         }
@@ -120,7 +125,8 @@ class admin_setting_plugin_manager extends admin_setting {
      * @param string $query
      * @return string
      */
-    public function output_html($data, $query = ''): string {
+    public function output_html($data, $query = ''): string
+    {
         $table = new $this->tableclass();
         if (!($table instanceof \core_admin\table\plugin_management_table)) {
             throw new \coding_exception("{$this->tableclass} must be an instance of \\core_admin\\table\\plugin_management_table");

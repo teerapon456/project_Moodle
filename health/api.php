@@ -82,8 +82,10 @@ function getMultipleContainerStats($containerNames)
         curl_setopt($ch, CURLOPT_UNIX_SOCKET_PATH, $socket);
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 3); // Increased timeout for heavy load
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        // Important: Set Host header for some environments
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ["Host: localhost"]);
         curl_multi_add_handle($mh, $ch);
         $handles[$name] = $ch;
     }
@@ -103,30 +105,40 @@ function getMultipleContainerStats($containerNames)
 
     $results = [];
     $updatedCache = false;
+    $log = [];
 
     foreach ($handles as $name => $ch) {
         $response = curl_multi_getcontent($ch);
+        $info = curl_getinfo($ch);
         curl_multi_remove_handle($mh, $ch);
         curl_close($ch);
 
         if ($response) {
             $stats = json_decode($response, true);
             if ($stats && !isset($stats['message'])) {
-                // CPU
+                // CPU Calculation
                 $cpu_percent = 0.0;
                 if (isset($stats['cpu_stats'], $stats['precpu_stats'])) {
-                    $cpu_delta = $stats['cpu_stats']['cpu_usage']['total_usage'] - $stats['precpu_stats']['cpu_usage']['total_usage'];
-                    $system_delta = ($stats['cpu_stats']['system_cpu_usage'] ?? 0) - ($stats['precpu_stats']['system_cpu_usage'] ?? 0);
+                    $cpu_usage = $stats['cpu_stats']['cpu_usage']['total_usage'] ?? 0;
+                    $precpu_usage = $stats['precpu_stats']['cpu_usage']['total_usage'] ?? 0;
+                    $system_usage = $stats['cpu_stats']['system_cpu_usage'] ?? 0;
+                    $presystem_usage = $stats['precpu_stats']['system_cpu_usage'] ?? 0;
+                    
+                    $cpu_delta = $cpu_usage - $precpu_usage;
+                    $system_delta = $system_usage - $presystem_usage;
                     $online_cpus = $stats['cpu_stats']['online_cpus'] ?? 1;
+
                     if ($system_delta > 0 && $cpu_delta > 0) {
                         $cpu_percent = ($cpu_delta / $system_delta) * $online_cpus * 100.0;
                     }
                 }
-                // Mem
+
+                // Memory Calculation
                 $mem_usage = $stats['memory_stats']['usage'] ?? 0;
                 $mem_limit = $stats['memory_stats']['limit'] ?? 1;
-                $mem_cache = $stats['memory_stats']['stats']['cache'] ?? 0;
-                $used_memory = $mem_usage - $mem_cache;
+                $mem_stats = $stats['memory_stats']['stats'] ?? [];
+                $inactive_file = $mem_stats['inactive_file'] ?? ($mem_stats['total_inactive_file'] ?? 0);
+                $used_memory = $mem_usage - $inactive_file;
                 $mem_percent = ($used_memory / $mem_limit) * 100.0;
 
                 $data = [
@@ -140,17 +152,24 @@ function getMultipleContainerStats($containerNames)
                 $results[$name] = $data;
                 $cache[$name] = $data;
                 $updatedCache = true;
-            } else if (isset($cache[$name])) {
-                // Return cached version if poll failed
+                $log[] = "Success: $name";
+            } else {
+                $log[] = "Empty stats/error message: $name (" . ($stats['message'] ?? 'unknown') . ")";
+                if (isset($cache[$name])) {
+                    $results[$name] = $cache[$name];
+                    $results[$name]['stale'] = true;
+                }
+            }
+        } else {
+            $log[] = "No response: $name, HTTP: " . $info['http_code'];
+            if (isset($cache[$name])) {
                 $results[$name] = $cache[$name];
                 $results[$name]['stale'] = true;
             }
-        } else if (isset($cache[$name])) {
-            // Return cached version if poll failed
-            $results[$name] = $cache[$name];
-            $results[$name]['stale'] = true;
         }
     }
+
+    @file_put_contents('/tmp/health_api_log.txt', date('Y-m-d H:i:s') . " - " . implode(', ', $log) . "\n", FILE_APPEND);
 
     if ($updatedCache) {
         @file_put_contents($cacheFile, json_encode($cache));
@@ -183,32 +202,49 @@ function getAllContainersInfo()
     $map = [];
     if (is_array($containers)) {
         foreach ($containers as $c) {
-            $name = ltrim($c['Names'][0] ?? '', '/');
-            if (!$name) continue;
-
-            $status = $c['Status'] ?? 'Unknown';
             $state = $c['State'] ?? 'offline';
+            $status = $c['Status'] ?? '';
             
-            // Format uptime/started_at from status string or use Created
+            // Clean up uptime from Status string (e.g. "Up 6 hours" -> "6 hours")
             $uptime = "Stopped";
-            $started_at = "Unknown";
-            
             if ($state === 'running') {
-                $uptime = $status; // Docker Status string is "Up X minutes"
-                if (isset($c['Created'])) {
-                   // We don't have accurate started_at here without Inspect, 
-                   // but Status string is usually enough for the user.
-                }
+                $uptime = preg_replace('/^Up\s+/', '', $status);
+                $uptime = preg_replace('/\s+\(healthy\)$/', '', $uptime);
             }
 
-            $map[$name] = [
+            $info = [
+                'id' => $c['Id'],
                 'status' => ($state === 'running') ? 'online' : 'offline',
                 'uptime' => $uptime,
-                'state' => $state
+                'state' => $state,
+                'created' => $c['Created'] ?? 0
             ];
+
+            foreach ($c['Names'] as $rawName) {
+                $name = ltrim($rawName, '/');
+                $map[$name] = $info;
+            }
         }
     }
     return $map;
+}
+
+function getContainerInspect($idOrName)
+{
+    $socket = '/var/run/docker.sock';
+    if (!file_exists($socket)) return null;
+
+    $url = "http://localhost/v1.41/containers/{$idOrName}/json";
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_UNIX_SOCKET_PATH, $socket);
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 2);
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    if (!$response) return null;
+    return json_decode($response, true);
 }
 
 function checkTcpStatus($host, $port, $timeout = 2)
@@ -388,23 +424,21 @@ $redisPort = $_ENV['REDIS_PORT'] ?? 6379;
 
 // Service to Container Mapping
 $nameMap = [
-    'Database' => 'myhr-db',
-    'Moodle DB' => 'myhr-moodle-db',
+    'Core Database' => 'myhr-db',
     'Redis' => 'myhr-redis',
     'Gateway' => 'myhr-gateway',
     'Portal (Main)' => 'myhr-portal',
-    'Moodle Frontend' => 'myhr-frontend',
     'Moodle LMS' => 'myhr-moodle',
     'Car Booking' => 'myhr-carbooking',
     'Yearly Activity' => 'myhr-yearlyactivity',
     'IGA Module' => 'myhr-iga',
     'Dormitory' => 'myhr-dormitory',
     'phpMyAdmin' => 'myhr-phpmyadmin',
-    'Health Check' => 'myhr-health'
+    'Health Dashboard' => 'myhr-health'
 ];
 
 // Handle Control Requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $input = json_decode(file_get_contents('php://input'), true);
     if (isset($input['service']) && isset($input['action'])) {
         $containerName = $nameMap[$input['service']] ?? null;
@@ -420,13 +454,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // 0. Define Services
 $servicesDefinition = [
-    'Database' => ['host' => 'myhr-db', 'port' => 3306, 'type' => 'db', 'link' => ':8081/?server=1'],
-    'Moodle DB' => ['host' => 'myhr-moodle-db', 'port' => 3306, 'type' => 'tcp', 'link' => ':8081/?server=2'],
+    'Core Database' => ['host' => 'myhr-db', 'port' => 3306, 'type' => 'db', 'link' => ':8081/?server=1'],
     'Redis' => ['host' => 'myhr-redis', 'port' => 6379, 'type' => 'tcp', 'link' => '#'],
     'Gateway' => ['host' => 'myhr-gateway', 'port' => 80, 'type' => 'tcp', 'link' => '#'],
 
     'Portal (Main)' => ['host' => 'myhr-portal', 'port' => 80, 'type' => 'tcp', 'link' => '/'],
-    'Moodle Frontend' => ['host' => 'myhr-frontend', 'port' => 3000, 'type' => 'tcp', 'link' => '/moodle/'],
     'Moodle LMS' => ['host' => 'myhr-moodle', 'port' => 80, 'type' => 'tcp', 'link' => '/moodle/'],
 
     'Car Booking' => ['host' => 'myhr-carbooking', 'port' => 80, 'type' => 'tcp', 'link' => '/Modules/CarBooking/'],
@@ -435,7 +467,7 @@ $servicesDefinition = [
     'IGA Module' => ['host' => 'myhr-iga', 'port' => 80, 'type' => 'tcp', 'link' => '/Modules/IGA/'],
 
     'phpMyAdmin' => ['host' => 'myhr-phpmyadmin', 'port' => 80, 'type' => 'tcp', 'link' => ':8081/'],
-    'Health Check' => ['host' => 'localhost', 'port' => 80, 'type' => 'self', 'link' => '/health/']
+    'Health Dashboard' => ['host' => 'localhost', 'port' => 80, 'type' => 'self', 'link' => '/health/']
 ];
 
 // 1. Fetch all basic container info in one bulk call
@@ -482,6 +514,16 @@ foreach ($servicesDefinition as $name => $cfg) {
     // Add Container Specific Stats if available (from parallel fetch)
     if ($cName && isset($allStats[$cName])) {
         $data['container_stats'] = $allStats[$cName];
+    }
+
+    // Try to get actual startedAt using Inspect if we have containerInfo
+    if ($containerInfo && $containerInfo['status'] === 'online') {
+        $inspect = getContainerInspect($containerInfo['id']);
+        if ($inspect && isset($inspect['State']['StartedAt'])) {
+            $sAt = $inspect['State']['StartedAt'];
+            // startedAt is like 2024-03-13T07:09:02.123456789Z
+            $data['started_at'] = date('Y-m-d H:i', strtotime($sAt));
+        }
     }
 
     $serviceDetails[$name] = $data;

@@ -121,7 +121,7 @@
         <!-- Header Info -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900 mb-1">Microservices Status</h1>
+                <h1 class="text-2xl font-bold text-gray-900 mb-1">Health Services Status</h1>
                 <p class="text-gray-500 text-sm">Real-time monitoring of all decoupled containers and core infrastructure.</p>
             </div>
             <div class="flex items-center gap-3 text-sm bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100">
@@ -370,15 +370,10 @@
 
         // Custom Icons and Colors mapping for specific services
         const serviceMeta = {
-            'Database': {
+            'Core Database': {
                 icon: 'ri-database-2-fill',
                 color: '#dc2626',
                 bg: '#fef2f2'
-            },
-            'Moodle DB': {
-                icon: 'ri-database-fill',
-                color: '#ef4444',
-                bg: '#fff5f5'
             },
             'Redis': {
                 icon: 'ri-server-fill',
@@ -394,11 +389,6 @@
                 icon: 'ri-layout-masonry-fill',
                 color: '#A21D21',
                 bg: '#fff5f5'
-            },
-            'Moodle Frontend': {
-                icon: 'ri-window-fill',
-                color: '#dc2626',
-                bg: '#fef2f2'
             },
             'Moodle LMS': {
                 icon: 'ri-graduation-cap-fill',
@@ -430,7 +420,7 @@
                 color: '#64748b',
                 bg: '#f1f5f9'
             },
-            'Health Check': {
+            'Health Dashboard': {
                 icon: 'ri-heart-pulse-line',
                 color: '#A21D21',
                 bg: '#fff5f5'
@@ -501,7 +491,7 @@
                         
                         <div class="space-y-4 mb-5">
                             <!-- Container CPU -->
-                            <div class="service-cpu-area ${isOnline ? '' : 'hidden'}">
+                            <div class="service-cpu-area">
                                 <div class="flex justify-between items-center mb-1">
                                     <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Container CPU</span>
                                     <span class="text-xs font-bold text-blue-600 service-cpu-percent">${data.container_stats ? data.container_stats.cpu_percent + '%' : '--%'}</span>
@@ -512,7 +502,7 @@
                             </div>
 
                             <!-- Container RAM -->
-                            <div class="service-ram-area ${isOnline ? '' : 'hidden'}">
+                            <div class="service-ram-area">
                                 <div class="flex justify-between items-center mb-1">
                                     <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Container RAM</span>
                                     <span class="text-xs font-bold text-emerald-600 service-ram-percent">${data.container_stats ? data.container_stats.mem_percent + '%' : '--%'}</span>
@@ -536,7 +526,7 @@
                         </div>
 
                         <div class="service-control-area">
-                            ${!isOnline && name !== 'Health Check' ? `
+                            ${!isOnline && name !== 'Health Dashboard' ? `
                             <div class="mb-4 p-4 bg-red-50 rounded-2xl border border-red-200 shadow-inner">
                                 <div class="flex items-center gap-2 text-xs text-red-700 font-extrabold mb-3">
                                     <i class="ri-error-warning-fill text-sm"></i>
@@ -715,7 +705,7 @@
                             const oldStatus = existingCard.getAttribute('data-online');
                             const newStatus = isOnline.toString();
                             if (oldStatus !== newStatus || (!isOnline && controlArea.innerHTML.includes('...'))) {
-                                if (!isOnline && serviceName !== 'Health Check') {
+                                if (!isOnline && serviceName !== 'Health Dashboard') {
                                     controlArea.innerHTML = `
                                         <div class="mb-4 p-4 bg-red-50 rounded-2xl border border-red-200 shadow-inner">
                                             <div class="flex items-center gap-2 text-xs text-red-700 font-extrabold mb-3">

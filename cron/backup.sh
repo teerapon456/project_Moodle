@@ -12,11 +12,11 @@ echo "[$(date)] Starting backup..."
 
 # 1. Backup Portal Database
 echo "[$(date)] Backing up Portal DB..."
-docker exec myhr-db /usr/bin/mysqldump -u root --password='R00t_S3cur3_P@ss_2026!' myhr_portal | gzip > "$BACKUP_DIR/portal_$DATE.sql.gz"
+docker exec myhr-db /usr/bin/mysqldump -u root --password='R00t_S3cur3_P@ss_2026!' --force --single-transaction myhr_portal | gzip > "$BACKUP_DIR/portal_$DATE.sql.gz"
 
 # 2. Backup Moodle Database
 echo "[$(date)] Backing up Moodle DB..."
-docker exec myhr-moodle-db /usr/bin/mysqldump -u root --password='R00t_S3cur3_P@ss_2026!' moodle | gzip > "$BACKUP_DIR/moodle_$DATE.sql.gz"
+docker exec myhr-db /usr/bin/mysqldump -u root --password='R00t_S3cur3_P@ss_2026!' --force --single-transaction moodle | gzip > "$BACKUP_DIR/moodle_$DATE.sql.gz"
 
 # 3. Cleanup old backups (older than 7 days)
 echo "[$(date)] Cleaning up old backups..."
